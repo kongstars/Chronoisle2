@@ -1,4 +1,4 @@
-﻿
+
 import { Goal, KeyResult, GoalCategory } from '../models/Goal';
 import { db } from '../storage/Database';
 import { CATEGORIES, CATEGORY_COLORS, CategoryInfo } from '../common/Constants';
@@ -467,24 +467,32 @@ struct GoalDetailPage {
     .height('100%')
     .position({ x: 0, y: 0 })
   }
-  
-  addKR(): void {
-    if (!this.goal || this.newKRTitle.trim() === '') {
+  addKR() {
+    if (!this.goal) {
       return;
     }
-    
-    const kr = this.goal.addKeyResult(this.newKRTitle.trim());
-    db.updateGoal(this.goal).then(() => {
-      this.goal = db.getGoalById(this.goalId) || null;
-      this.showAddKR = false;
-      this.newKRTitle = '';
-    });
+    if (this.newKRTitle.trim().length === 0) {
+      return;
+    }
+    // ✅ 正确：使用构造函数创建实例
+    const newKR = new KeyResult(this.newKRTitle.trim());
+    if (!this.goal.keyResults) {
+      this.goal.keyResults = [];
+    }
+    this.goal.keyResults.push(newKR);
+    // 更新进度
+    if (this.goal.keyResults.length > 0) {
+      const total = this.goal.keyResults.reduce((sum, kr) => sum + kr.progress, 0);
+      this.goal.progress = Math.round(total / this.goal.keyResults.length);
+    }
+    this.goal.updatedAt = Date.now();
+    this.newKRTitle = '';
   }
   deleteKR(krId: string): void {
     if (!this.goal) {
       return;
     }
-    
+
     this.goal.removeKeyResult(krId);
     db.updateGoal(this.goal).then(() => {
       this.goal = db.getGoalById(this.goalId) || null;
