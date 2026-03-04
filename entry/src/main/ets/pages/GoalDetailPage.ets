@@ -487,29 +487,31 @@ struct GoalDetailPage {
     }
     this.goal.updatedAt = Date.now();
     this.newKRTitle = '';
-  }
-  deleteKR(krId: string): void {
-    if (!this.goal) {
-      return;
-    }
 
-    this.goal.removeKeyResult(krId);
+    // ✅ 添加：保存到数据库
     db.updateGoal(this.goal).then(() => {
       this.goal = db.getGoalById(this.goalId) || null;
     });
   }
-  
+
   updateKRProgress(krId: string, progress: number): void {
     if (!this.goal) {
       return;
     }
-    
+
     const kr = this.goal.keyResults.find((k: KeyResult) => k.id === krId);
     if (kr) {
       kr.progress = progress;
       kr.completed = progress === 100;
-      this.goal.updateProgress();
-      
+
+      // ✅ 修复：手动计算进度，不调用类方法
+      if (this.goal.keyResults.length > 0) {
+        const total = this.goal.keyResults.reduce((sum, k) => sum + k.progress, 0);
+        this.goal.progress = Math.round(total / this.goal.keyResults.length);
+      }
+      this.goal.updatedAt = Date.now();
+
+      // ✅ 保存到数据库
       db.updateGoal(this.goal).then(() => {
         this.goal = db.getGoalById(this.goalId) || null;
       });
@@ -539,7 +541,7 @@ struct GoalDetailPage {
       this.selectedCategory = this.goal.category;
     }
   }
-  
+
   formatDate(timestamp: number): string {
     const date = new Date(timestamp);
     const year = date.getFullYear();
@@ -547,4 +549,23 @@ struct GoalDetailPage {
     const day = date.getDate();
     return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
   }
-}
+
+  deleteKR(krId: string): void {
+    if (!this.goal) {
+      return;
+    }
+
+    this.goal.keyResults = this.goal.keyResults.filter((kr: KeyResult) => kr.id !== krId);
+
+    // 手动计算进度
+    if (this.goal.keyResults.length > 0) {
+      const total = this.goal.keyResults.reduce((sum, kr) => sum + kr.progress, 0);
+      this.goal.progress = Math.round(total / this.goal.keyResults.length);
+    }
+    this.goal.updatedAt = Date.now();
+
+    db.updateGoal(this.goal).then(() => {
+      this.goal = db.getGoalById(this.goalId) || null;
+    });
+  }
+}  // ← deleteKR 必须在这个 } 之前
