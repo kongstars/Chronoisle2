@@ -1,4 +1,4 @@
-
+﻿
 import { Goal, KeyResult, GoalCategory } from '../models/Goal';
 import { db } from '../storage/Database';
 import { CATEGORIES, CATEGORY_COLORS, CategoryInfo } from '../common/Constants';
