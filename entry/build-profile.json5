@@ -1,19 +1,10 @@
-
-{
+﻿{
   "apiType": "stageMode",
-  "buildOption": {
-  },
-  "buildOptionSet": [
-    {
-      "name": "debug"
-    }
-  ],
+  "buildOption": {},
   "targets": [
     {
       "name": "default",
-      "runtimeOS": "HarmonyOS",
-      "compatibleSdkVersion": "6.0.1(21)",
-      "targetSdkVersion": "6.0.1(21)"
+      "runtimeOS": "HarmonyOS"
     }
   ]
 }
