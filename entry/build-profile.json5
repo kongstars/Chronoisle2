@@ -1,0 +1,23 @@
+{
+  "apiType": "stageMode",
+  "buildOption": {
+  },
+  "buildOptionSet": [
+    {
+      "name": "debug",
+      "arkOptions": {
+        "runtimeOnly": {
+          "packages": [
+            "@ohos/hiprofiler"
+          ]
+        }
+      }
+    }
+  ],
+  "targets": [
+    {
+      "name": "default",
+      "runtimeOS": "HarmonyOS"
+    }
+  ]
+}

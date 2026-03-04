@@ -1,0 +1,54 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\Matebook GT 14\\.ohos\\config\\default_Chronoisle2_2PQ8Ks8vqFCw3Sh2EhSoGM2ePFyoGSW_TwOLc_6GiHY=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BE3433EF108DF51BCE8C95408E4A60A34A132582D742BB926EEFF7E070946A6FBAFD0A9E92FBEF3",
+          "profile": "C:\\Users\\Matebook GT 14\\.ohos\\config\\default_Chronoisle2_2PQ8Ks8vqFCw3Sh2EhSoGM2ePFyoGSW_TwOLc_6GiHY=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\Matebook GT 14\\.ohos\\config\\default_Chronoisle2_2PQ8Ks8vqFCw3Sh2EhSoGM2ePFyoGSW_TwOLc_6GiHY=.p12",
+          "storePassword": "0000001BDDB3776ABDA277111587221E2E46C7FBE625CAC55DC98C1B964D1DBFA8AC486D32DD251064D94E"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

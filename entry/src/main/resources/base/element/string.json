@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "人生目标管理器模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "人生目标管理器入口"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "人生目标"
+    },
+    {
+      "name": "app_name",
+      "value": "人生目标管理器"
+    }
+  ]
+}

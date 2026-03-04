@@ -1,0 +1,13 @@
+{
+  "name": "winyourlife",
+  "version": "1.0.0",
+  "description": "人生目标管理器 - HarmonyOS 应用",
+  "main": "",
+  "author": "",
+  "license": "Apache-2.0",
+  "modelVersion": "6.0.1",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hypium": "1.0.18"
+  }
+}
