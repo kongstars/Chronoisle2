@@ -39,107 +39,139 @@ struct MainPage {
     .height('100%')
   }
 
-  // 底部导航栏
+  // 底部导航栏 - 科技感风格
   @Builder
   BottomNavBar() {
     Row() {
+      // 左侧装饰线
+      Rectangle()
+        .width(2)
+        .height(30)
+        .backgroundColor('#667EEA')
+        .borderRadius(2)
+        .margin({ right: 12 })
+      
       Column() {
         Text('🏠')
-          .fontSize(24)
+          .fontSize(22)
         Text('首页')
-          .fontSize(12)
-          .fontColor(this.currentTab === 0 ? '#4CAF50' : '#999')
+          .fontSize(11)
+          .fontColor(this.currentTab === 0 ? '#667EEA' : '#718096')
+          .fontWeight(this.currentTab === 0 ? FontWeight.Bold : FontWeight.Normal)
           .margin({ top: 4 })
       }
       .layoutWeight(1)
       .padding(12)
-      .backgroundColor(this.currentTab === 0 ? '#FFFFFF' : '#F9F9F9')
       .onClick(() => { this.currentTab = 0; })
 
       Column() {
         Text('📝')
-          .fontSize(24)
+          .fontSize(22)
         Text('待办')
-          .fontSize(12)
-          .fontColor(this.currentTab === 1 ? '#4CAF50' : '#999')
+          .fontSize(11)
+          .fontColor(this.currentTab === 1 ? '#667EEA' : '#718096')
+          .fontWeight(this.currentTab === 1 ? FontWeight.Bold : FontWeight.Normal)
           .margin({ top: 4 })
       }
       .layoutWeight(1)
       .padding(12)
-      .backgroundColor(this.currentTab === 1 ? '#FFFFFF' : '#F9F9F9')
       .onClick(() => { this.currentTab = 1; })
 
       Column() {
         Text('📊')
-          .fontSize(24)
+          .fontSize(22)
         Text('统计')
-          .fontSize(12)
-          .fontColor(this.currentTab === 2 ? '#4CAF50' : '#999')
+          .fontSize(11)
+          .fontColor(this.currentTab === 2 ? '#667EEA' : '#718096')
+          .fontWeight(this.currentTab === 2 ? FontWeight.Bold : FontWeight.Normal)
           .margin({ top: 4 })
       }
       .layoutWeight(1)
       .padding(12)
-      .backgroundColor(this.currentTab === 2 ? '#FFFFFF' : '#F9F9F9')
       .onClick(() => { this.currentTab = 2; })
     }
     .width('100%')
-    .height(60)
-    .backgroundColor('#FFFFFF')
+    .height(70)
+    .backgroundColor('#1A1A2E')
     .shadow({
-      radius: 8,
-      color: 'rgba(0,0,0,0.1)',
+      radius: 16,
+      color: 'rgba(102, 126, 234, 0.3)',
       offsetX: 0,
-      offsetY: -2
+      offsetY: -4
     })
   }
 
   @Builder
   HomeTab() {
     Column() {
+      // 顶部标题栏 - 渐变背景
       Row() {
-        Text(APP_NAME)
-          .fontSize(24)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
-
+        Column() {
+          Text(APP_NAME)
+            .fontSize(28)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+          
+          Text('掌控你的人生目标')
+            .fontSize(13)
+            .fontColor('rgba(255,255,255,0.8)')
+            .margin({ top: 4 })
+        }
+        
         Blank()
+        
+        // 添加按钮 - 霓虹效果
         Button() {
           Text('+')
-            .fontSize(20)
+            .fontSize(24)
             .fontColor('#FFFFFF')
         }
-        .width(40)
-        .height(40)
-        .borderRadius(20)
-        .backgroundColor('#4CAF50')
+        .width(48)
+        .height(48)
+        .borderRadius(24)
+        .backgroundColor('#667EEA')
+        .shadow({
+          radius: 12,
+          color: 'rgba(102, 126, 234, 0.5)',
+          offsetX: 0,
+          offsetY: 4
+        })
         .onClick(() => {
           this.showAddDialog = true;
         })
       }
       .width('100%')
-      .padding({ left: 20, right: 20, top: 15, bottom: 15 })
-      .backgroundColor('#FFFFFF')
+      .padding({ left: 24, right: 24, top: 20, bottom: 20 })
+      .background(
+        $r('sys.color.theme_color') || 
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#667EEA', 0], ['#764BA2', 1]]
+        })
+      )
 
       if (this.goals.length === 0) {
         Column() {
           Text('🎯')
-            .fontSize(64)
-            .margin({ bottom: 16 })
+            .fontSize(72)
+            .margin({ bottom: 20 })
+            .opacity(0.8)
 
           Text('还没有目标')
-            .fontSize(18)
-            .fontColor('#999')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#A0AEC0')
 
           Text('点击右上角 + 号创建你的第一个目标')
             .fontSize(14)
-            .fontColor('#CCC')
+            .fontColor('#718096')
             .margin({ top: 8 })
         }
         .width('100%')
         .justifyContent(FlexAlign.Center)
         .layoutWeight(1)
       } else {
-        List({ space: 12 }) {
+        List({ space: 16 }) {
           ForEach(this.goals, (goal: Goal) => {
             ListItem() {
               this.GoalCard(goal)
@@ -148,7 +180,7 @@ struct MainPage {
         }
         .width('100%')
         .layoutWeight(1)
-        .padding(12)
+        .padding(16)
       }
 
       if (this.showAddDialog) {
@@ -157,7 +189,7 @@ struct MainPage {
     }
     .width('100%')
     .layoutWeight(1)
-    .backgroundColor('#F5F5F5')
+    .backgroundColor('#0F0F23')
   }
 
   @Builder
@@ -209,101 +241,124 @@ struct MainPage {
   @Builder
   GoalCard(goal: Goal) {
     Column() {
+      // 顶部进度条
       Row() {
-        Column() {
-          Row() {
-            Text(CATEGORIES.find((c) => c.value === goal.category)?.icon || '')
-              .fontSize(12)
-              .margin({ right: 4 })
-
-            Text(goal.category)
-              .fontSize(12)
-              .fontColor('#FFFFFF')
-          }
-          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-          .borderRadius(12)
-          .backgroundColor(CATEGORY_COLORS[goal.category])
-
-          Text(goal.title)
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#1A1A1A')
-            .margin({ top: 12 })
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-          if (goal.description) {
-            Text(goal.description)
-              .fontSize(14)
-              .fontColor('#666')
-              .margin({ top: 8 })
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
-
-        Column() {
-          Text(`${goal.progress}%`)
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#4CAF50')
-
-          Text('进度')
+        // 分类标签
+        Row() {
+          Text(CATEGORIES.find((c) => c.value === goal.category)?.icon || '')
+            .fontSize(14)
+            .margin({ right: 4 })
+          
+          Text(goal.category)
             .fontSize(12)
-            .fontColor('#999')
-            .margin({ top: 4 })
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
         }
-        .width(60)
-        .alignItems(HorizontalAlign.Center)
+        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+        .borderRadius(20)
+        .backgroundColor(CATEGORY_COLORS[goal.category])
+        
+        Blank()
+        
+        // 进度百分比
+        Text(`${goal.progress}%`)
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(goal.progress >= 80 ? '#48BB78' : goal.progress >= 50 ? '#4299E1' : '#A0AEC0')
       }
       .width('100%')
-
+      
+      // 目标标题
+      Text(goal.title)
+        .fontSize(17)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#FFFFFF')
+        .margin({ top: 12, bottom: 8 })
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      
+      // 目标描述
+      if (goal.description) {
+        Text(goal.description)
+          .fontSize(13)
+          .fontColor('rgba(255,255,255,0.7)')
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .lineHeight(20)
+      }
+      
+      // 进度条
+      Row() {
+        Progress({ value: goal.progress, total: 100 })
+          .width('100%')
+          .height(6)
+          .color(goal.progress >= 80 ? '#48BB78' : goal.progress >= 50 ? '#667EEA' : '#F6AD55')
+          .backgroundColor('rgba(255,255,255,0.1)')
+          .borderRadius(3)
+      }
+      .width('100%')
+      .margin({ top: 12, bottom: 8 })
+      
+      // 关键结果数量
       if (goal.keyResults.length > 0) {
         Row() {
-          Text(`📋 ${goal.keyResults.length} 个关键结果`)
+          Text('📋')
             .fontSize(12)
-            .fontColor('#999')
+            .margin({ right: 4 })
+          
+          Text(`${goal.keyResults.length} 个关键结果`)
+            .fontSize(12)
+            .fontColor('rgba(255,255,255,0.6)')
         }
-        .width('100%')
-        .margin({ top: 12 })
       }
-
+      
+      // 操作按钮
       Row() {
-        Button('查看')
-          .fontSize(14)
-          .fontColor('#2196F3')
-          .backgroundColor('#E3F2FD')
-          .onClick(() => {
-            router.pushUrl({
-              'url': 'pages/GoalDetailPage',
-              'params': { goalId: goal.id }
-            });
-          })
-
-        Button('删除')
-          .fontSize(14)
-          .fontColor('#FF5722')
-          .backgroundColor('#FFEBEE')
-          .margin({ left: 12 })
-          .onClick(() => {
-            this.deleteGoal(goal);
-          })
+        Button() {
+          Text('查看')
+            .fontSize(13)
+            .fontColor('#FFFFFF')
+        }
+        .height(32)
+        .padding({ left: 16, right: 16 })
+        .backgroundColor('rgba(102, 126, 234, 0.3)')
+        .borderRadius(16)
+        .border({ width: 1, color: 'rgba(102, 126, 234, 0.5)' })
+        .onClick(() => {
+          router.pushUrl({
+            'url': 'pages/GoalDetailPage',
+            'params': { goalId: goal.id }
+          });
+        })
+        
+        Button() {
+          Text('删除')
+            .fontSize(13)
+            .fontColor('#FC8181')
+        }
+        .height(32)
+        .padding({ left: 16, right: 16 })
+        .backgroundColor('rgba(245, 101, 101, 0.15)')
+        .borderRadius(16)
+        .border({ width: 1, color: 'rgba(245, 101, 101, 0.3)' })
+        .margin({ left: 12 })
+        .onClick(() => {
+          this.deleteGoal(goal);
+        })
       }
       .width('100%')
       .justifyContent(FlexAlign.End)
-      .margin({ top: 12 })
+      .margin({ top: 8 })
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
+    .padding(20)
+    .backgroundColor('#16213E')
+    .borderRadius(16)
     .shadow({
-      radius: 4,
-      color: 'rgba(0,0,0,0.05)',
+      radius: 12,
+      color: 'rgba(0, 0, 0, 0.3)',
       offsetX: 0,
-      offsetY: 2
+      offsetY: 4
     })
     .onClick(() => {
       router.pushUrl({
@@ -319,7 +374,7 @@ struct MainPage {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor('rgba(0,0,0,0.5)')
+        .backgroundColor('rgba(0,0,0,0.7)')
         .position({ x: 0, y: 0 })
         .onClick(() => {
           this.showAddDialog = false;
@@ -327,84 +382,154 @@ struct MainPage {
         })
 
       Column() {
-        Text('创建新目标')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
-          .margin({ bottom: 20 })
-
-        TextInput({ placeholder: '目标标题，例如：3 个月内存 5 万元', text: this.newGoalTitle })
-          .width('100%')
-          .height(50)
-          .fontSize(16)
-          .padding(12)
-          .backgroundColor('#F5F5F5')
-          .borderRadius(8)
-          .onChange((value: string) => {
-            this.newGoalTitle = value;
-          })
-
-        TextInput({ placeholder: '目标描述（可选）', text: this.newGoalDescription })
-          .width('100%')
-          .height(50)
-          .fontSize(16)
-          .padding(12)
-          .backgroundColor('#F5F5F5')
-          .borderRadius(8)
-          .margin({ top: 12 })
-          .onChange((value: string) => {
-            this.newGoalDescription = value;
-          })
-
+        // 标题
+        Row() {
+          Text('🎯')
+            .fontSize(24)
+            .margin({ right: 8 })
+          
+          Text('创建新目标')
+            .fontSize(22)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+        }
+        .width('100%')
+        .margin({ bottom: 24 })
+        
+        // 输入框 - 标题
+        Column() {
+          Text('目标标题')
+            .fontSize(13)
+            .fontColor('rgba(255,255,255,0.7)')
+            .margin({ bottom: 8 })
+            .alignSelf(ItemAlign.Start)
+          
+          TextInput({ placeholder: '例如：3 个月内存 5 万元', text: this.newGoalTitle })
+            .width('100%')
+            .height(50)
+            .fontSize(15)
+            .padding(14)
+            .backgroundColor('rgba(255,255,255,0.1)')
+            .borderRadius(12)
+            .fontColor('#FFFFFF')
+            .placeholderColor('rgba(255,255,255,0.4)')
+            .onChange((value: string) => {
+              this.newGoalTitle = value;
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 16 })
+        
+        // 输入框 - 描述
+        Column() {
+          Text('目标描述（可选）')
+            .fontSize(13)
+            .fontColor('rgba(255,255,255,0.7)')
+            .margin({ bottom: 8 })
+            .alignSelf(ItemAlign.Start)
+          
+          TextInput({ placeholder: '详细描述你的目标', text: this.newGoalDescription })
+            .width('100%')
+            .height(50)
+            .fontSize(15)
+            .padding(14)
+            .backgroundColor('rgba(255,255,255,0.1)')
+            .borderRadius(12)
+            .fontColor('#FFFFFF')
+            .placeholderColor('rgba(255,255,255,0.4)')
+            .onChange((value: string) => {
+              this.newGoalDescription = value;
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 20 })
+        
+        // 分类选择
         Text('选择分类')
-          .fontSize(14)
-          .fontColor('#666')
-          .margin({ top: 16, bottom: 8 })
+          .fontSize(13)
+          .fontColor('rgba(255,255,255,0.7)')
+          .margin({ bottom: 12 })
           .alignSelf(ItemAlign.Start)
+        
         Flex({ wrap: FlexWrap.Wrap }) {
           ForEach(CATEGORIES, (category: CategoryInfo) => {
-            Text(category.label)
-              .fontSize(14)
-              .fontColor(this.selectedCategory === category.value ? '#FFFFFF' : '#333')
-              .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-              .backgroundColor(this.selectedCategory === category.value ? category.color : '#F5F5F5')
-              .borderRadius(20)
-              .margin({ right: 8, bottom: 8 })
-              .onClick(() => {
-                this.selectedCategory = category.value;
-              })
+            Row() {
+              Text(category.icon)
+                .fontSize(14)
+                .margin({ right: 6 })
+              
+              Text(category.label)
+                .fontSize(13)
+                .fontWeight(this.selectedCategory === category.value ? FontWeight.Bold : FontWeight.Normal)
+                .fontColor(this.selectedCategory === category.value ? '#FFFFFF' : 'rgba(255,255,255,0.7)')
+            }
+            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+            .backgroundColor(this.selectedCategory === category.value ? category.color : 'rgba(255,255,255,0.08)')
+            .borderRadius(20)
+            .border({
+              width: this.selectedCategory === category.value ? 0 : 1,
+              color: 'rgba(255,255,255,0.2)'
+            })
+            .margin({ right: 10, bottom: 10 })
+            .onClick(() => {
+              this.selectedCategory = category.value;
+            })
           })
         }
         .width('100%')
-
+        .margin({ top: 8, bottom: 24 })
+        
+        // 按钮
         Row() {
           Button('取消')
-            .fontSize(16)
-            .fontColor('#666')
-            .backgroundColor('#F5F5F5')
+            .fontSize(15)
+            .fontColor('rgba(255,255,255,0.7)')
+            .backgroundColor('rgba(255,255,255,0.1)')
             .onClick(() => {
               this.showAddDialog = false;
               this.resetForm();
             })
-
+          
           Button('创建')
-            .fontSize(16)
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
             .fontColor('#FFFFFF')
-            .backgroundColor('#4CAF50')
-            .margin({ left: 12 })
+            .background(
+              LinearGradient({
+                direction: { x1: 0, y1: 0, x2: 1, y2: 0 },
+                colors: [['#667EEA', 0], ['#764BA2', 1]]
+              })
+            )
             .enabled(this.newGoalTitle.trim() !== '')
+            .shadow({
+              radius: 12,
+              color: 'rgba(102, 126, 234, 0.5)',
+              offsetX: 0,
+              offsetY: 4
+            })
+            .margin({ left: 16 })
             .onClick(() => {
               this.createGoal();
             })
         }
         .width('100%')
         .justifyContent(FlexAlign.End)
-        .margin({ top: 20 })
       }
-      .width('90%')
-      .padding(24)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(16)
+      .width('92%')
+      .padding(28)
+      .background(
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#1A1A2E', 0], ['#16213E', 1]]
+        })
+      )
+      .borderRadius(20)
+      .shadow({
+        radius: 24,
+        color: 'rgba(0, 0, 0, 0.5)',
+        offsetX: 0,
+        offsetY: 8
+      })
       .position({ x: 0, y: 0 })
     }
     .width('100%')

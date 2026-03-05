@@ -73,25 +73,49 @@ struct StatsPage {
 
   build() {
     Column() {
-      // 标题栏
+      // 标题栏 - 渐变背景
       Row() {
-        Text('📊 数据统计')
-          .fontSize(24)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
+        Column() {
+          Text('📊 数据统计')
+            .fontSize(26)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+          
+          Text('追踪你的成长轨迹')
+            .fontSize(13)
+            .fontColor('rgba(255,255,255,0.8)')
+            .margin({ top: 4 })
+        }
         
         Blank()
         
         // 时间筛选按钮
         Button() {
-          Text(this.getTimeRangeLabel())
-            .fontSize(14)
-            .fontColor('#4CAF50')
+          Row() {
+            Text('📅')
+              .fontSize(14)
+              .margin({ right: 4 })
+            
+            Text(this.getTimeRangeLabel())
+              .fontSize(13)
+              .fontColor('#FFFFFF')
+          }
         }
-        .height(32)
-        .backgroundColor('#E8F5E9')
-        .borderRadius(16)
-        .padding({ left: 12, right: 12 })
+        .height(36)
+        .padding({ left: 14, right: 14 })
+        .background(
+          LinearGradient({
+            direction: { x1: 0, y1: 0, x2: 1, y2: 0 },
+            colors: [['#667EEA', 0], ['#764BA2', 1]]
+          })
+        )
+        .borderRadius(18)
+        .shadow({
+          radius: 8,
+          color: 'rgba(102, 126, 234, 0.4)',
+          offsetX: 0,
+          offsetY: 2
+        })
         .margin({ right: 8 })
         .onClick(() => {
           this.showTimeRangePicker = true;
@@ -104,26 +128,20 @@ struct StatsPage {
         }
         .width(40)
         .height(40)
-        .backgroundColor('transparent')
+        .backgroundColor('rgba(255,255,255,0.15)')
+        .borderRadius(12)
         .onClick(() => {
           this.showExportDialog = true;
         })
-        
-        // 刷新按钮
-        Button() {
-          Text('🔄')
-            .fontSize(18)
-        }
-        .width(40)
-        .height(40)
-        .backgroundColor('transparent')
-        .onClick(() => {
-          this.loadStats();
-        })
       }
       .width('100%')
-      .padding({ left: 20, right: 20, top: 15, bottom: 15 })
-      .backgroundColor('#FFFFFF')
+      .padding({ left: 24, right: 24, top: 20, bottom: 20 })
+      .background(
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#667EEA', 0], ['#764BA2', 1]]
+        })
+      )
 
       Scroll() {
         Column() {
@@ -146,7 +164,7 @@ struct StatsPage {
         .padding(16)
       }
       .layoutWeight(1)
-      .backgroundColor('#F5F5F5')
+      .backgroundColor('#0F0F23')
       
       // 分类详情对话框
       if (this.showCategoryDetail && this.selectedCategory) {
@@ -173,62 +191,80 @@ struct StatsPage {
     Row() {
       // 目标卡片
       Column() {
-        Text('🎯')
-          .fontSize(32)
-          .margin({ bottom: 8 })
-        
-        Text(`${this.totalGoals}`)
-          .fontSize(28)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#4CAF50')
+        Row() {
+          Text('🎯')
+            .fontSize(28)
+          
+          Blank()
+          
+          Text(`${this.totalGoals}`)
+            .fontSize(32)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+        }
+        .width('100%')
         
         Text('总目标')
-          .fontSize(14)
-          .fontColor('#666')
-          .margin({ top: 4 })
+          .fontSize(13)
+          .fontColor('rgba(255,255,255,0.7)')
+          .margin({ top: 8 })
       }
       .layoutWeight(1)
       .padding(20)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(12)
+      .background(
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#667EEA', 0], ['#764BA2', 1]]
+        })
+      )
+      .borderRadius(16)
       .margin({ right: 8 })
       .shadow({
-        radius: 4,
-        color: 'rgba(0,0,0,0.05)',
+        radius: 12,
+        color: 'rgba(102, 126, 234, 0.4)',
         offsetX: 0,
-        offsetY: 2
+        offsetY: 6
       })
       
       // 任务卡片
       Column() {
-        Text('✅')
-          .fontSize(32)
-          .margin({ bottom: 8 })
-        
-        Text(`${this.totalTasks}`)
-          .fontSize(28)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#2196F3')
+        Row() {
+          Text('✅')
+            .fontSize(28)
+          
+          Blank()
+          
+          Text(`${this.totalTasks}`)
+            .fontSize(32)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+        }
+        .width('100%')
         
         Text('总任务')
-          .fontSize(14)
-          .fontColor('#666')
-          .margin({ top: 4 })
+          .fontSize(13)
+          .fontColor('rgba(255,255,255,0.7)')
+          .margin({ top: 8 })
       }
       .layoutWeight(1)
       .padding(20)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(12)
+      .background(
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#48BB78', 0], ['#38A169', 1]]
+        })
+      )
+      .borderRadius(16)
       .margin({ left: 8 })
       .shadow({
-        radius: 4,
-        color: 'rgba(0,0,0,0.05)',
+        radius: 12,
+        color: 'rgba(72, 187, 120, 0.4)',
         offsetX: 0,
-        offsetY: 2
+        offsetY: 6
       })
     }
     .width('100%')
-    .margin({ bottom: 16 })
+    .margin({ bottom: 20 })
   }
 
   // 目标完成率
@@ -237,67 +273,67 @@ struct StatsPage {
     Column() {
       Row() {
         Text('目标完成情况')
-          .fontSize(18)
+          .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
+          .fontColor('#FFFFFF')
         
         Blank()
         
         Text(`${this.completedGoals}/${this.totalGoals}`)
-          .fontSize(14)
-          .fontColor('#666')
+          .fontSize(13)
+          .fontColor('rgba(255,255,255,0.8)')
       }
       .width('100%')
-      .margin({ bottom: 12 })
+      .margin({ bottom: 16 })
       
+      // 进度条
       Row() {
-        // 进度条
         Column() {
           Progress({ value: this.goalCompletionRate, total: 100 })
             .width('100%')
-            .height(12)
-            .color('#4CAF50')
-            .backgroundColor('#E8F5E9')
+            .height(8)
+            .color('#48BB78')
+            .backgroundColor('rgba(255,255,255,0.15)')
+            .borderRadius(4)
           
           Row() {
             Text(`${this.goalCompletionRate}% 完成`)
-              .fontSize(14)
-              .fontColor('#666')
+              .fontSize(13)
+              .fontColor('rgba(255,255,255,0.7)')
             
             Blank()
             
             Text(`未完成：${this.totalGoals - this.completedGoals}`)
               .fontSize(12)
-              .fontColor('#999')
+              .fontColor('rgba(255,255,255,0.5)')
           }
           .width('100%')
-          .margin({ top: 8 })
+          .margin({ top: 12 })
         }
         .layoutWeight(1)
         
-        // 完成数
         Column() {
           Text(`${this.completedGoals}`)
-            .fontSize(24)
+            .fontSize(28)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#4CAF50')
+            .fontColor('#48BB78')
           
           Text('已完成')
             .fontSize(12)
-            .fontColor('#666')
+            .fontColor('rgba(255,255,255,0.6)')
         }
-        .width(80)
+        .width(70)
         .alignItems(HorizontalAlign.Center)
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(12)
+      .padding(20)
+      .backgroundColor('#16213E')
+      .borderRadius(16)
       .shadow({
-        radius: 4,
-        color: 'rgba(0,0,0,0.05)',
+        radius: 12,
+        color: 'rgba(0, 0, 0, 0.3)',
         offsetX: 0,
-        offsetY: 2
+        offsetY: 4
       })
     }
     .width('100%')
