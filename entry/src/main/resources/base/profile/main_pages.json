@@ -1,6 +1,7 @@
 {
   "src": [
     "pages/MainPage",
-    "pages/GoalDetailPage"
+    "pages/GoalDetailPage",
+    "pages/CreateTaskPage"
   ]
 }
