@@ -2,6 +2,14 @@
 import { Goal, GoalCategory } from '../models/Goal';
 import { Task, TaskStatus } from '../models/Task';
 
+// 时间范围选项
+export enum TimeRange {
+  LAST_7_DAYS = 7,
+  LAST_30_DAYS = 30,
+  LAST_90_DAYS = 90,
+  ALL_TIME = 0
+}
+
 // 统计数据接口
 export interface StatsData {
   // 目标统计
@@ -19,8 +27,11 @@ export interface StatsData {
   // 分类统计
   categoryStats: CategoryStat[];
   
-  // 趋势统计（最近 7 天）
+  // 趋势统计（按天）
   dailyStats: DailyStat[];
+  
+  // 周报统计
+  weeklyStats: WeeklyStat[];
 }
 
 export interface CategoryStat {
@@ -42,6 +53,14 @@ export interface DailyStat {
   completedTasks: number;
 }
 
+export interface WeeklyStat {
+  weekLabel: string;
+  startDate: number;
+  endDate: number;
+  completedGoals: number;
+  completedTasks: number;
+}
+
 export class StatsService {
   private static instance: StatsService;
   
@@ -55,24 +74,37 @@ export class StatsService {
   }
   
   // 计算统计数据
-  calculateStats(goals: Goal[], tasks: Task[]): StatsData {
+  calculateStats(goals: Goal[], tasks: Task[], timeRange: TimeRange = TimeRange.LAST_7_DAYS): StatsData {
+    // 计算时间范围
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const startTime = timeRange === TimeRange.ALL_TIME ? 0 : now - (timeRange * dayMs);
+    
+    // 过滤时间范围内的数据
+    const filteredGoals = goals.filter(g => g.createdAt >= startTime);
+    const filteredTasks = tasks.filter(t => t.createdAt >= startTime);
+    
     // 目标统计
-    const totalGoals = goals.length;
-    const completedGoals = goals.filter(g => g.progress === 100).length;
+    const totalGoals = filteredGoals.length;
+    const completedGoals = filteredGoals.filter(g => g.progress === 100).length;
     const inProgressGoals = totalGoals - completedGoals;
     const goalCompletionRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
     
     // 任务统计
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.status === TaskStatus.COMPLETED).length;
+    const totalTasks = filteredTasks.length;
+    const completedTasks = filteredTasks.filter(t => t.status === TaskStatus.COMPLETED).length;
     const pendingTasks = totalTasks - completedTasks;
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     
     // 分类统计
-    const categoryStats = this.calculateCategoryStats(goals, tasks);
+    const categoryStats = this.calculateCategoryStats(filteredGoals, filteredTasks);
     
     // 趋势统计
-    const dailyStats = this.calculateDailyStats(goals, tasks);
+    const daysToShow = timeRange === TimeRange.ALL_TIME ? 90 : timeRange;
+    const dailyStats = this.calculateDailyStats(goals, tasks, Math.min(daysToShow, 30)); // 最多显示 30 天
+    
+    // 周报统计
+    const weeklyStats = this.calculateWeeklyStats(goals, tasks, timeRange);
     
     return {
       totalGoals,
@@ -84,7 +116,8 @@ export class StatsService {
       pendingTasks,
       taskCompletionRate,
       categoryStats,
-      dailyStats
+      dailyStats,
+      weeklyStats
     };
   }
   
@@ -145,13 +178,13 @@ export class StatsService {
     });
   }
   
-  // 每日趋势统计（最近 7 天）
-  private calculateDailyStats(goals: Goal[], tasks: Task[]): DailyStat[] {
+  // 每日趋势统计
+  private calculateDailyStats(goals: Goal[], tasks: Task[], days: number = 7): DailyStat[] {
     const dailyStats: DailyStat[] = [];
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
     
-    for (let i = 6; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const dayStart = now - (i * dayMs);
       const dayEnd = dayStart + dayMs;
       const date = new Date(dayStart);
@@ -179,6 +212,88 @@ export class StatsService {
     }
     
     return dailyStats;
+  }
+  
+  // 每周统计
+  private calculateWeeklyStats(goals: Goal[], tasks: Task[], timeRange: TimeRange): WeeklyStat[] {
+    const weeklyStats: WeeklyStat[] = [];
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const weekMs = 7 * dayMs;
+    
+    const weeksCount = timeRange === TimeRange.ALL_TIME ? 12 : Math.ceil(timeRange / 7);
+    
+    for (let i = weeksCount - 1; i >= 0; i--) {
+      const weekStart = now - (i * weekMs);
+      const weekEnd = weekStart + weekMs;
+      const startDate = new Date(weekStart);
+      const endDate = new Date(weekEnd);
+      const weekLabel = `${startDate.getMonth() + 1}/${startDate.getDate()}`;
+      
+      // 统计该周完成的目标
+      const completedGoals = goals.filter(g => {
+        if (g.progress !== 100) return false;
+        const updatedAt = g.updatedAt || g.createdAt;
+        return updatedAt >= weekStart && updatedAt < weekEnd;
+      }).length;
+      
+      // 统计该周完成的任务
+      const completedTasks = tasks.filter(t => {
+        if (t.status !== TaskStatus.COMPLETED || !t.completedAt) return false;
+        return t.completedAt >= weekStart && t.completedAt < weekEnd;
+      }).length;
+      
+      weeklyStats.push({
+        weekLabel,
+        startDate: weekStart,
+        endDate: weekEnd,
+        completedGoals,
+        completedTasks
+      });
+    }
+    
+    return weeklyStats;
+  }
+  
+  // 生成统计报告（用于导出）
+  generateReport(goals: Goal[], tasks: Task[], timeRange: TimeRange = TimeRange.LAST_7_DAYS): string {
+    const stats = this.calculateStats(goals, tasks, timeRange);
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    
+    let report = `📊 人生目标管理器 - 统计报告\n`;
+    report += `生成时间：${dateStr}\n`;
+    report += `统计范围：${this.getTimeRangeLabel(timeRange)}\n\n`;
+    
+    report += `═══ 核心指标 ═══\n`;
+    report += `🎯 目标：${stats.completedGoals}/${stats.totalGoals} (${stats.goalCompletionRate}% 完成)\n`;
+    report += `✅ 任务：${stats.completedTasks}/${stats.totalTasks} (${stats.taskCompletionRate}% 完成)\n\n`;
+    
+    report += `═══ 分类统计 ═══\n`;
+    stats.categoryStats.forEach(cat => {
+      if (cat.totalGoals > 0) {
+        report += `${cat.icon} ${cat.categoryName}: ${cat.completedGoals}/${cat.totalGoals} 目标，${cat.completedTasks}/${cat.totalTasks} 任务\n`;
+      }
+    });
+    
+    report += `\n═══ 最近趋势 ═══\n`;
+    stats.dailyStats.slice(-7).forEach(day => {
+      if (day.completedGoals > 0 || day.completedTasks > 0) {
+        report += `${day.date}: ${day.completedGoals} 目标，${day.completedTasks} 任务\n`;
+      }
+    });
+    
+    return report;
+  }
+  
+  private getTimeRangeLabel(timeRange: TimeRange): string {
+    switch (timeRange) {
+      case TimeRange.LAST_7_DAYS: return '最近 7 天';
+      case TimeRange.LAST_30_DAYS: return '最近 30 天';
+      case TimeRange.LAST_90_DAYS: return '最近 90 天';
+      case TimeRange.ALL_TIME: return '全部时间';
+      default: return '自定义';
+    }
   }
 }
 

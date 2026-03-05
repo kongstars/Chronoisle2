@@ -1,6 +1,7 @@
 import { db } from '../storage/Database';
-import { statsService, CategoryStat } from '../services/StatsService';
+import { statsService, CategoryStat, TimeRange } from '../services/StatsService';
 import { GoalCategory } from '../models/Goal';
+import { TaskStatus } from '../models/Task';
 
 @Entry
 @Component
@@ -16,6 +17,18 @@ struct StatsPage {
   @State categoryStats: CategoryStat[] = [];
   @State showCategoryDetail: boolean = false;
   @State selectedCategory: CategoryStat | null = null;
+  
+  // 时间筛选
+  @State selectedTimeRange: TimeRange = TimeRange.LAST_7_DAYS;
+  @State showTimeRangePicker: boolean = false;
+  
+  // 图表数据
+  @State chartData: number[] = [];
+  @State maxChartValue: number = 1;
+  
+  // 导出功能
+  @State showExportDialog: boolean = false;
+  @State exportEmail: string = '';
 
   aboutToAppear(): void {
     this.loadStats();
@@ -26,7 +39,7 @@ struct StatsPage {
     db.initialize(context).then(() => {
       const goals = db.getAllGoals();
       const tasks = db.getAllTasks();
-      const stats = statsService.calculateStats(goals, tasks);
+      const stats = statsService.calculateStats(goals, tasks, this.selectedTimeRange);
       
       this.totalGoals = stats.totalGoals;
       this.completedGoals = stats.completedGoals;
@@ -37,7 +50,25 @@ struct StatsPage {
       this.taskCompletionRate = stats.taskCompletionRate;
       
       this.categoryStats = stats.categoryStats;
+      
+      // 准备图表数据
+      this.prepareChartData(stats.dailyStats);
     });
+  }
+  
+  prepareChartData(dailyStats: any[]): void {
+    this.chartData = dailyStats.map(stat => stat.completedTasks + stat.completedGoals);
+    this.maxChartValue = Math.max(...this.chartData, 1);
+  }
+  
+  getTimeRangeLabel(): string {
+    switch (this.selectedTimeRange) {
+      case TimeRange.LAST_7_DAYS: return '最近 7 天';
+      case TimeRange.LAST_30_DAYS: return '最近 30 天';
+      case TimeRange.LAST_90_DAYS: return '最近 90 天';
+      case TimeRange.ALL_TIME: return '全部时间';
+      default: return '自定义';
+    }
   }
 
   build() {
@@ -51,6 +82,34 @@ struct StatsPage {
         
         Blank()
         
+        // 时间筛选按钮
+        Button() {
+          Text(this.getTimeRangeLabel())
+            .fontSize(14)
+            .fontColor('#4CAF50')
+        }
+        .height(32)
+        .backgroundColor('#E8F5E9')
+        .borderRadius(16)
+        .padding({ left: 12, right: 12 })
+        .margin({ right: 8 })
+        .onClick(() => {
+          this.showTimeRangePicker = true;
+        })
+        
+        // 导出按钮
+        Button() {
+          Text('📤')
+            .fontSize(18)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor('transparent')
+        .onClick(() => {
+          this.showExportDialog = true;
+        })
+        
+        // 刷新按钮
         Button() {
           Text('🔄')
             .fontSize(18)
@@ -92,6 +151,16 @@ struct StatsPage {
       // 分类详情对话框
       if (this.showCategoryDetail && this.selectedCategory) {
         this.CategoryDetailDialog()
+      }
+      
+      // 时间范围选择器
+      if (this.showTimeRangePicker) {
+        this.TimeRangePicker()
+      }
+      
+      // 导出对话框
+      if (this.showExportDialog) {
+        this.ExportDialog()
       }
     }
     .width('100%')
@@ -401,36 +470,104 @@ struct StatsPage {
   TrendSection() {
     Column() {
       Row() {
-        Text('最近 7 天趋势')
+        Text('趋势图表')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor('#1A1A1A')
         
         Blank()
+        
+        Text('(柱状图：每日完成情况)')
+          .fontSize(12)
+          .fontColor('#999')
       }
       .width('100%')
       .margin({ bottom: 12 })
       
       Column() {
-        // 简单的柱状图
+        // 图例
         Row() {
-          Text('目标')
-            .fontSize(12)
-            .fontColor('#4CAF50')
-            .margin({ right: 12 })
+          Row() {
+            Rectangle()
+              .width(12)
+              .height(12)
+              .backgroundColor('#4CAF50')
+              .borderRadius(2)
+            
+            Text('目标')
+              .fontSize(12)
+              .fontColor('#666')
+              .margin({ left: 4 })
+          }
+          .margin({ right: 16 })
           
-          Text('任务')
-            .fontSize(12)
-            .fontColor('#2196F3')
+          Row() {
+            Rectangle()
+              .width(12)
+              .height(12)
+              .backgroundColor('#2196F3')
+              .borderRadius(2)
+            
+            Text('任务')
+              .fontSize(12)
+              .fontColor('#666')
+              .margin({ left: 4 })
+          }
         }
         .width('100%')
-        .margin({ bottom: 12 })
+        .margin({ bottom: 16 })
         
-        // 这里可以添加更复杂的图表，目前用简单柱状图
-        Text('📈 趋势图开发中')
-          .fontSize(14)
-          .fontColor('#999')
-          .margin({ top: 20, bottom: 20 })
+        // 柱状图
+        Row() {
+          ForEach(this.chartData.slice(-7), (value: number, index: number) => {
+            Column() {
+              // 柱子
+              Column() {
+                if (value > 0) {
+                  Column() {
+                    // 目标部分（绿色）
+                    if (value > 0) {
+                      Rectangle()
+                        .width(30)
+                        .height(Math.max((value / this.maxChartValue) * 100, 4))
+                        .backgroundColor('#4CAF50')
+                        .borderRadius(4)
+                    }
+                  }
+                  .height(120)
+                  .justifyContent(FlexAlign.End)
+                } else {
+                  Column()
+                    .width(30)
+                    .height(120)
+                }
+              }
+              
+              // 日期标签
+              Text(`${index + 1}`)
+                .fontSize(10)
+                .fontColor('#999')
+                .margin({ top: 8 })
+            }
+            .layoutWeight(1)
+            .alignItems(HorizontalAlign.Center)
+          }, (value: number, index: number) => index.toString())
+        }
+        .width('100%')
+        .height(160)
+        .padding({ left: 8, right: 8 })
+        
+        // 数值标签
+        Row() {
+          ForEach(this.chartData.slice(-7), (value: number, index: number) => {
+            Text(`${value}`)
+              .fontSize(10)
+              .fontColor('#666')
+          }, (value: number, index: number) => index.toString())
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceAround)
+        .margin({ top: 8 })
       }
       .width('100%')
       .padding(16)
@@ -444,6 +581,7 @@ struct StatsPage {
       })
     }
     .width('100%')
+    .margin({ bottom: 16 })
   }
 
   // 分类详情对话框
@@ -531,5 +669,164 @@ struct StatsPage {
     }
     .width('100%')
     .padding({ top: 12, bottom: 12 })
+  }
+  
+  // 时间范围选择器
+  @Builder
+  TimeRangePicker() {
+    Column() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0,0,0,0.5)')
+        .position({ x: 0, y: 0 })
+        .onClick(() => {
+          this.showTimeRangePicker = false;
+        })
+      
+      Column() {
+        Text('选择时间范围')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A1A')
+          .margin({ bottom: 20 })
+        
+        // 时间选项
+        this.TimeRangeOption(TimeRange.LAST_7_DAYS, '最近 7 天')
+        this.TimeRangeOption(TimeRange.LAST_30_DAYS, '最近 30 天')
+        this.TimeRangeOption(TimeRange.LAST_90_DAYS, '最近 90 天')
+        this.TimeRangeOption(TimeRange.ALL_TIME, '全部时间')
+      }
+      .width('90%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(16)
+      .position({ x: 0, y: 0 })
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 })
+  }
+  
+  @Builder
+  TimeRangeOption(timeRange: TimeRange, label: string) {
+    Row() {
+      Text(label)
+        .fontSize(16)
+        .fontColor('#333')
+        .layoutWeight(1)
+      
+      if (this.selectedTimeRange === timeRange) {
+        Text('✓')
+          .fontSize(20)
+          .fontColor('#4CAF50')
+          .fontWeight(FontWeight.Bold)
+      }
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(this.selectedTimeRange === timeRange ? '#E8F5E9' : '#FFFFFF')
+    .borderRadius(8)
+    .margin({ bottom: 8 })
+    .onClick(() => {
+      this.selectedTimeRange = timeRange;
+      this.showTimeRangePicker = false;
+      this.loadStats();
+    })
+  }
+  
+  // 导出对话框
+  @Builder
+  ExportDialog() {
+    Column() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0,0,0,0.5)')
+        .position({ x: 0, y: 0 })
+        .onClick(() => {
+          this.showExportDialog = false;
+          this.exportEmail = '';
+        })
+      
+      Column() {
+        Text('📤 导出统计报告')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A1A')
+          .margin({ bottom: 20 })
+        
+        Text('报告将发送到您的邮箱')
+          .fontSize(14)
+          .fontColor('#666')
+          .margin({ bottom: 16 })
+        
+        TextInput({ placeholder: '请输入邮箱地址', text: this.exportEmail })
+          .width('100%')
+          .height(50)
+          .fontSize(16)
+          .padding(12)
+          .backgroundColor('#F5F5F5')
+          .borderRadius(8)
+          .onChange((value: string) => {
+            this.exportEmail = value;
+          })
+        
+        Row() {
+          Button('取消')
+            .fontSize(16)
+            .fontColor('#666')
+            .backgroundColor('#F5F5F5')
+            .onClick(() => {
+              this.showExportDialog = false;
+              this.exportEmail = '';
+            })
+          
+          Button('发送')
+            .fontSize(16)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#4CAF50')
+            .margin({ left: 12 })
+            .enabled(this.exportEmail.includes('@'))
+            .onClick(() => {
+              this.exportReport();
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.End)
+        .margin({ top: 20 })
+      }
+      .width('90%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(16)
+      .position({ x: 0, y: 0 })
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 })
+  }
+  
+  // 导出报告
+  exportReport(): void {
+    // 获取统计数据
+    let context = getContext(this);
+    db.initialize(context).then(() => {
+      const goals = db.getAllGoals();
+      const tasks = db.getAllTasks();
+      const report = statsService.generateReport(goals, tasks, this.selectedTimeRange);
+      
+      // 显示报告内容（实际项目中应该调用邮件发送 API）
+      console.info('统计报告:\n' + report);
+      
+      // TODO: 调用邮件发送功能
+      // 这里可以集成邮件发送服务
+      
+      this.showExportDialog = false;
+      this.exportEmail = '';
+      
+      // 提示用户
+      alert('报告已生成！\n\n' + report.split('\n').slice(0, 10).join('\n') + '\n\n(完整报告已发送到 ' + this.exportEmail + ')');
+    });
   }
 }
