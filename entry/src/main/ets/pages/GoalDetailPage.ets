@@ -14,6 +14,9 @@ struct GoalDetailPage {
   @State editTitle: string = '';
   @State editDescription: string = '';
   @State selectedCategory: GoalCategory = GoalCategory.CAREER;
+  @State showEditKR: boolean = false;
+  @State editKRTitle: string = '';
+  private editingKRId: string = '';
   private goalId: string = '';
   
   aboutToAppear(): void {
@@ -104,6 +107,11 @@ struct GoalDetailPage {
       // 添加 KR 对话框
       if (this.showAddKR) {
         this.AddKRDialog()
+      }
+      
+      // 编辑 KR 对话框
+      if (this.showEditKR) {
+        this.EditKRDialog()
       }
       
       // 编辑目标对话框
@@ -246,6 +254,20 @@ struct GoalDetailPage {
           .fontColor('#333')
           .layoutWeight(1)
           .margin({ bottom: 12 })
+        
+        // 编辑 KR 按钮
+        Button() {
+          Text('✏️')
+            .fontSize(14)
+        }
+        .width(32)
+        .height(32)
+        .backgroundColor('transparent')
+        .onClick(() => {
+          this.showEditKRDialog(kr);
+        })
+        
+        // 删除 KR 按钮
         Button() {
           Text('×')
             .fontSize(16)
@@ -352,6 +374,72 @@ struct GoalDetailPage {
             .enabled(this.newKRTitle.trim() !== '')
             .onClick(() => {
               this.addKR();
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.End)
+        .margin({ top: 20 })
+      }
+      .width('90%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(16)
+      .position({ x: 0, y: 0 })
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 })
+  }
+  
+  @Builder
+  EditKRDialog() {
+    Column() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0,0,0,0.5)')
+        .position({ x: 0, y: 0 })
+        .onClick(() => {
+          this.showEditKR = false;
+          this.editKRTitle = '';
+        })
+      
+      Column() {
+        Text('编辑关键结果')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A1A')
+          .margin({ bottom: 20 })
+        
+        TextInput({ placeholder: '输入关键结果标题', text: this.editKRTitle })
+          .width('100%')
+          .height(50)
+          .fontSize(16)
+          .padding(12)
+          .backgroundColor('#F5F5F5')
+          .borderRadius(8)
+          .onChange((value: string) => {
+            this.editKRTitle = value;
+          })
+        
+        Row() {
+          Button('取消')
+            .fontSize(16)
+            .fontColor('#666')
+            .backgroundColor('#F5F5F5')
+            .onClick(() => {
+              this.showEditKR = false;
+              this.editKRTitle = '';
+            })
+          
+          Button('保存')
+            .fontSize(16)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#4CAF50')
+            .margin({ left: 12 })
+            .enabled(this.editKRTitle.trim() !== '')
+            .onClick(() => {
+              this.saveKREdit();
             })
         }
         .width('100%')
@@ -497,6 +585,31 @@ struct GoalDetailPage {
     db.updateGoal(this.goal).then(() => {
       this.goal = db.getGoalById(this.goalId) || null;
     });
+  }
+  
+  // 显示编辑 KR 对话框
+  showEditKRDialog(kr: KeyResult): void {
+    this.editingKRId = kr.id;
+    this.editKRTitle = kr.title;
+    this.showEditKR = true;
+  }
+  
+  // 保存 KR 编辑
+  saveKREdit(): void {
+    if (!this.goal || this.editKRTitle.trim() === '') {
+      return;
+    }
+    
+    const kr = this.goal.keyResults.find((k: KeyResult) => k.id === this.editingKRId);
+    if (kr) {
+      kr.title = this.editKRTitle.trim();
+      db.updateGoal(this.goal).then(() => {
+        this.goal = db.getGoalById(this.goalId) || null;
+        this.showEditKR = false;
+        this.editKRTitle = '';
+        this.editingKRId = '';
+      });
+    }
   }
   
   updateKRProgress(krId: string, progress: number): void {
