@@ -346,65 +346,66 @@ struct StatsPage {
     Column() {
       Row() {
         Text('任务完成情况')
-          .fontSize(18)
+          .fontSize(17)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
+          .fontColor('#FFFFFF')
         
         Blank()
         
         Text(`${this.completedTasks}/${this.totalTasks}`)
-          .fontSize(14)
-          .fontColor('#666')
+          .fontSize(13)
+          .fontColor('rgba(255,255,255,0.8)')
       }
       .width('100%')
-      .margin({ bottom: 12 })
+      .margin({ bottom: 16 })
       
       Row() {
         Column() {
           Progress({ value: this.taskCompletionRate, total: 100 })
             .width('100%')
-            .height(12)
-            .color('#2196F3')
-            .backgroundColor('#E3F2FD')
+            .height(8)
+            .color('#4299E1')
+            .backgroundColor('rgba(255,255,255,0.15)')
+            .borderRadius(4)
           
           Row() {
             Text(`${this.taskCompletionRate}% 完成`)
-              .fontSize(14)
-              .fontColor('#666')
+              .fontSize(13)
+              .fontColor('rgba(255,255,255,0.7)')
             
             Blank()
             
             Text(`待完成：${this.totalTasks - this.completedTasks}`)
               .fontSize(12)
-              .fontColor('#999')
+              .fontColor('rgba(255,255,255,0.5)')
           }
           .width('100%')
-          .margin({ top: 8 })
+          .margin({ top: 12 })
         }
         .layoutWeight(1)
         
         Column() {
           Text(`${this.completedTasks}`)
-            .fontSize(24)
+            .fontSize(28)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#2196F3')
+            .fontColor('#4299E1')
           
           Text('已完成')
             .fontSize(12)
-            .fontColor('#666')
+            .fontColor('rgba(255,255,255,0.6)')
         }
-        .width(80)
+        .width(70)
         .alignItems(HorizontalAlign.Center)
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(12)
+      .padding(20)
+      .backgroundColor('#16213E')
+      .borderRadius(16)
       .shadow({
-        radius: 4,
-        color: 'rgba(0,0,0,0.05)',
+        radius: 12,
+        color: 'rgba(0, 0, 0, 0.3)',
         offsetX: 0,
-        offsetY: 2
+        offsetY: 4
       })
     }
     .width('100%')
@@ -442,17 +443,17 @@ struct StatsPage {
         Row() {
           Text(category.icon)
             .fontSize(24)
-            .margin({ right: 8 })
+            .margin({ right: 10 })
           
           Column() {
             Text(category.categoryName)
               .fontSize(16)
               .fontWeight(FontWeight.Bold)
-              .fontColor('#333')
+              .fontColor('#FFFFFF')
             
             Text(`${category.totalGoals} 个目标 · ${category.totalTasks} 个任务`)
               .fontSize(12)
-              .fontColor('#999')
+              .fontColor('rgba(255,255,255,0.6)')
               .margin({ top: 2 })
           }
         }
@@ -461,15 +462,15 @@ struct StatsPage {
         // 完成率
         Column() {
           Text(`${category.completionRate}%`)
-            .fontSize(18)
+            .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor(category.completionRate >= 50 ? '#4CAF50' : '#FF9800')
+            .fontColor(category.completionRate >= 80 ? '#48BB78' : category.completionRate >= 50 ? '#4299E1' : '#F6AD55')
           
           Text('完成率')
             .fontSize(11)
-            .fontColor('#999')
+            .fontColor('rgba(255,255,255,0.6)')
         }
-        .width(60)
+        .width(65)
         .alignItems(HorizontalAlign.Center)
       }
       .width('100%')
@@ -479,19 +480,19 @@ struct StatsPage {
         .width('100%')
         .height(6)
         .color(category.color)
-        .backgroundColor('#F5F5F5')
-        .margin({ top: 12 })
+        .backgroundColor('rgba(255,255,255,0.1)')
+        .borderRadius(3)
+        .margin({ top: 14 })
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ bottom: 8 })
+    .padding(18)
+    .backgroundColor('#16213E')
+    .borderRadius(14)
     .shadow({
-      radius: 4,
-      color: 'rgba(0,0,0,0.05)',
+      radius: 10,
+      color: 'rgba(0, 0, 0, 0.3)',
       offsetX: 0,
-      offsetY: 2
+      offsetY: 3
     })
     .onClick(() => {
       if (category.totalGoals > 0) {
@@ -527,31 +528,22 @@ struct StatsPage {
             Rectangle()
               .width(12)
               .height(12)
-              .backgroundColor('#4CAF50')
-              .borderRadius(2)
+              .background(
+                LinearGradient({
+                  direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+                  colors: [['#667EEA', 0], ['#764BA2', 1]]
+                })
+              )
+              .borderRadius(3)
             
-            Text('目标')
+            Text('完成情况')
               .fontSize(12)
-              .fontColor('#666')
-              .margin({ left: 4 })
-          }
-          .margin({ right: 16 })
-          
-          Row() {
-            Rectangle()
-              .width(12)
-              .height(12)
-              .backgroundColor('#2196F3')
-              .borderRadius(2)
-            
-            Text('任务')
-              .fontSize(12)
-              .fontColor('#666')
-              .margin({ left: 4 })
+              .fontColor('rgba(255,255,255,0.7)')
+              .margin({ left: 6 })
           }
         }
         .width('100%')
-        .margin({ bottom: 16 })
+        .margin({ bottom: 20 })
         
         // 柱状图
         Row() {
@@ -560,29 +552,37 @@ struct StatsPage {
               // 柱子
               Column() {
                 if (value > 0) {
-                  Column() {
-                    // 目标部分（绿色）
-                    if (value > 0) {
-                      Rectangle()
-                        .width(30)
-                        .height(Math.max((value / this.maxChartValue) * 100, 4))
-                        .backgroundColor('#4CAF50')
-                        .borderRadius(4)
-                    }
-                  }
-                  .height(120)
-                  .justifyContent(FlexAlign.End)
+                  Rectangle()
+                    .width(28)
+                    .height(Math.max((value / this.maxChartValue) * 100, 6))
+                    .background(
+                      LinearGradient({
+                        direction: { x1: 0, y1: 1, x2: 0, y2: 0 },
+                        colors: [['#667EEA', 0], ['#48BB78', 1]]
+                      })
+                    )
+                    .borderRadius(6)
+                    .shadow({
+                      radius: 8,
+                      color: 'rgba(102, 126, 234, 0.4)',
+                      offsetX: 0,
+                      offsetY: 2
+                    })
                 } else {
-                  Column()
-                    .width(30)
-                    .height(120)
+                  Rectangle()
+                    .width(28)
+                    .height(6)
+                    .backgroundColor('rgba(255,255,255,0.1)')
+                    .borderRadius(3)
                 }
               }
+              .height(100)
+              .justifyContent(FlexAlign.End)
               
               // 日期标签
-              Text(`${index + 1}`)
+              Text(`D${index + 1}`)
                 .fontSize(10)
-                .fontColor('#999')
+                .fontColor('rgba(255,255,255,0.5)')
                 .margin({ top: 8 })
             }
             .layoutWeight(1)
@@ -590,30 +590,31 @@ struct StatsPage {
           }, (value: number, index: number) => index.toString())
         }
         .width('100%')
-        .height(160)
-        .padding({ left: 8, right: 8 })
+        .height(140)
+        .padding({ left: 4, right: 4 })
         
         // 数值标签
         Row() {
           ForEach(this.chartData.slice(-7), (value: number, index: number) => {
             Text(`${value}`)
-              .fontSize(10)
-              .fontColor('#666')
+              .fontSize(11)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(value > 0 ? '#48BB78' : 'rgba(255,255,255,0.3)')
           }, (value: number, index: number) => index.toString())
         }
         .width('100%')
         .justifyContent(FlexAlign.SpaceAround)
-        .margin({ top: 8 })
+        .margin({ top: 12 })
       }
       .width('100%')
-      .padding(16)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(12)
+      .padding(20)
+      .backgroundColor('#16213E')
+      .borderRadius(16)
       .shadow({
-        radius: 4,
-        color: 'rgba(0,0,0,0.05)',
+        radius: 12,
+        color: 'rgba(0, 0, 0, 0.3)',
         offsetX: 0,
-        offsetY: 2
+        offsetY: 4
       })
     }
     .width('100%')
@@ -644,25 +645,26 @@ struct StatsPage {
             Text(this.selectedCategory!.categoryName)
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
-              .fontColor('#1A1A1A')
+              .fontColor('#FFFFFF')
             
             Blank()
             
             Button() {
               Text('×')
                 .fontSize(20)
-                .fontColor('#666')
+                .fontColor('rgba(255,255,255,0.6)')
             }
             .width(32)
             .height(32)
-            .backgroundColor('transparent')
+            .backgroundColor('rgba(255,255,255,0.1)')
+            .borderRadius(8)
             .onClick(() => {
               this.showCategoryDetail = false;
               this.selectedCategory = null;
             })
           }
           .width('100%')
-          .margin({ bottom: 20 })
+          .margin({ bottom: 24 })
           
           // 统计信息
           Column() {
@@ -674,13 +676,24 @@ struct StatsPage {
           }
           .width('100%')
           .padding(16)
-          .backgroundColor('#F9F9F9')
+          .backgroundColor('rgba(255,255,255,0.05)')
           .borderRadius(12)
         }
         .width('90%')
         .padding(24)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(16)
+        .background(
+          LinearGradient({
+            direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+            colors: [['#1A1A2E', 0], ['#16213E', 1]]
+          })
+        )
+        .borderRadius(20)
+        .shadow({
+          radius: 24,
+          color: 'rgba(0, 0, 0, 0.5)',
+          offsetX: 0,
+          offsetY: 8
+        })
         .position({ x: 0, y: 0 })
       }
       .width('100%')
@@ -694,17 +707,18 @@ struct StatsPage {
     Row() {
       Text(label)
         .fontSize(14)
-        .fontColor('#666')
+        .fontColor('rgba(255,255,255,0.6)')
       
       Blank()
       
       Text(value)
-        .fontSize(16)
+        .fontSize(17)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#333')
+        .fontColor('#FFFFFF')
     }
     .width('100%')
-    .padding({ top: 12, bottom: 12 })
+    .padding({ top: 14, bottom: 14 })
+    .borderBottom({ width: 1, color: 'rgba(255,255,255,0.1)' })
   }
   
   // 时间范围选择器
@@ -714,18 +728,25 @@ struct StatsPage {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor('rgba(0,0,0,0.5)')
+        .backgroundColor('rgba(0,0,0,0.7)')
         .position({ x: 0, y: 0 })
         .onClick(() => {
           this.showTimeRangePicker = false;
         })
       
       Column() {
-        Text('选择时间范围')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
-          .margin({ bottom: 20 })
+        Row() {
+          Text('📅')
+            .fontSize(24)
+            .margin({ right: 8 })
+          
+          Text('选择时间范围')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+        }
+        .width('100%')
+        .margin({ bottom: 24 })
         
         // 时间选项
         this.TimeRangeOption(TimeRange.LAST_7_DAYS, '最近 7 天')
@@ -735,8 +756,19 @@ struct StatsPage {
       }
       .width('90%')
       .padding(24)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(16)
+      .background(
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#1A1A2E', 0], ['#16213E', 1]]
+        })
+      )
+      .borderRadius(20)
+      .shadow({
+        radius: 24,
+        color: 'rgba(0, 0, 0, 0.5)',
+        offsetX: 0,
+        offsetY: 8
+      })
       .position({ x: 0, y: 0 })
     }
     .width('100%')
@@ -748,22 +780,26 @@ struct StatsPage {
   TimeRangeOption(timeRange: TimeRange, label: string) {
     Row() {
       Text(label)
-        .fontSize(16)
-        .fontColor('#333')
+        .fontSize(15)
+        .fontColor('rgba(255,255,255,0.8)')
         .layoutWeight(1)
       
       if (this.selectedTimeRange === timeRange) {
         Text('✓')
-          .fontSize(20)
-          .fontColor('#4CAF50')
+          .fontSize(18)
+          .fontColor('#48BB78')
           .fontWeight(FontWeight.Bold)
       }
     }
     .width('100%')
     .padding(16)
-    .backgroundColor(this.selectedTimeRange === timeRange ? '#E8F5E9' : '#FFFFFF')
-    .borderRadius(8)
-    .margin({ bottom: 8 })
+    .backgroundColor(this.selectedTimeRange === timeRange ? 'rgba(72, 187, 120, 0.2)' : 'rgba(255,255,255,0.05)')
+    .borderRadius(12)
+    .border({
+      width: this.selectedTimeRange === timeRange ? 1 : 1,
+      color: this.selectedTimeRange === timeRange ? '#48BB78' : 'rgba(255,255,255,0.1)'
+    })
+    .margin({ bottom: 10 })
     .onClick(() => {
       this.selectedTimeRange = timeRange;
       this.showTimeRangePicker = false;
@@ -786,56 +822,98 @@ struct StatsPage {
         })
       
       Column() {
-        Text('📤 导出统计报告')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
-          .margin({ bottom: 20 })
+        Row() {
+          Text('📤')
+            .fontSize(24)
+            .margin({ right: 8 })
+          
+          Text('导出统计报告')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+        }
+        .width('100%')
+        .margin({ bottom: 16 })
         
         Text('报告将发送到您的邮箱')
           .fontSize(14)
-          .fontColor('#666')
-          .margin({ bottom: 16 })
+          .fontColor('rgba(255,255,255,0.6)')
+          .margin({ bottom: 20 })
         
-        TextInput({ placeholder: '请输入邮箱地址', text: this.exportEmail })
-          .width('100%')
-          .height(50)
-          .fontSize(16)
-          .padding(12)
-          .backgroundColor('#F5F5F5')
-          .borderRadius(8)
-          .onChange((value: string) => {
-            this.exportEmail = value;
-          })
+        // 邮箱输入框
+        Column() {
+          Text('邮箱地址')
+            .fontSize(13)
+            .fontColor('rgba(255,255,255,0.7)')
+            .margin({ bottom: 8 })
+            .alignSelf(ItemAlign.Start)
+          
+          TextInput({ placeholder: 'example@email.com', text: this.exportEmail })
+            .width('100%')
+            .height(50)
+            .fontSize(15)
+            .padding(14)
+            .backgroundColor('rgba(255,255,255,0.1)')
+            .borderRadius(12)
+            .fontColor('#FFFFFF')
+            .placeholderColor('rgba(255,255,255,0.4)')
+            .onChange((value: string) => {
+              this.exportEmail = value;
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 24 })
         
         Row() {
           Button('取消')
-            .fontSize(16)
-            .fontColor('#666')
-            .backgroundColor('#F5F5F5')
+            .fontSize(15)
+            .fontColor('rgba(255,255,255,0.7)')
+            .backgroundColor('rgba(255,255,255,0.1)')
             .onClick(() => {
               this.showExportDialog = false;
               this.exportEmail = '';
             })
           
           Button('发送')
-            .fontSize(16)
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
             .fontColor('#FFFFFF')
-            .backgroundColor('#4CAF50')
-            .margin({ left: 12 })
+            .background(
+              LinearGradient({
+                direction: { x1: 0, y1: 0, x2: 1, y2: 0 },
+                colors: [['#667EEA', 0], ['#764BA2', 1]]
+              })
+            )
             .enabled(this.exportEmail.includes('@'))
+            .shadow({
+              radius: 12,
+              color: 'rgba(102, 126, 234, 0.5)',
+              offsetX: 0,
+              offsetY: 4
+            })
+            .margin({ left: 16 })
             .onClick(() => {
               this.exportReport();
             })
         }
         .width('100%')
         .justifyContent(FlexAlign.End)
-        .margin({ top: 20 })
       }
       .width('90%')
       .padding(24)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(16)
+      .background(
+        LinearGradient({
+          direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+          colors: [['#1A1A2E', 0], ['#16213E', 1]]
+        })
+      )
+      .borderRadius(20)
+      .shadow({
+        radius: 24,
+        color: 'rgba(0, 0, 0, 0.5)',
+        offsetX: 0,
+        offsetY: 8
+      })
       .position({ x: 0, y: 0 })
     }
     .width('100%')
