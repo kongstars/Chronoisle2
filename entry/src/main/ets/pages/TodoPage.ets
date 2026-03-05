@@ -189,9 +189,10 @@ struct TodoPage {
               .fontColor('rgba(255,255,255,0.6)')
 
             if (task.dueDate) {
+              const isOverdue = task.dueDate < Date.now() && task.status !== 'completed';
               Text('📅 ' + this.formatDate(task.dueDate))
                 .fontSize(12)
-                .fontColor(task.isOverdue ? '#FC8181' : 'rgba(255,255,255,0.5)')
+                .fontColor(isOverdue ? '#FC8181' : 'rgba(255,255,255,0.5)')
                 .margin({ left: 12 })
             }
           }

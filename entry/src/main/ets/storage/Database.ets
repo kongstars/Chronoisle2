@@ -1,6 +1,6 @@
 import dataPreferences from '@ohos.data.preferences';
 import { Goal } from '../models/Goal';
-import { Task } from '../models/Task';
+import { Task, TaskStatus } from '../models/Task';
 
 const PREFERENCES_NAME: string = 'life_goal_storage';
 const GOALS_KEY: string = 'goals';
@@ -28,8 +28,15 @@ export class Database {
       const tasksValue: dataPreferences.ValueType = await this.prefs.get(TASKS_KEY, '[]');
       const goalsJson: string = goalsValue as string;
       const tasksJson: string = tasksValue as string;
-      this.goals = JSON.parse(goalsJson);
-      this.tasks = JSON.parse(tasksJson);
+      
+      // 解析并恢复 Goal 实例
+      const goalsData = JSON.parse(goalsJson);
+      this.goals = goalsData.map((g: any) => Goal.fromJSON(g));
+      
+      // 解析并恢复 Task 实例
+      const tasksData = JSON.parse(tasksJson);
+      this.tasks = tasksData.map((t: any) => Task.fromJSON(t));
+      
       console.info('Database initialized successfully');
     } catch (error) {
       console.error('Database initialize error:', JSON.stringify(error));

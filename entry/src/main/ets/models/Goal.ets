@@ -85,4 +85,24 @@ export class Goal {
     this.keyResults = this.keyResults.filter((kr: KeyResult) => kr.id !== krId);
     this.updateProgress();
   }
+  
+  // 从 JSON 恢复为 Goal 实例（解决反序列化后方法丢失的问题）
+  static fromJSON(json: any): Goal {
+    const goal = new Goal(json.title, json.category, json.description);
+    goal.id = json.id;
+    goal.keyResults = json.keyResults ? json.keyResults.map((kr: any) => {
+      const keyResult = new KeyResult(kr.title);
+      keyResult.id = kr.id;
+      keyResult.progress = kr.progress;
+      keyResult.completed = kr.completed;
+      keyResult.createdAt = kr.createdAt;
+      return keyResult;
+    }) : [];
+    goal.progress = json.progress;
+    goal.startDate = json.startDate;
+    goal.endDate = json.endDate;
+    goal.createdAt = json.createdAt;
+    goal.updatedAt = json.updatedAt;
+    return goal;
+  }
 }

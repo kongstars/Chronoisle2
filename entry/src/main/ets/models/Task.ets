@@ -49,4 +49,24 @@ export class Task {
     this.completedAt = undefined;
     this.updatedAt = Date.now();
   }
+  
+  // 计算是否逾期
+  get isOverdue(): boolean {
+    return this.dueDate !== undefined && this.dueDate < Date.now() && this.status !== TaskStatus.COMPLETED;
+  }
+  
+  // 从 JSON 恢复为 Task 实例（解决反序列化后方法丢失的问题）
+  static fromJSON(json: any): Task {
+    const task = new Task(json.title, json.goalId, json.goalTitle);
+    task.id = json.id;
+    task.description = json.description;
+    task.krId = json.krId;
+    task.krTitle = json.krTitle;
+    task.dueDate = json.dueDate;
+    task.status = json.status;
+    task.createdAt = json.createdAt;
+    task.completedAt = json.completedAt;
+    task.updatedAt = json.updatedAt;
+    return task;
+  }
 }
