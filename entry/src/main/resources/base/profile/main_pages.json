@@ -2,6 +2,7 @@
   "src": [
     "pages/MainPage",
     "pages/GoalDetailPage",
-    "pages/CreateTaskPage"
+    "pages/CreateTaskPage",
+    "pages/StatsPage"
   ]
 }

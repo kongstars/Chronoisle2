@@ -199,33 +199,7 @@ struct MainPage {
   @Builder
   StatsTab() {
     Column() {
-      Row() {
-        Text('统计')
-          .fontSize(24)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
-      }
-      .width('100%')
-      .padding({ left: 20, right: 20, top: 15, bottom: 15 })
-      .backgroundColor('#FFFFFF')
-
-      Column() {
-        Text('📈')
-          .fontSize(64)
-          .margin({ bottom: 16 })
-
-        Text('统计功能开发中')
-          .fontSize(18)
-          .fontColor('#999')
-
-        Text('敬请期待')
-          .fontSize(14)
-          .fontColor('#CCC')
-          .margin({ top: 8 })
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.Center)
-      .layoutWeight(1)
+      StatsPage()
     }
     .width('100%')
     .layoutWeight(1)
