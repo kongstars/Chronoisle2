@@ -88,66 +88,91 @@ struct CreateTaskPage {
   build() {
     Stack() {
       Column() {
-        // 标题栏
+        // 标题栏 - 渐变背景
         Row() {
-        Button() {
-          Text('←')
-            .fontSize(24)
-            .fontColor('#1A1A1A')
-        }
-        .width(40)
-        .height(40)
-        .backgroundColor('transparent')
-        .onClick(() => {
-          router.back();
-        })
-        Text(this.isEdit ? '编辑任务' : '创建任务')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1A1A1A')
-          .layoutWeight(1)
-          .margin({ left: 12 })
-        Button('保存')
-          .fontSize(16)
-          .fontColor('#4CAF50')
-          .backgroundColor('transparent')
-          .enabled(this.title.trim() !== '' && this.selectedGoalId !== '')
+          Button() {
+            Text('←')
+              .fontSize(18)
+              .fontColor('#FFFFFF')
+          }
+          .width(40)
+          .height(40)
+          .backgroundColor('rgba(255,255,255,0.15)')
+          .borderRadius(12)
           .onClick(() => {
-            this.saveTask();
+            router.back();
           })
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor('#FFFFFF')
+          
+          Text(this.isEdit ? '✏️ 编辑任务' : '➕ 创建任务')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+            .layoutWeight(1)
+            .margin({ left: 12 })
+          
+          Button('保存')
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF')
+            .background(
+              LinearGradient({
+                direction: { x1: 0, y1: 0, x2: 1, y2: 0 },
+                colors: [['#48BB78', 0], ['#38A169', 1]]
+              })
+            )
+            .borderRadius(16)
+            .padding({ left: 16, right: 16 })
+            .shadow({
+              radius: 10,
+              color: 'rgba(72, 187, 120, 0.4)',
+              offsetX: 0,
+              offsetY: 2
+            })
+            .enabled(this.title.trim() !== '' && this.selectedGoalId !== '')
+            .onClick(() => {
+              this.saveTask();
+            })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+        .background(
+          LinearGradient({
+            direction: { x1: 0, y1: 0, x2: 1, y2: 1 },
+            colors: [['#48BB78', 0], ['#38A169', 1]]
+          })
+        )
       Scroll() {
         Column() {
           // 任务标题
           Column() {
             Text('任务名称 *')
-              .fontSize(14)
-              .fontColor('#666')
+              .fontSize(13)
+              .fontColor('rgba(255,255,255,0.7)')
               .alignSelf(ItemAlign.Start)
               .margin({ bottom: 8 })
-            TextInput({ placeholder: '输入任务名称', text: this.title })
+            TextInput({ placeholder: '例如：每周运动 3 次', text: this.title })
               .width('100%')
               .height(50)
-              .fontSize(16)
-              .padding(12)
-              .backgroundColor('#F5F5F5')
-              .borderRadius(8)
+              .fontSize(15)
+              .padding(14)
+              .backgroundColor('rgba(255,255,255,0.1)')
+              .borderRadius(12)
+              .fontColor('#FFFFFF')
+              .placeholderColor('rgba(255,255,255,0.4)')
               .onChange((value: string) => {
                 this.title = value;
               })
           }
           .width('100%')
-          .padding(16)
-          .backgroundColor('#FFFFFF')
+          .padding(18)
+          .backgroundColor('#16213E')
+          .borderRadius(14)
           .margin({ bottom: 12 })
           // 关联目标
           Column() {
             Text('关联目标 *')
-              .fontSize(14)
-              .fontColor('#666')
+              .fontSize(13)
+              .fontColor('rgba(255,255,255,0.7)')
               .alignSelf(ItemAlign.Start)
               .margin({ bottom: 8 })
             Button(this.selectedGoalId ?
@@ -155,24 +180,26 @@ struct CreateTaskPage {
               '选择目标')
               .width('100%')
               .height(50)
-              .fontSize(16)
-              .fontColor('#333')
-              .backgroundColor('#F5F5F5')
-              .borderRadius(8)
+              .fontSize(15)
+              .fontColor('#FFFFFF')
+              .backgroundColor('rgba(255,255,255,0.1)')
+              .borderRadius(12)
               .onClick(() => {
                 this.showGoalPicker = true;
               })
           }
           .width('100%')
-          .padding(16)
-          .backgroundColor('#FFFFFF')
+          .padding(18)
+          .backgroundColor('#16213E')
+          .borderRadius(14)
           .margin({ bottom: 12 })
+          
           // 关联关键结果（可选）
           if (this.selectedGoalId) {
             Column() {
               Text('关联关键结果（可选）')
-                .fontSize(14)
-                .fontColor('#666')
+                .fontSize(13)
+                .fontColor('rgba(255,255,255,0.7)')
                 .alignSelf(ItemAlign.Start)
                 .margin({ bottom: 8 })
               Button(this.selectedKrId ?
@@ -181,69 +208,75 @@ struct CreateTaskPage {
                 '选择关键结果')
                 .width('100%')
                 .height(50)
-                .fontSize(16)
-                .fontColor('#333')
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
+                .fontSize(15)
+                .fontColor('#FFFFFF')
+                .backgroundColor('rgba(255,255,255,0.1)')
+                .borderRadius(12)
                 .onClick(() => {
                   this.showKrPicker = true;
                 })
             }
             .width('100%')
-            .padding(16)
-            .backgroundColor('#FFFFFF')
+            .padding(18)
+            .backgroundColor('#16213E')
+            .borderRadius(14)
             .margin({ bottom: 12 })
           }
           // 计划完成时间
           Column() {
             Text('计划完成时间')
-              .fontSize(14)
-              .fontColor('#666')
+              .fontSize(13)
+              .fontColor('rgba(255,255,255,0.7)')
               .alignSelf(ItemAlign.Start)
               .margin({ bottom: 8 })
 
-            Button(this.dueDate ? this.dueDate : '选择日期')
+            Button(this.dueDate ? this.dueDate : '📅 选择日期')
               .width('100%')
               .height(50)
-              .fontSize(16)
-              .fontColor(this.dueDate ? '#333' : '#999')
-              .backgroundColor('#F5F5F5')
-              .borderRadius(8)
+              .fontSize(15)
+              .fontColor('#FFFFFF')
+              .backgroundColor('rgba(255,255,255,0.1)')
+              .borderRadius(12)
               .onClick(() => {
                 this.showDatePicker = true;
               })
           }
           .width('100%')
-          .padding(16)
-          .backgroundColor('#FFFFFF')
+          .padding(18)
+          .backgroundColor('#16213E')
+          .borderRadius(14)
           .margin({ bottom: 12 })
+          
           // 任务描述
           Column() {
             Text('任务描述')
-              .fontSize(14)
-              .fontColor('#666')
+              .fontSize(13)
+              .fontColor('rgba(255,255,255,0.7)')
               .alignSelf(ItemAlign.Start)
               .margin({ bottom: 8 })
-            TextArea({ placeholder: '任务描述（可选）', text: this.description })
+            TextArea({ placeholder: '详细描述任务内容（可选）', text: this.description })
               .width('100%')
               .height(120)
-              .fontSize(16)
-              .padding(12)
-              .backgroundColor('#F5F5F5')
-              .borderRadius(8)
+              .fontSize(15)
+              .padding(14)
+              .backgroundColor('rgba(255,255,255,0.1)')
+              .borderRadius(12)
+              .fontColor('#FFFFFF')
+              .placeholderColor('rgba(255,255,255,0.4)')
               .onChange((value: string) => {
                 this.description = value;
               })
           }
           .width('100%')
-          .padding(16)
-          .backgroundColor('#FFFFFF')
+          .padding(18)
+          .backgroundColor('#16213E')
+          .borderRadius(14)
           .margin({ bottom: 12 })
         }
         .width('100%')
       }
       .layoutWeight(1)
-      .backgroundColor('#F5F5F5')
+      .backgroundColor('#0F0F23')
 
       // 目标选择器（居中显示）
       if (this.showGoalPicker) {
