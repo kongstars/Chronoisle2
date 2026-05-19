@@ -1,0 +1,42 @@
+{
+  "name": "chronoisle-speech-token-server",
+  "version": "1.0.0",
+  "description": "Token management server for Sishi Checklist voice recognition",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "deploy:test": "node ./scripts/deploy/deploy_test.js",
+    "deploy:prod": "node ./scripts/deploy/deploy_prod.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@alicloud/pop-core": "^1.8.0",
+    "archiver": "^7.0.1",
+    "axios": "^1.6.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^6.13.5",
+    "node-cron": "^4.2.1",
+    "node-ssh": "^13.2.1",
+    "ssh2": "^1.17.0",
+    "ssh2-sftp-client": "^12.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "aliyun",
+    "speech",
+    "token",
+    "harmonyos"
+  ],
+  "author": "四时清单 Team",
+  "license": "MIT"
+}

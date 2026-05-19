@@ -1,0 +1,68 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "四时清单模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "四时清单入口"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "四时清单"
+    },
+    {
+      "name": "microphone_permission_reason",
+      "value": "用于语音输入功能"
+    },
+    {
+      "name": "widget_display_name",
+      "value": "今日待办"
+    },
+    {
+      "name": "widget_desc",
+      "value": "快速查看今日待办事项，支持语音快捷创建。"
+    },
+    {
+      "name": "widget_todo_desc",
+      "value": "显示今日待办任务列表，点击可完成任务或查看详情。"
+    },
+    {
+      "name": "widget_habit_desc",
+      "value": "显示今日习惯打卡进度，快速完成日常习惯。"
+    },
+    {
+      "name": "widget_countdown_desc",
+      "value": "显示重要日子倒计时，纪念日和目标日期一目了然。"
+    },
+    {
+      "name": "widget_today_plan_desc",
+      "value": "显示 AI 生成的今日计划，一键采纳并执行。"
+    },
+    {
+      "name": "widget_focus_desc",
+      "value": "快速进入专注模式，开始番茄工作法。"
+    },
+    {
+      "name": "widget_dashboard_desc",
+      "value": "综合数据统计面板，掌握你的时间投入和完成情况。"
+    },
+    {
+      "name": "widget_voice_desc",
+      "value": "语音快捷创建入口，说话即可添加任务、目标和提醒。"
+    },
+    {
+      "name": "widget_main_desc",
+      "value": "统一控制台 - 集成 AI 计划、待办、习惯、倒计时、专注和语音创建六大功能。"
+    },
+    {
+      "name": "read_calendar_reason",
+      "value": "用于同步系统日历事件，在日程视图中显示您的安排"
+    },
+    {
+      "name": "write_calendar_reason",
+      "value": "用于将四时清单的任务同步写入系统日历提醒"
+    }
+  ]
+}

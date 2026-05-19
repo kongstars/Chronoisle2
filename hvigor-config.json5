@@ -1,0 +1,12 @@
+{
+  "modelVersion": "3.0.0",
+  "dependencies": {},
+  "execution": {
+    "analyze": "normal",
+    // Lower resident/peak memory during local development.
+    "daemon": false,
+    "incremental": true,
+    "parallel": false,
+    "typeCheck": false
+  }
+}

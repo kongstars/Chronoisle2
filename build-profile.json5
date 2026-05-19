@@ -1,0 +1,86 @@
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "targetSdkVersion": "6.1.1(24)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true
+          }
+        }
+      },
+      {
+        "name": "release",
+        "signingConfig": "release",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "targetSdkVersion": "6.1.1(24)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "D:/key/zhengshimiyao.p12",
+          "storePassword": "0000001F8C731340D1724BF9647F86C93A80DAED1B1F3BAA6A10F90317E8521FC26407AF8F35FA2BF5D72FE306D63E",
+          "keyAlias": "key",
+          "keyPassword": "0000001F9411A66A370E1F0A2D21A93AF49FC0D5013D7D979B06A8DC1D655C17D590874C602869FBA34DD072BAA60B",
+          "signAlg": "SHA256withECDSA",
+          "profile": "C:/Users/tianchen/Downloads/shoucifabuRelease.p7b",
+          "certpath": "C:/Users/tianchen/Downloads/上架证书.cer"
+        }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "D:/key/zhengshimiyao.p12",
+          "storePassword": "0000001F8A09FBB80313C0B797716524088432249FF3365C24D89884214F2987D2DC75A2CB8BDE81C3E3D79D5DAFA0",
+          "keyAlias": "key",
+          "keyPassword": "0000001FAB0E2A652DEC07B98736AFC00CCFDD9CE1FF0E038584CDB56B7A86D5D3AD885D7BF865AA4021CEB4E51783",
+          "signAlg": "SHA256withECDSA",
+          "profile": "C:/Users/tianchen/Downloads/shoucifabuRelease.p7b",
+          "certpath": "C:/Users/tianchen/Downloads/auto_debug_260086000048781707.cer.cer"
+        }
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        },
+        {
+          "name": "release",
+          "applyToProducts": [
+            "release"
+          ]
+        }
+      ]
+    }
+  ]
+}

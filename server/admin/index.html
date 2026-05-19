@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>四时清单 · 管理后台</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h2>四时清单</h2>
+        <span>Admin Console</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="dashboard"><span class="icon">D</span>仪表盘</div>
+        <div class="nav-item" data-page="users"><span class="icon">U</span>用户管理</div>
+        <div class="nav-item" data-page="revenue"><span class="icon">$</span>付费分析</div>
+        <div class="nav-item" data-page="reports"><span class="icon">R</span>用量报表</div>
+        <div class="nav-item" data-page="aimetrics"><span class="icon">AI</span>AI 分析</div>
+        <div class="nav-item" data-page="telemetry"><span class="icon">S</span>行为分析</div>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-logout" id="logoutBtn">退出登录</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+
+      <!-- ===== Dashboard ===== -->
+      <section id="page-dashboard">
+        <div class="page-header">
+          <h1>仪表盘</h1>
+          <p>系统运营数据总览</p>
+        </div>
+
+        <!-- 核心指标行 -->
+        <div class="stats-grid-4" id="dashboardStats"></div>
+
+        <!-- 积分盘点行 -->
+        <div class="stats-grid-4" id="creditStats" style="margin-top:20px; border-top:1px dashed var(--border); padding-top:20px;"></div>
+
+        <!-- 第二行：用户增长 + 会员转化 -->
+        <div class="grid-2col" style="margin-top:20px;">
+          <div class="card">
+            <div class="card-header"><h3>用户增长统计</h3></div>
+            <div class="card-body" id="userGrowthStats"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>会员转化概览</h3></div>
+            <div class="card-body" id="membershipStats"></div>
+          </div>
+        </div>
+
+        <!-- 月度趋势图 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header"><h3>月度用量趋势</h3></div>
+          <div class="card-body"><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+        </div>
+
+        <!-- 即将到期会员预警 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header">
+            <h3>7天内会员到期预警</h3>
+            <span id="expiringCount" style="font-size:12px;color:var(--warning);"></span>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>显示ID</th><th>账号</th><th>到期时间</th><th>剩余天数</th><th>操作</th></tr></thead>
+                <tbody id="expiringTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Users ===== -->
+      <section id="page-users" style="display:none;">
+        <div class="page-header">
+          <h1>用户管理</h1>
+          <p>管理所有注册用户 · 点击行可查看详情</p>
+        </div>
+        <div class="search-bar">
+          <select id="userFilterMembership" class="filter-select">
+            <option value="all">所有会员身份</option>
+            <option value="premium">高级会员</option>
+            <option value="basic">免费用户</option>
+          </select>
+          <select id="userFilterAccount" class="filter-select">
+            <option value="all">所有账号类型</option>
+            <option value="huawei">华为</option>
+            <option value="phone">手机号</option>
+            <option value="wechat">微信</option>
+            <option value="qq">QQ</option>
+            <option value="email">邮箱</option>
+          </select>
+          <input type="text" id="userSearch" placeholder="搜索账号、昵称、四时号、用户UUID..." style="flex:1;">
+          <button onclick="searchUsers()">搜索</button>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>四时号</th>
+                    <th>UUID <span style="font-size:10px;color:var(--text-muted);">(点击复制)</span></th>
+                    <th>账号 / 昵称</th>
+                    <th>类型</th>
+                    <th>设备</th>
+                    <th>版本</th>
+                    <th>积分余额</th>
+                    <th>会员状态</th>
+                    <th>到期时间</th>
+                    <th>注册时间</th>
+                    <th>最后活跃</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination" id="usersPagination"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Revenue ===== -->
+      <section id="page-revenue" style="display:none;">
+        <div class="page-header">
+          <h1>付费分析</h1>
+          <p>会员付费趋势与用户列表</p>
+        </div>
+
+        <!-- 付费概览卡片 -->
+        <div class="stats-grid-4" id="revenueStats"></div>
+
+        <!-- 月度付费趋势图 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header"><h3>月度付费趋势</h3></div>
+          <div class="card-body"><div class="chart-container"><canvas id="revenueChart"></canvas></div></div>
+        </div>
+
+        <!-- 月度付费明细表 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header"><h3>月度付费明细</h3></div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>月份</th><th>新注册用户</th><th>新付费用户</th><th>月内有效会员峰值</th>
+                  </tr>
+                </thead>
+                <tbody id="revenueMonthlyBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 付费用户列表 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header">
+            <h3>付费用户列表</h3>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="revenueUserStatus" onchange="loadRevenueUsers(1)" class="filter-select" style="height:32px;">
+                <option value="active">当前有效</option>
+                <option value="expired">已到期</option>
+                <option value="all">全部</option>
+              </select>
+              <input id="revenueUserSearch" type="text" placeholder="搜索账号..." style="height:32px;width:180px;padding:0 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;font-size:13px;">
+              <button style="height:32px;padding:0 14px;font-size:13px;" onclick="loadRevenueUsers(1)">筛选</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr><th>四时号</th><th>账号</th><th>状态</th><th>到期时间</th><th>剩余天数</th><th>操作</th></tr>
+                </thead>
+                <tbody id="revenueUsersBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination" id="revenueUsersPagination"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Reports ===== -->
+      <section id="page-reports" style="display:none;">
+        <div class="page-header">
+          <h1>用量报表</h1>
+          <p>月度用量统计与排行</p>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>月度统计明细</h3></div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>月份</th><th>活跃用户</th><th>语音次数</th><th>语音时长</th><th>AI调用次数</th><th>Token消耗</th>
+                  </tr>
+                </thead>
+                <tbody id="monthlyTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header">
+            <h3>用量排行榜</h3>
+            <select id="rankingType" onchange="loadRanking()" class="filter-select" style="height:32px;">
+              <option value="voice">语音时长</option>
+              <option value="token">Token消耗</option>
+            </select>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>#</th><th>用户</th><th>账号类型</th><th>用量</th><th>次数</th></tr></thead>
+                <tbody id="rankingTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== AI Metrics ===== -->
+      <section id="page-aimetrics" style="display:none;">
+        <div class="page-header">
+          <h1>AI 功能分析</h1>
+          <p>核心AI流程漏斗与用户采纳率洞察</p>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>功能触发与保存统计</h3></div>
+          <div class="card-body"><div class="chart-container"><canvas id="aiFunnelChart"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- ===== Telemetry ===== -->
+      <section id="page-telemetry" style="display:none;">
+        <div class="page-header">
+          <h1>行为分析</h1>
+          <p>用户行为埋点数据 · 实时事件流</p>
+        </div>
+
+        <!-- Top 事件 -->
+        <div class="grid-2col">
+          <div class="card">
+            <div class="card-header">
+              <h3>Top 事件统计</h3>
+              <select id="topEventDays" onchange="loadTopEvents()" class="filter-select" style="height:32px;">
+                <option value="7">近7天</option>
+                <option value="14">近14天</option>
+                <option value="30">近30天</option>
+              </select>
+            </div>
+            <div class="card-body" id="topEventsContainer">
+              <div class="loading">加载中...</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>事件分类分布（近14天）</h3></div>
+            <div class="card-body"><div class="chart-container" style="height:260px;"><canvas id="eventCategoryChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <!-- 每日趋势 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header"><h3>每日事件量趋势（近14天）</h3></div>
+          <div class="card-body"><div class="chart-container"><canvas id="telemetryTrendChart"></canvas></div></div>
+        </div>
+
+        <!-- 事件流查询 -->
+        <div class="card" style="margin-top:20px;">
+          <div class="card-header">
+            <h3>事件流查询</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="telemetryUserId" type="text" placeholder="用户UUID (可选)" style="height:32px;width:200px;padding:0 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;font-size:13px;">
+              <input id="telemetryEventName" type="text" placeholder="事件名 (可选)" style="height:32px;width:160px;padding:0 10px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;font-size:13px;">
+              <select id="telemetryCategory" class="filter-select" style="height:32px;">
+                <option value="">全部分类</option>
+                <option value="session">session</option>
+                <option value="task">task</option>
+                <option value="goal">goal</option>
+                <option value="ai">ai</option>
+                <option value="membership">membership</option>
+                <option value="voice">voice</option>
+                <option value="search">search</option>
+              </select>
+              <select id="telemetryDays" class="filter-select" style="height:32px;">
+                <option value="1">今天</option>
+                <option value="7" selected>近7天</option>
+                <option value="30">近30天</option>
+              </select>
+              <button style="height:32px;padding:0 14px;font-size:13px;" onclick="loadEventStream(1)">查询</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr><th>时间</th><th>用户ID</th><th>事件名</th><th>分类</th><th>平台</th><th>版本</th><th>附加属性</th></tr>
+                </thead>
+                <tbody id="eventStreamBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination" id="eventStreamPagination"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- User Detail Modal -->
+  <div class="modal-overlay" id="userModal" style="display:none;">
+    <div class="modal-content" style="max-width:680px;">
+      <div class="modal-header">
+        <h2 id="modalTitle">用户详情</h2>
+        <button class="modal-close" onclick="closeUserModal()">x</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Membership Modal -->
+  <div class="modal-overlay" id="membershipModal" style="display:none; z-index: 300;">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>管理会员时长</h2>
+        <button class="modal-close" onclick="closeMembershipModal()">x</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 20px;">
+           <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:8px;font-weight:500;">调整天数 (仅需填入数字)</label>
+           <input type="number" id="membershipDays" min="1" placeholder="例如: 30" style="width:100%;height:44px;padding:0 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;">
+           <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">提示：分别点击下方按钮进行增加或扣除。若扣至已过期，系统会自动降级当前用户。</div>
+        </div>
+        <div style="display:flex; gap:12px;">
+           <button onclick="submitMembershipChange('add')" class="btn-primary" style="flex:1;">增加天数</button>
+           <button onclick="submitMembershipChange('deduct')" class="btn-primary" style="flex:1; background:var(--danger); border-color:var(--danger);">扣除天数</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Modal -->
+  <div class="modal-overlay" id="creditModal" style="display:none; z-index: 300;">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>管理用户积分</h2>
+        <button class="modal-close" onclick="closeCreditModal()">x</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 12px;">
+           <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:8px;font-weight:500;">调整额度 (输入正整数)</label>
+           <input type="number" id="creditAmount" min="1" placeholder="例如: 100" style="width:100%;height:44px;padding:0 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;">
+        </div>
+        <div style="margin-bottom: 20px;">
+           <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:8px;font-weight:500;">操作原因备注 (可选)</label>
+           <input type="text" id="creditReason" placeholder="例如: 手动充值/扣除" style="width:100%;height:44px;padding:0 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;">
+        </div>
+        <div style="display:flex; gap:12px;">
+           <button onclick="submitCreditChange('add')" class="btn-primary" style="flex:1;">增加积分</button>
+           <button onclick="submitCreditChange('deduct')" class="btn-primary" style="flex:1; background:var(--danger); border-color:var(--danger);">扣除积分</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

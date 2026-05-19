@@ -1,0 +1,39 @@
+# Obfuscation rules for Chronoisle2 release build
+# HarmonyOS ArkTS obfuscation rule format
+
+# === Keep entry points ===
+-keep
+src/main/ets/entryability/EntryAbility
+-keep
+src/main/ets/entryformability/EntryFormAbility
+
+# === Keep data models (serialization) ===
+-keep
+src/main/ets/models/Goal
+-keep
+src/main/ets/models/Task
+-keep
+src/main/ets/models/Pomodoro
+-keep
+src/main/ets/models/DayEvent
+-keep
+src/main/ets/models/PlanningSession
+-keep
+src/main/ets/models/TodayPlan
+-keep
+src/main/ets/models/WidgetData
+-keep
+src/main/ets/models/TelemetryErrorCode
+
+# === Keep Huawei SDK services ===
+-keep
+src/main/ets/services/IAPService
+-keep
+src/main/ets/services/ThirdPartyAuthService
+
+# === Keep database interface ===
+-keep
+src/main/ets/storage/Database
+
+# === Strip console logs in release ===
+-remove-log

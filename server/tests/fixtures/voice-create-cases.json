@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-27",
+  "purpose": "语音创建固定回归样例。用于后续调整规则、prompt、模型或解析策略时，校验意图分流、语气词清洗和字段抽取方向是否退化。",
+  "cases": [
+    {
+      "id": "task-basic-report",
+      "input": "明天下午三点提交周报",
+      "expectedAnalysisText": "明天下午三点提交周报",
+      "expectedIntent": "task",
+      "expectedFields": {
+        "titleContains": "提交周报",
+        "dueDateRequired": true
+      }
+    },
+    {
+      "id": "task-with-filler",
+      "input": "喂喂喂，明天上午九点把预算表发给老板",
+      "expectedAnalysisText": "明天上午九点把预算表发给老板",
+      "expectedIntent": "task",
+      "expectedFields": {
+        "titleContains": "预算表",
+        "dueDateRequired": true
+      }
+    },
+    {
+      "id": "reminder-daily-medicine",
+      "input": "每天晚上九点提醒我吃药",
+      "expectedAnalysisText": "每天晚上九点提醒我吃药",
+      "expectedIntent": "reminder",
+      "expectedFields": {
+        "eventType": "periodic",
+        "periodicMode": "daily",
+        "hour": 21
+      }
+    },
+    {
+      "id": "reminder-weekly-habit",
+      "input": "每周一三五提醒我跑步",
+      "expectedAnalysisText": "每周一三五提醒我跑步",
+      "expectedIntent": "reminder",
+      "expectedFields": {
+        "eventType": "habit",
+        "habitMode": "weekly",
+        "timesPerPeriod": 3
+      }
+    },
+    {
+      "id": "reminder-countdown",
+      "input": "距离考试还有三十天提醒我复习",
+      "expectedAnalysisText": "距离考试还有三十天提醒我复习",
+      "expectedIntent": "reminder",
+      "expectedFields": {
+        "eventType": "countdown",
+        "targetDateRequired": true
+      }
+    },
+    {
+      "id": "goal-health",
+      "input": "三个月健康减重十斤",
+      "expectedAnalysisText": "三个月健康减重十斤",
+      "expectedIntent": "goal",
+      "expectedFields": {
+        "intentTextContains": "减重"
+      }
+    },
+    {
+      "id": "goal-learning",
+      "input": "今年把英语口语提升到可以流畅开会",
+      "expectedAnalysisText": "今年把英语口语提升到可以流畅开会",
+      "expectedIntent": "goal",
+      "expectedFields": {
+        "intentTextContains": "英语口语"
+      }
+    },
+    {
+      "id": "focus-basic",
+      "input": "专注写方案四十五分钟",
+      "expectedAnalysisText": "专注写方案四十五分钟",
+      "expectedIntent": "focus",
+      "expectedFields": {
+        "focusSubjectContains": "写方案",
+        "duration": 45
+      }
+    },
+    {
+      "id": "focus-with-task-match",
+      "input": "开始专注做预算表二十五分钟",
+      "expectedAnalysisText": "开始专注做预算表二十五分钟",
+      "expectedIntent": "focus",
+      "expectedFields": {
+        "focusSubjectContains": "预算表",
+        "duration": 25
+      }
+    },
+    {
+      "id": "filler-only",
+      "input": "喂喂喂，嗯嗯，测试一下",
+      "expectedAnalysisText": "",
+      "expectedIntent": "unknown",
+      "expectedErrorCode": "empty_analysis_text"
+    }
+  ]
+}
