@@ -1,6 +1,8 @@
+const { sendError } = require('../utils/apiResponse');
+
 const checkUser = (req, res, next) => {
   if (!req.user || !req.user.userId) {
-    return res.status(401).json({ success: false, message: '身份认证失败' });
+    return sendError(res, 401, 'AUTH_USER_REQUIRED', '身份认证失败');
   }
   next();
 };

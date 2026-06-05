@@ -1,42 +1,41 @@
-﻿// Widget 颜色常量 — 与主应用 LightTheme 对齐
-// Widget 运行在独立 FormExtensionAbility 进程中，无法访问 AppStorage/ThemeColors
-// 暗色模式适配待后续 Form API 支持
-export const WIDGET_COLOR_SURFACE: string = '#FFFFFF';        // LightTheme.surface
-export const WIDGET_COLOR_SURFACE_SOFT: string = '#F8FBFE';   // LightTheme.surfaceLight
-export const WIDGET_COLOR_PRIMARY: string = '#4A8CFE';        // LightTheme.primary
-export const WIDGET_COLOR_PRIMARY_SOFT: string = '#EEF4FF';   // LightTheme.primarySubtle
-export const WIDGET_COLOR_TEXT_PRIMARY: string = '#142033';    // LightTheme.textPrimary
-export const WIDGET_COLOR_TEXT_SECONDARY: string = '#8B9CB0';  // LightTheme.textSecondary
-export const WIDGET_COLOR_TEXT_MUTED: string = '#A8B8CC';      // LightTheme.textMuted
-export const WIDGET_COLOR_BORDER: string = '#E4EAF2';          // LightTheme.borderColor
-export const WIDGET_COLOR_SUCCESS: string = '#34C982';         // LightTheme.success
-export const WIDGET_COLOR_SUCCESS_SOFT: string = '#EDFAF4';    // LightTheme.successSubtle
-export const WIDGET_COLOR_WARNING: string = '#F5B850';         // LightTheme.warning
-export const WIDGET_COLOR_WARNING_SOFT: string = '#FFF8EE';    // LightTheme.warningSubtle
-export const WIDGET_COLOR_DANGER: string = '#F05D63';          // LightTheme.danger
-export const WIDGET_COLOR_DANGER_SOFT: string = '#FFF5F5';     // LightTheme.dangerSubtle
+// Widget 颜色常量 — 与主应用「岛屿晨曦」浅色主题对齐
+// Widget 运行在独立 FormExtensionAbility 进程中，无法直接访问 AppStorage/ThemeColors
+export const WIDGET_COLOR_SURFACE: string = '#FFFDF9';
+export const WIDGET_COLOR_SURFACE_SOFT: string = '#F7EFE6';
+export const WIDGET_COLOR_PRIMARY: string = '#7679F5';
+export const WIDGET_COLOR_PRIMARY_SOFT: string = '#F3EDFF';
+export const WIDGET_COLOR_TEXT_PRIMARY: string = '#2B2233';
+export const WIDGET_COLOR_TEXT_SECONDARY: string = '#786C7D';
+export const WIDGET_COLOR_TEXT_MUTED: string = '#B2A7B1';
+export const WIDGET_COLOR_BORDER: string = '#E7DDD1';
+export const WIDGET_COLOR_SUCCESS: string = '#42A483';
+export const WIDGET_COLOR_SUCCESS_SOFT: string = '#EEF8F3';
+export const WIDGET_COLOR_WARNING: string = '#D69041';
+export const WIDGET_COLOR_WARNING_SOFT: string = '#FFF2E2';
+export const WIDGET_COLOR_DANGER: string = '#DD7A72';
+export const WIDGET_COLOR_DANGER_SOFT: string = '#FCEEEB';
 export const WIDGET_RADIUS_SM: number = 8;
 export const WIDGET_RADIUS_MD: number = 12;
 export const WIDGET_RADIUS_LG: number = 16;
 export const WIDGET_RADIUS_PILL: number = 999;
-// Widget 高频文本色（微调过以适配卡片载体上的对比度）
-export const WIDGET_COLOR_TEXT_DARK: string = '#333333';
-export const WIDGET_COLOR_TEXT_HINT: string = '#999999';
-export const WIDGET_COLOR_ACCENT: string = '#007DFF';
-export const WIDGET_COLOR_ORANGE: string = '#FF9800';
-export const WIDGET_COLOR_PINK: string = '#E91E63';
-export const WIDGET_COLOR_RED_SOFT: string = '#FF6B6B';
-export const WIDGET_COLOR_GRAY: string = '#666666';
-export const WIDGET_COLOR_SUCCESS_DARK: string = '#4CAF50';
-export const WIDGET_COLOR_SUCCESS_VIBRANT: string = '#10A05A';
-export const WIDGET_COLOR_INACTIVE: string = '#9AA8B8';
-export const WIDGET_COLOR_TEXT_BOLD: string = '#222222';
-export const WIDGET_COLOR_TEXT_MEDIUM: string = '#555555';
-export const WIDGET_COLOR_TEXT_LIGHT: string = '#888888';
-export const WIDGET_COLOR_ORANGE_VIBRANT: string = '#FF8A00';
-export const WIDGET_COLOR_BLUE_VIBRANT: string = '#1F6BFF';
-export const WIDGET_COLOR_SURFACE_ULTRA_LIGHT: string = '#F5F5F5';
-export const WIDGET_COLOR_INACTIVE_SURFACE: string = '#F3F6FA';
+// Widget 高频文本色与辅助色
+export const WIDGET_COLOR_TEXT_DARK: string = WIDGET_COLOR_TEXT_PRIMARY;
+export const WIDGET_COLOR_TEXT_HINT: string = WIDGET_COLOR_TEXT_MUTED;
+export const WIDGET_COLOR_ACCENT: string = WIDGET_COLOR_PRIMARY;
+export const WIDGET_COLOR_ORANGE: string = WIDGET_COLOR_WARNING;
+export const WIDGET_COLOR_PINK: string = '#D978A6';
+export const WIDGET_COLOR_RED_SOFT: string = WIDGET_COLOR_DANGER;
+export const WIDGET_COLOR_GRAY: string = WIDGET_COLOR_TEXT_SECONDARY;
+export const WIDGET_COLOR_SUCCESS_DARK: string = WIDGET_COLOR_SUCCESS;
+export const WIDGET_COLOR_SUCCESS_VIBRANT: string = WIDGET_COLOR_SUCCESS;
+export const WIDGET_COLOR_INACTIVE: string = '#A79AA5';
+export const WIDGET_COLOR_TEXT_BOLD: string = WIDGET_COLOR_TEXT_PRIMARY;
+export const WIDGET_COLOR_TEXT_MEDIUM: string = '#5F5566';
+export const WIDGET_COLOR_TEXT_LIGHT: string = '#90838D';
+export const WIDGET_COLOR_ORANGE_VIBRANT: string = WIDGET_COLOR_WARNING;
+export const WIDGET_COLOR_BLUE_VIBRANT: string = WIDGET_COLOR_PRIMARY;
+export const WIDGET_COLOR_SURFACE_ULTRA_LIGHT: string = WIDGET_COLOR_SURFACE_SOFT;
+export const WIDGET_COLOR_INACTIVE_SURFACE: string = '#F3EAE1';
 
 export const WIDGET_TITLE_SIZE: number = 14;
 export const WIDGET_SUBTITLE_SIZE: number = 12;

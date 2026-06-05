@@ -29,7 +29,7 @@ export struct AppSegmentTabs {
 
   private getTabBackgroundColor(index: number): string {
     if (this.isSelected(index)) {
-      return this.themeColors.primarySubtle;
+      return this.themeColors.surfaceRaised;
     }
     if (!this.disabled && this.isHovered(index)) {
       return this.themeColors.surface;
@@ -50,6 +50,9 @@ export struct AppSegmentTabs {
     }
     if (this.isFocused(index)) {
       return this.themeColors.primary;
+    }
+    if (this.isSelected(index)) {
+      return this.themeColors.primaryLight;
     }
     if (this.isHovered(index)) {
       return this.themeColors.primaryLight;

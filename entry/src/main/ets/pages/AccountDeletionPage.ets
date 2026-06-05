@@ -4,6 +4,7 @@ import { AppCard } from '../ui/base/AppCard';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { RADIUS_MD } from '../foundation/tokens/RadiusTokens';
 import { AccountDeletionService } from '../services/AccountDeletionService';
 
 /**
@@ -11,12 +12,9 @@ import { AccountDeletionService } from '../services/AccountDeletionService';
  *
  * 上架合规要求：
  * 1. 必须有清晰可达的入口（已接入 UserPage）。
- * 2. 必须有显著告知：注销影响、宽限期、订阅退订等。
+ * 2. 必须有显著告知：注销影响、数据清理、订阅退订等。
  * 3. 必须二次确认。
  * 4. 提交后清理本地状态并提示用户。
- *
- * 当前版本：服务端 /api/auth/account/delete 端点尚未在生产上线（见上架任务清单 D2）。
- * 客户端按最终接口约定提交请求，若服务端未启用会得到接口错误，UI 会提示并记录日志。
  */
 @Entry
 @Component
@@ -28,8 +26,7 @@ struct AccountDeletionPage {
 
   private static readonly DELETION_NOTICE: string[] = [
     '注销账号是不可逆操作，请认真阅读以下条款后再继续。',
-    '提交申请后您的账号会进入 7 天注销宽限期，期间您可以重新登录撤销注销。',
-    '宽限期结束后，我们会按隐私政策清理或匿名化您的业务数据，并不可恢复。',
+    '提交申请后，服务端会立即清理您的账号及关联业务数据，操作完成后不可恢复。',
     '若您当前持有自动续费订阅，请先在华为应用市场取消订阅，避免续费产生费用。',
     '已使用的积分、会员权益、AI 历史记录等都不可继续使用或恢复。'
   ];
@@ -44,8 +41,8 @@ struct AccountDeletionPage {
       title: '确认注销账号',
       message: '注销账号是不可逆操作，确认要继续吗？',
       buttons: [
-        { text: '我再想想', color: '#888888' },
-        { text: '确认注销', color: '#D04848' }
+        { text: '我再想想', color: this.themeColors.textMuted },
+        { text: '确认注销', color: this.themeColors.danger }
       ]
     });
 
@@ -60,7 +57,7 @@ struct AccountDeletionPage {
         this.getUIContext().getPromptAction().showToast({ message: result.message });
         return;
       }
-      this.getUIContext().getPromptAction().showToast({ message: '注销申请已提交，您已退出登录' });
+      this.getUIContext().getPromptAction().showToast({ message: '账号已注销，您已退出登录' });
       this.getUIContext().getRouter().replaceUrl({ url: 'pages/MainPage' });
     } finally {
       this.submitting = false;
@@ -133,7 +130,7 @@ struct AccountDeletionPage {
               .placeholderColor(this.themeColors.textMuted)
               .fontColor(this.themeColors.textPrimary)
               .backgroundColor(this.themeColors.surfaceSoft)
-              .borderRadius(12)
+              .borderRadius(RADIUS_MD)
               .padding(SPACE_MD)
               .maxLength(200)
               .onChange((value: string) => {
@@ -158,7 +155,7 @@ struct AccountDeletionPage {
           }
 
           AppButton({
-            text: this.submitting ? '提交中...' : '提交注销申请',
+            text: this.submitting ? '提交中...' : '立即注销账号',
             variant: 'danger',
             iconName: 'warning',
             disabled: !this.agreed || this.submitting,
@@ -178,6 +175,7 @@ struct AccountDeletionPage {
       .width('100%')
       .padding({ bottom: PAGE_PADDING })
     }
+    .align(Alignment.Top)
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)

@@ -12,8 +12,10 @@ export type AppIconName =
   'habit' | 'milestone' | 'counter' | 'countdown' | 'stats' | 'wallet' | 'archive' | 'help' |
   'info' | 'ai' | 'plan' | 'progress' | 'action' | 'review' | 'warning' | 'success' | 'note' |
   'idea' | 'sync' | 'tomato' | 'noise' | 'rain' | 'storm' | 'wind' | 'water' | 'bird' |
-  'power' | 'radio' | 'phone' | 'gear' | 'profile' | 'search' | 'spark' | 'chevron-left' | 'chevron-right' |
-  'chevron-up' | 'chevron-down' | 'plus' | 'minus' | 'close' | 'unknown';
+  'power' | 'radio' | 'phone' | 'gear' | 'profile' | 'search' | 'spark' | 'voice' |
+  'edit' | 'delete' | 'share' | 'filter' | 'sort' | 'copy' | 'link' | 'lock' | 'unlock' | 'eye' | 'eye-off' |
+  'star' | 'star-fill' | 'heart' | 'flag' | 'tag' | 'location' | 'time' | 'date' |
+  'chevron-left' | 'chevron-right' | 'chevron-up' | 'chevron-down' | 'plus' | 'minus' | 'close' | 'unknown';
 
 export function normalizeAppIconName(value: string): AppIconName {
   switch (value) {
@@ -103,6 +105,46 @@ export function normalizeAppIconName(value: string): AppIconName {
       return 'search';
     case 'spark':
       return 'spark';
+    case 'voice':
+      return 'voice';
+    case 'edit':
+      return 'edit';
+    case 'delete':
+      return 'delete';
+    case 'share':
+      return 'share';
+    case 'filter':
+      return 'filter';
+    case 'sort':
+      return 'sort';
+    case 'copy':
+      return 'copy';
+    case 'link':
+      return 'link';
+    case 'lock':
+      return 'lock';
+    case 'unlock':
+      return 'unlock';
+    case 'eye':
+      return 'eye';
+    case 'eye-off':
+      return 'eye-off';
+    case 'star':
+      return 'star';
+    case 'star-fill':
+      return 'star-fill';
+    case 'heart':
+      return 'heart';
+    case 'flag':
+      return 'flag';
+    case 'tag':
+      return 'tag';
+    case 'location':
+      return 'location';
+    case 'time':
+      return 'time';
+    case 'date':
+      return 'date';
     case 'chevron-left':
       return 'chevron-left';
     case 'chevron-right':
@@ -172,6 +214,28 @@ export function getAppIconTone(value: string): AppTone {
     case 'plus':
     case 'minus':
       return 'primary';
+    case 'delete':
+      return 'warning';
+    case 'edit':
+    case 'share':
+    case 'filter':
+    case 'sort':
+    case 'copy':
+    case 'link':
+    case 'lock':
+    case 'unlock':
+    case 'eye':
+    case 'eye-off':
+    case 'star':
+    case 'star-fill':
+    case 'heart':
+    case 'flag':
+    case 'tag':
+    case 'location':
+    case 'time':
+    case 'date':
+    case 'voice':
+      return 'primary';
     default:
       return 'neutral';
   }
@@ -206,7 +270,7 @@ export struct AppIcon {
 
   private getSurfaceColor(): string {
     if (!this.framed) {
-      return 'rgba(0,0,0,0)';
+      return this.themeColors.transparent;
     }
     if (this.surfaceColor.length > 0) {
       return this.surfaceColor;
@@ -215,7 +279,7 @@ export struct AppIcon {
   }
 
   private getBorderColor(): string {
-    return this.framed ? getToneBorderColor(this.themeColors, this.getTone()) + '40' : 'rgba(0,0,0,0)';
+    return this.framed ? getToneBorderColor(this.themeColors, this.getTone()) + '40' : this.themeColors.transparent;
   }
 
   private getStroke(): number {
@@ -238,6 +302,7 @@ export struct AppIcon {
       case 'success':
       case 'warning':
       case 'info':
+      case 'help':
       case 'goal':
       case 'task':
       case 'reminder':
@@ -255,7 +320,55 @@ export struct AppIcon {
       case 'note':
       case 'gear':
       case 'plus':
+      case 'minus':
       case 'close':
+      case 'habit':
+      case 'milestone':
+      case 'counter':
+      case 'countdown':
+      case 'stats':
+      case 'progress':
+      case 'plan':
+      case 'action':
+      case 'review':
+      case 'sync':
+      case 'idea':
+      case 'spark':
+      case 'ai':
+      case 'voice':
+      case 'noise':
+      case 'rain':
+      case 'storm':
+      case 'wind':
+      case 'water':
+      case 'bird':
+      case 'radio':
+      case 'tomato':
+      case 'power':
+      case 'phone':
+      case 'health':
+      case 'growth':
+      case 'finance':
+      case 'joy':
+      case 'edit':
+      case 'delete':
+      case 'share':
+      case 'filter':
+      case 'sort':
+      case 'copy':
+      case 'link':
+      case 'lock':
+      case 'unlock':
+      case 'eye':
+      case 'eye-off':
+      case 'star':
+      case 'star-fill':
+      case 'heart':
+      case 'flag':
+      case 'tag':
+      case 'location':
+      case 'time':
+      case 'date':
         return true;
       default:
         return false;
@@ -264,12 +377,16 @@ export struct AppIcon {
 
   private getSystemSymbolResource(iconName: AppIconName): Resource {
     switch (iconName) {
+      case 'success':
+        return $r('sys.symbol.checkmark');
       case 'warning':
         return $r('sys.symbol.exclamationmark_triangle_fill');
       case 'info':
         return $r('sys.symbol.info_circle');
+      case 'help':
+        return $r('sys.symbol.questionmark_circle');
       case 'goal':
-        return $r('sys.symbol.flag');
+        return $r('sys.symbol.flag_fill');
       case 'task':
         return $r('sys.symbol.list_checkmask');
       case 'reminder':
@@ -279,9 +396,9 @@ export struct AppIcon {
       case 'calendar':
         return $r('sys.symbol.calendar');
       case 'today':
-        return $r('sys.symbol.house');
+        return $r('sys.symbol.house_fill');
       case 'profile':
-        return $r('sys.symbol.person');
+        return $r('sys.symbol.person_fill');
       case 'search':
         return $r('sys.symbol.magnifyingglass');
       case 'chevron-left':
@@ -302,9 +419,102 @@ export struct AppIcon {
         return $r('sys.symbol.gearshape');
       case 'plus':
         return $r('sys.symbol.plus');
+      case 'minus':
+        return $r('sys.symbol.minus');
       case 'close':
         return $r('sys.symbol.xmark');
-      case 'success':
+      case 'habit':
+      case 'sync':
+        return $r('sys.symbol.arrow_clockwise');
+      case 'milestone':
+        return $r('sys.symbol.star_fill');
+      case 'counter':
+        return $r('sys.symbol.plus_circle');
+      case 'countdown':
+        return $r('sys.symbol.hourglass');
+      case 'stats':
+        return $r('sys.symbol.list_checkmask');
+      case 'progress':
+        return $r('sys.symbol.list_checkmask');
+      case 'plan':
+        return $r('sys.symbol.doc_text');
+      case 'action':
+        return $r('sys.symbol.bolt');
+      case 'review':
+        return $r('sys.symbol.eye');
+      case 'idea':
+        return $r('sys.symbol.lightbulb');
+      case 'spark':
+      case 'ai':
+        return $r('sys.symbol.wand_and_stars');
+      case 'voice':
+        return $r('sys.symbol.mic');
+      case 'noise':
+        return $r('sys.symbol.speaker_wave_2');
+      case 'rain':
+        return $r('sys.symbol.cloud');
+      case 'storm':
+        return $r('sys.symbol.cloud');
+      case 'wind':
+        return $r('sys.symbol.wind');
+      case 'water':
+        return $r('sys.symbol.drop');
+      case 'bird':
+        return $r('sys.symbol.mic');
+      case 'radio':
+        return $r('sys.symbol.radio');
+      case 'tomato':
+        return $r('sys.symbol.timer');
+      case 'power':
+        return $r('sys.symbol.power');
+      case 'phone':
+        return $r('sys.symbol.phone');
+      case 'health':
+        return $r('sys.symbol.heart_fill');
+      case 'growth':
+        return $r('sys.symbol.arrow_up_right');
+      case 'finance':
+        return $r('sys.symbol.circle');
+      case 'joy':
+        return $r('sys.symbol.face_smiling');
+      case 'edit':
+        return $r('sys.symbol.square_and_pencil');
+      case 'delete':
+        return $r('sys.symbol.trash');
+      case 'share':
+        return $r('sys.symbol.share');
+      case 'filter':
+        return $r('sys.symbol.list_checkmask');
+      case 'sort':
+        return $r('sys.symbol.chevron_up');
+      case 'copy':
+        return $r('sys.symbol.doc_text');
+      case 'link':
+        return $r('sys.symbol.link');
+      case 'lock':
+        return $r('sys.symbol.lock');
+      case 'unlock':
+        return $r('sys.symbol.lock_open');
+      case 'eye':
+        return $r('sys.symbol.eye');
+      case 'eye-off':
+        return $r('sys.symbol.eye_slash');
+      case 'star':
+        return $r('sys.symbol.star');
+      case 'star-fill':
+        return $r('sys.symbol.star_fill');
+      case 'heart':
+        return $r('sys.symbol.heart');
+      case 'flag':
+        return $r('sys.symbol.flag');
+      case 'tag':
+        return $r('sys.symbol.bookmark');
+      case 'location':
+        return $r('sys.symbol.flag');
+      case 'time':
+        return $r('sys.symbol.clock');
+      case 'date':
+        return $r('sys.symbol.calendar');
       default:
         return $r('sys.symbol.checkmark');
     }
@@ -558,13 +768,17 @@ export struct AppIcon {
 
   @Builder
   private SystemSymbolMark(resource: Resource, color: string) {
-    SymbolGlyph(resource)
-      .fontSize(this.iconSize * 0.78)
-      .fontColor([color])
-      .fontWeight(ICON_SYMBOL_DEFAULT_WEIGHT)
-      .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-      .width(this.iconSize)
-      .height(this.iconSize)
+    Row() {
+      SymbolGlyph(resource)
+        .fontSize(this.iconSize * 0.78)
+        .fontColor([color])
+        .fontWeight(ICON_SYMBOL_DEFAULT_WEIGHT)
+        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+    }
+    .width(this.iconSize)
+    .height(this.iconSize)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
   }
 
   @Builder

@@ -10,9 +10,6 @@ import { getEventsForDate } from '../common/DayEventUtils';
 import { Logger } from '../Utils/Logger';
 import {
   createReminderAutoTask,
-  planNextReminderTask,
-  shouldKeepPendingReminderTask,
-  ReminderTaskPlan,
   autoCompleteExpirations,
   getReminderCompletionCandidate
 } from '../services/ReminderTaskService';
@@ -53,6 +50,24 @@ export class Database {
   private dataChangeListeners: Array<() => void> = [];
 
   private constructor() {}
+
+  private cloneTasks(tasks: Task[]): Task[] {
+    const tasksJson: string = JSON.stringify(tasks);
+    const tasksData: TaskData[] = JSON.parse(tasksJson) as TaskData[];
+    return tasksData.map((task: TaskData) => Task.fromJSON(task));
+  }
+
+  private clonePomodoros(pomodoros: Pomodoro[]): Pomodoro[] {
+    const pomodorosJson: string = JSON.stringify(pomodoros);
+    const pomodoroData: PomodoroData[] = JSON.parse(pomodorosJson) as PomodoroData[];
+    return pomodoroData.map((pomodoro: PomodoroData) => Pomodoro.fromJSON(pomodoro));
+  }
+
+  private cloneDayEvents(events: DayEvent[]): DayEvent[] {
+    const eventsJson: string = JSON.stringify(events);
+    const eventsData: DayEventData[] = JSON.parse(eventsJson) as DayEventData[];
+    return eventsData.map((event: DayEventData) => DayEvent.fromJSON(event));
+  }
 
   static getInstance(): Database {
     if (!Database.instance) {
@@ -257,15 +272,15 @@ export class Database {
   }
 
   getTasksByGoalId(goalId: string): Task[] {
-    return this.tasks.filter((t: Task) => t.goalId === goalId);
+    return this.cloneTasks(this.tasks.filter((t: Task) => t.goalId === goalId));
   }
 
   getPendingTasks(): Task[] {
-    return this.tasks.filter((t: Task) => t.status === TaskStatus.PENDING);
+    return this.cloneTasks(this.tasks.filter((t: Task) => t.status === TaskStatus.PENDING));
   }
 
   getCompletedTasks(): Task[] {
-    return this.tasks.filter((t: Task) => t.status === TaskStatus.COMPLETED);
+    return this.cloneTasks(this.tasks.filter((t: Task) => t.status === TaskStatus.COMPLETED));
   }
 
   getTasksByReminderId(reminderId: string): Task[] {
@@ -348,15 +363,15 @@ export class Database {
   }
 
   getCompletedPomodorosByTaskId(taskId: string): Pomodoro[] {
-    return this.pomodoros.filter((p: Pomodoro) => p.taskId === taskId && p.completed);
+    return this.clonePomodoros(this.pomodoros.filter((p: Pomodoro) => p.taskId === taskId && p.completed));
   }
 
   getPomodorosByTaskId(taskId: string): Pomodoro[] {
-    return this.pomodoros.filter((p: Pomodoro) => p.taskId === taskId);
+    return this.clonePomodoros(this.pomodoros.filter((p: Pomodoro) => p.taskId === taskId));
   }
 
   getAllPomodoros(): Pomodoro[] {
-    return this.pomodoros;
+    return this.clonePomodoros(this.pomodoros);
   }
 
   getAllDayEvents(): DayEvent[] {
@@ -398,7 +413,7 @@ export class Database {
   }
 
   getDayEventsByType(type: string): DayEvent[] {
-    return this.dayEvents.filter((d: DayEvent) => d.type === type);
+    return this.cloneDayEvents(this.dayEvents.filter((d: DayEvent) => d.type === type));
   }
 
   async addDayEvent(event: DayEvent): Promise<void> {
@@ -459,7 +474,19 @@ export class Database {
     const event = this.dayEvents.find((d: DayEvent) => d.id === eventId);
     if (event) {
       event.isEnabled = true;
+      event.isCompleted = false;
       event.skipOnceUntil = undefined;
+      event.updatedAt = Date.now();
+      await this.saveDayEvents();
+      await this.syncReminderAutoTasks(Date.now(), eventId);
+    }
+  }
+
+  async endDayEvent(eventId: string): Promise<void> {
+    const event = this.dayEvents.find((d: DayEvent) => d.id === eventId);
+    if (event) {
+      event.isCompleted = true;
+      event.isEnabled = false;
       event.updatedAt = Date.now();
       await this.saveDayEvents();
       await this.syncReminderAutoTasks(Date.now(), eventId);
@@ -477,26 +504,29 @@ export class Database {
       return false;
     }
 
+    // 如果已有关联的 pending auto task（历史遗留），直接完成它
     let task = candidate.task;
-    if (!task) {
-      const nextPlan = planNextReminderTask(event, this.tasks, referenceTime);
-      const occurrenceTime = candidate.occurrenceTime || nextPlan?.occurrenceTime || referenceTime;
-      const fallbackPlan: ReminderTaskPlan = {
-        occurrenceTime,
-        dueDate: occurrenceTime,
-        summary: '本次提醒'
-      };
-      const plan = nextPlan && nextPlan.occurrenceTime === occurrenceTime ? nextPlan : fallbackPlan;
-      task = createReminderAutoTask(event, plan);
-      this.tasks.unshift(task);
+    if (task) {
+      if (task.status !== TaskStatus.COMPLETED) {
+        task.complete();
+        if (candidate.occurrenceTime) {
+          task.reminderOccurrenceTime = candidate.occurrenceTime;
+        }
+      }
+      await this.save();
+      await this.syncReminderAutoTasks(referenceTime, eventId);
+      return true;
     }
 
-    if (task.status !== TaskStatus.COMPLETED) {
-      task.complete();
-      if (candidate.occurrenceTime) {
-        task.reminderOccurrenceTime = candidate.occurrenceTime;
-      }
-    }
+    // 新逻辑：创建一条已完成的记录任务（仅用于完成追踪，不再创建 pending 任务）
+    const occurrenceTime = candidate.occurrenceTime || referenceTime;
+    const completionTask = createReminderAutoTask(event, {
+      occurrenceTime,
+      dueDate: occurrenceTime,
+      summary: '本次提醒'
+    });
+    completionTask.complete();
+    this.tasks.unshift(completionTask);
 
     await this.save();
     await this.syncReminderAutoTasks(referenceTime, eventId);
@@ -565,41 +595,16 @@ export class Database {
     for (const event of targetEvents) {
       changed = this.syncReminderLinkedTaskTitles(event) || changed;
 
+      // 清理所有 pending 的自动任务（不再自动创建新的）
       const pendingAutoTasks = this.tasks
-        .filter((task: Task) => task.reminderId === event.id && task.isReminderAutoGenerated && task.status === TaskStatus.PENDING)
-        .sort((first: Task, second: Task) => {
-          return (first.reminderOccurrenceTime || 0) - (second.reminderOccurrenceTime || 0);
-        });
-
-      const plan = planNextReminderTask(event, this.tasks, referenceTime);
+        .filter((task: Task) => task.reminderId === event.id && task.isReminderAutoGenerated && task.status === TaskStatus.PENDING);
 
       if (pendingAutoTasks.length > 0) {
-        const firstPendingTask = pendingAutoTasks[0];
-        const keepCurrentPending = plan !== null && shouldKeepPendingReminderTask(event, this.tasks, firstPendingTask, referenceTime);
-
-        if (!keepCurrentPending) {
-          const beforeCount = this.tasks.length;
-          this.tasks = this.tasks.filter((task: Task) => {
-            return !(task.reminderId === event.id && task.isReminderAutoGenerated && task.status === TaskStatus.PENDING);
-          });
-          changed = changed || beforeCount !== this.tasks.length;
-        } else {
-          changed = this.updatePendingReminderTask(firstPendingTask, event, plan!) || changed;
-          if (pendingAutoTasks.length > 1) {
-            const duplicateIds = pendingAutoTasks.slice(1).map((task: Task) => task.id);
-            this.tasks = this.tasks.filter((task: Task) => !duplicateIds.includes(task.id));
-            changed = true;
-          }
-        }
-      }
-
-      const hasPendingAutoTask = this.tasks.some((task: Task) => {
-        return task.reminderId === event.id && task.isReminderAutoGenerated && task.status === TaskStatus.PENDING;
-      });
-
-      if (!hasPendingAutoTask && plan) {
-        this.tasks.unshift(createReminderAutoTask(event, plan));
-        changed = true;
+        const beforeCount = this.tasks.length;
+        this.tasks = this.tasks.filter((task: Task) => {
+          return !(task.reminderId === event.id && task.isReminderAutoGenerated && task.status === TaskStatus.PENDING);
+        });
+        changed = changed || beforeCount !== this.tasks.length;
       }
     }
 
@@ -650,38 +655,6 @@ export class Database {
     });
     return changed;
   }
-  private updatePendingReminderTask(task: Task, event: DayEvent, plan: ReminderTaskPlan): boolean {
-    let changed = false;
-    const nextDescription = `来自提醒：${plan.summary}`;
-
-    if (task.title !== event.title) {
-      task.title = event.title;
-      changed = true;
-    }
-    if (task.reminderTitle !== event.title) {
-      task.reminderTitle = event.title;
-      changed = true;
-    }
-    if (task.description !== nextDescription) {
-      task.description = nextDescription;
-      changed = true;
-    }
-    if (task.reminderOccurrenceTime !== plan.occurrenceTime) {
-      task.reminderOccurrenceTime = plan.occurrenceTime;
-      changed = true;
-    }
-    if (task.dueDate !== plan.dueDate) {
-      task.dueDate = plan.dueDate;
-      changed = true;
-    }
-
-    if (changed) {
-      task.updatedAt = Date.now();
-    }
-
-    return changed;
-  }
-
   private syncDayEventGoalLinks(goal: Goal): boolean {
     let changed = false;
     this.dayEvents.forEach((event: DayEvent) => {

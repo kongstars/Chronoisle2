@@ -1,0 +1,21 @@
+--- current/entry\src\main\ets\services\CreditService.ets
++++ backup/entry\src\main\ets\services\CreditService.ets
+@@ -5,9 +5,6 @@
+ import { TelemetryErrorCode } from '../models/TelemetryErrorCode';
+ import { type TelemetryProperties } from './TelemetryService';
+ import { AppErrorService } from './AppErrorService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('CreditService');
+ 
+ export type CreditTransactionType = 'earn' | 'spend';
+ export type CreditTransactionFilter = 'all' | CreditTransactionType;
+@@ -99,7 +96,7 @@
+       }
+       return result;
+     } catch (error) {
+-      logger.error('CreditService getTransactions failed', error as Object);
++      console.error('CreditService getTransactions failed:', JSON.stringify(error));
+       trackNetworkError(requestPath, error);
+       return {
+         success: false,

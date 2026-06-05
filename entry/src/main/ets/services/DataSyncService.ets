@@ -19,36 +19,50 @@ export class DataSyncService {
     }
     return DataSyncService.instance;
   }
+
+  private cloneGoal(goal: Goal): Goal {
+    return Goal.fromJSON(JSON.parse(JSON.stringify(goal)) as GoalData);
+  }
+
+  private cloneTask(task: Task): Task {
+    return Task.fromJSON(JSON.parse(JSON.stringify(task)) as TaskData);
+  }
+
+  private cloneGoals(goals: Goal[]): Goal[] {
+    return goals.map((goal: Goal) => this.cloneGoal(goal));
+  }
+
+  private cloneTasks(tasks: Task[]): Task[] {
+    return tasks.map((task: Task) => this.cloneTask(task));
+  }
+
   setGoals(goals: Goal[]): void {
-    // 直接赋值，因为Goal和Task是引用类型
-    this.goals = goals;
+    this.goals = this.cloneGoals(goals);
     this.notifyListeners();
   }
   setTasks(tasks: Task[]): void {
-    // 直接赋值，因为Goal和Task是引用类型
-    this.tasks = tasks;
+    this.tasks = this.cloneTasks(tasks);
     this.notifyListeners();
   }
   getGoals(): Goal[] {
-    // 直接返回原数组，因为ArkTS不支持对象展开
-    return this.goals;
+    return this.cloneGoals(this.goals);
   }
   getTasks(): Task[] {
-    // 直接返回原数组，因为ArkTS不支持对象展开
-    return this.tasks;
+    return this.cloneTasks(this.tasks);
   }
   updateGoal(updatedGoal: Goal): void {
     const index = this.goals.findIndex(g => g.id === updatedGoal.id);
+    const goalCopy = this.cloneGoal(updatedGoal);
     
     // 创建新数组以确保触发响应式更新
     const newGoals = this.goals.slice();
     
     if (index !== -1) {
       // 目标已存在：直接赋值
-      newGoals[index] = updatedGoal;
+      newGoals[index] = goalCopy;
     } else {
       // 目标不存在：添加它
-      newGoals.push(updatedGoal);
+      newGoals.push(goalCopy);
     }
     
     this.goals = newGoals;
@@ -56,16 +70,17 @@ export class DataSyncService {
   }
   updateTask(updatedTask: Task): void {
     const index = this.tasks.findIndex(t => t.id === updatedTask.id);
+    const taskCopy = this.cloneTask(updatedTask);
     
     // 创建新数组以确保触发响应式更新
     const newTasks = this.tasks.slice();
     
     if (index !== -1) {
       // 任务已存在：直接赋值
-      newTasks[index] = updatedTask;
+      newTasks[index] = taskCopy;
     } else {
       // 任务不存在：添加它
-      newTasks.push(updatedTask);
+      newTasks.push(taskCopy);
     }
     
     this.tasks = newTasks;

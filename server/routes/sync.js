@@ -1,5 +1,6 @@
 const express = require('express');
 const SyncData = require('../models/SyncData');
+const { sendSuccess, sendError, logRequestError } = require('../utils/apiResponse');
 
 const router = express.Router();
 
@@ -14,16 +15,14 @@ router.get('/data', checkUser, async (req, res) => {
     const metaOnly = await SyncData.findOne({ userId }).select({ updatedAt: 1 });
 
     if (!metaOnly) {
-      return res.json({
-        success: true,
+      return sendSuccess(res, {
         data: { goals: [], tasks: [], dayEvents: [], pomodoros: [], updatedAt: 0 }
       });
     }
 
     // 若客户端已持有最新版本，返回空数据 + unchanged 标记，减少传输量
     if (updatedSince > 0 && metaOnly.updatedAt && metaOnly.updatedAt <= updatedSince) {
-      return res.json({
-        success: true,
+      return sendSuccess(res, {
         unchanged: true,
         data: { goals: [], tasks: [], dayEvents: [], pomodoros: [], updatedAt: metaOnly.updatedAt }
       });
@@ -32,8 +31,7 @@ router.get('/data', checkUser, async (req, res) => {
     // 需要全量数据时才加载所有数组
     const syncData = await SyncData.findOne({ userId });
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       data: {
         goals: syncData.goals,
         tasks: syncData.tasks,
@@ -43,8 +41,8 @@ router.get('/data', checkUser, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('获取同步数据失败:', error);
-    res.status(500).json({ success: false, message: '服务器内部错误' });
+    logRequestError('sync.get-data', req, error, '获取同步数据失败');
+    return sendError(res, 500, 'SYNC_FETCH_FAILED', '服务器内部错误');
   }
 });
 
@@ -66,14 +64,13 @@ router.post('/data', checkUser, async (req, res) => {
 
     await syncData.save();
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       message: '数据同步成功',
       updatedAt: syncData.updatedAt
     });
   } catch (error) {
-    console.error('上传同步数据失败:', error);
-    res.status(500).json({ success: false, message: '服务器内部错误' });
+    logRequestError('sync.post-data', req, error, '上传同步数据失败');
+    return sendError(res, 500, 'SYNC_UPLOAD_FAILED', '服务器内部错误');
   }
 });
 

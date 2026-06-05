@@ -39,13 +39,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "storeFile": "D:/key/zhengshimiyao.p12",
-          "storePassword": "0000001F8C731340D1724BF9647F86C93A80DAED1B1F3BAA6A10F90317E8521FC26407AF8F35FA2BF5D72FE306D63E",
-          "keyAlias": "key",
-          "keyPassword": "0000001F9411A66A370E1F0A2D21A93AF49FC0D5013D7D979B06A8DC1D655C17D590874C602869FBA34DD072BAA60B",
+          "certpath": "C:\\Users\\tianchen\\.ohos\\config\\default_Chronoisle2_oHOuMEedB7no3BQCEv6-N7vYlT70AGPZKkzUU-6siLo=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B40102AF5A27A5B3C1BFD47CBBA428BA5319E1225E5D9DF7FC8AE4D68E8F0F5BD3243D1AC4697CB",
+          "profile": "C:\\Users\\tianchen\\.ohos\\config\\default_Chronoisle2_oHOuMEedB7no3BQCEv6-N7vYlT70AGPZKkzUU-6siLo=.p7b",
           "signAlg": "SHA256withECDSA",
-          "profile": "C:/Users/tianchen/Downloads/shoucifabuRelease.p7b",
-          "certpath": "C:/Users/tianchen/Downloads/上架证书.cer"
+          "storeFile": "C:\\Users\\tianchen\\.ohos\\config\\default_Chronoisle2_oHOuMEedB7no3BQCEv6-N7vYlT70AGPZKkzUU-6siLo=.p12",
+          "storePassword": "0000001B371BA6F930D9DDE9EF4156152BFAEA2CBC908DE4EBB7E9E4DBA5BE38B0906B8E5CB68C435C9BEC"
         }
       },
       {
@@ -58,7 +58,7 @@
           "keyPassword": "0000001FAB0E2A652DEC07B98736AFC00CCFDD9CE1FF0E038584CDB56B7A86D5D3AD885D7BF865AA4021CEB4E51783",
           "signAlg": "SHA256withECDSA",
           "profile": "C:/Users/tianchen/Downloads/shoucifabuRelease.p7b",
-          "certpath": "C:/Users/tianchen/Downloads/auto_debug_260086000048781707.cer.cer"
+          "certpath": "C:/Users/tianchen/Downloads/release_cert.cer"
         }
       }
     ]

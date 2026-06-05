@@ -1,0 +1,52 @@
+--- current/entry\src\main\ets\services\UsageService.ets
++++ backup/entry\src\main\ets\services\UsageService.ets
+@@ -1,9 +1,6 @@
+ import http from '@ohos.net.http';
+ import AppConfig from '../Utils/AppConfig';
+ import { authService } from './AuthService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('UsageService');
+ 
+ interface UsageDetail {
+   duration?: number;
+@@ -34,7 +31,7 @@
+     try {
+       const token = await authService.getToken();
+       if (!token) {
+-        logger.warn('未登录，跳过语音用量上报');
++        console.warn('[UsageService] 未登录，跳过语音用量上报');
+         return;
+       }
+ 
+@@ -64,13 +61,13 @@
+       );
+ 
+       if (response.responseCode === 200) {
+-        logger.debug(`语音用量上报成功: ${durationSeconds}秒`);
++        console.info(`[UsageService] 语音用量上报成功: ${durationSeconds}秒`);
+       } else {
+-        logger.warn(`语音用量上报失败, HTTP ${response.responseCode}`);
++        console.warn(`[UsageService] 语音用量上报失败, HTTP ${response.responseCode}`);
+       }
+       httpRequest.destroy();
+     } catch (error) {
+-      logger.error('语音用量上报异常', error as Object);
++      console.error('[UsageService] 语音用量上报异常:', JSON.stringify(error));
+     }
+   }
+ 
+@@ -112,11 +109,11 @@
+       );
+ 
+       if (response.responseCode === 200) {
+-        logger.debug(`AI ${feature} ${action} 上报`);
++        console.info(`[UsageService] AI ${feature} ${action} 上报`);
+       }
+       httpRequest.destroy();
+     } catch (error) {
+-      logger.error('AI 埋点异常', error as Object);
++      console.error('[UsageService] AI 埋点异常');
+     }
+   }
+ }

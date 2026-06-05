@@ -1,0 +1,228 @@
+--- current/entry\src\main\ets\pages\TodayPlanPage.ets
++++ backup/entry\src\main\ets\pages\TodayPlanPage.ets
+@@ -1,3 +1,4 @@
++import promptAction from '@ohos.promptAction';
+ import { ThemeColors, LightTheme } from '../theme/AppTheme';
+ import { cloneSavedTodayPlan, type SavedPlanTaskItem, type SavedTodayPlan, type TodayPlanSource } from '../models/TodayPlan';
+ import { Task, TaskStatus } from '../models/Task';
+@@ -7,7 +8,6 @@
+ import { QuotaService } from '../services/QuotaService';
+ import { TelemetryService } from '../services/TelemetryService';
+ import { UsageService } from '../services/UsageService';
+-import { AgentService } from '../services/AgentService';
+ import { AppErrorService } from '../services/AppErrorService';
+ import { AppButton } from '../ui/base/AppButton';
+ import { AppCard } from '../ui/base/AppCard';
+@@ -19,21 +19,8 @@
+ import { AppStatusBadge } from '../ui/base/AppStatusBadge';
+ import { PAGE_PADDING, SECTION_GAP, SPACE_CARD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+ import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('TodayPlanPage');
+ 
+ type PlanTaskAction = 'none' | 'move_to_defer' | 'move_to_focus';
+-
+-interface TaskSummaryItem {
+-  id: string;
+-  title: string;
+-  dueDate?: number;
+-  isOverdue: boolean;
+-  estimatedHours?: number;
+-  priority: string;
+-  isImportant: boolean;
+-}
+ 
+ @Entry
+ @Component
+@@ -48,7 +35,6 @@
+   @State availableTasks: Task[] = [];
+   @State showSupplementTasks: boolean = false;
+   @State isSaving: boolean = false;
+-  @State isGeneratingPlan: boolean = false;
+   @State emptyMessage: string = '';
+ 
+   aboutToAppear(): void {
+@@ -68,9 +54,9 @@
+       const pendingPlan = result.source === 'cloud_pending' ? result.plan : result.cloudPendingPlan;
+       this.editablePendingPlan = pendingPlan ? cloneSavedTodayPlan(pendingPlan) : null;
+       this.showSupplementTasks = false;
+-      this.emptyMessage = '';
++      this.emptyMessage = result.message ? AppErrorService.fromMessage(result.message, '加载今日计划失败') : '';
+     } catch (error) {
+-      logger.error('TodayPlanPage load error', error as Object);
++      console.error('TodayPlanPage load error:', JSON.stringify(error));
+       this.plan = null;
+       this.planSource = 'none';
+       this.cloudPendingPlan = null;
+@@ -102,14 +88,14 @@
+           return (first.dueDate || Number.MAX_SAFE_INTEGER) - (second.dueDate || Number.MAX_SAFE_INTEGER);
+         });
+     } catch (error) {
+-      logger.error('TodayPlanPage loadAvailableTasks error', error as Object);
++      console.error('TodayPlanPage loadAvailableTasks error:', JSON.stringify(error));
+       return [];
+     }
+   }
+ 
+   private showToast(message: string): void {
+     try {
+-      this.getUIContext().getPromptAction().showToast({ message });
++      promptAction.showToast({ message });
+     } catch (_) {
+     }
+   }
+@@ -229,7 +215,7 @@
+         params: { taskId: taskId }
+       });
+     } catch (error) {
+-      logger.error('TodayPlanPage openTaskDetail error', error as Object);
++      console.error('TodayPlanPage openTaskDetail error:', JSON.stringify(error));
+       this.showToast('暂时无法打开任务详情');
+     }
+   }
+@@ -388,94 +374,10 @@
+       this.showToast('今日计划已更新');
+       this.getUIContext().getRouter().replaceUrl({ url: 'pages/MainPage' });
+     } catch (error) {
+-      logger.error('TodayPlanPage adopt error', error as Object);
++      console.error('TodayPlanPage adopt error:', JSON.stringify(error));
+       this.showToast('更新失败，请稍后重试');
+     } finally {
+       this.isSaving = false;
+-    }
+-  }
+-
+-  private async handleGeneratePlan(): Promise<void> {
+-    if (this.isGeneratingPlan) {
+-      return;
+-    }
+-    const context = this.getUIContext().getHostContext() as Context;
+-
+-    this.isGeneratingPlan = true;
+-    try {
+-      const pendingTasks = this.availableTasks.length > 0
+-        ? this.availableTasks
+-        : await this.loadAvailableTasks(context);
+-      if (pendingTasks.length === 0) {
+-        this.showToast('当前没有待办任务，请先创建任务');
+-        return;
+-      }
+-      const summaryItems: TaskSummaryItem[] = pendingTasks.map((task: Task) => {
+-        const item: TaskSummaryItem = {
+-          id: task.id,
+-          title: task.title,
+-          isOverdue: task.isOverdue,
+-          priority: task.priority || 'normal',
+-          isImportant: task.isImportant || false
+-        };
+-        if (task.dueDate !== undefined) {
+-          item.dueDate = task.dueDate;
+-        }
+-        if (task.estimatedHours !== undefined) {
+-          item.estimatedHours = task.estimatedHours;
+-        }
+-        return item;
+-      });
+-      const summary = JSON.stringify(summaryItems);
+-      const generated = await AgentService.generateTodayPlan(summary);
+-      if (!generated || (!generated.focusTasks.length && !generated.deferTasks.length)) {
+-        this.showToast('AI 暂时无法生成有效计划，请手动选择任务');
+-        return;
+-      }
+-      const taskMap: Record<string, Task> = {};
+-      pendingTasks.forEach((task: Task) => {
+-        taskMap[task.id] = task;
+-      });
+-
+-      const pendingPlan: SavedTodayPlan = {
+-        focusTasks: (generated.focusTasks || []).map((fItem) => {
+-          const resolvedTask = taskMap[fItem.id];
+-          const taskItem: SavedPlanTaskItem = {
+-            id: fItem.id,
+-            title: resolvedTask ? resolvedTask.title : fItem.id
+-          };
+-          taskItem.reason = fItem.reason || 'AI 推荐今日聚焦';
+-          if (resolvedTask && resolvedTask.estimatedHours && resolvedTask.estimatedHours > 0) {
+-            taskItem.estimatedMinutes = Math.round(resolvedTask.estimatedHours * 60);
+-          }
+-          return taskItem;
+-        }),
+-        deferTasks: (generated.deferTasks || []).map((taskId: string) => {
+-          const resolvedTask = taskMap[taskId];
+-          const taskItem: SavedPlanTaskItem = {
+-            id: taskId,
+-            title: resolvedTask ? resolvedTask.title : taskId
+-          };
+-          taskItem.reason = '建议延后，释放今天带宽';
+-          return taskItem;
+-        }),
+-        summary: generated.summary || 'AI 今日计划',
+-        totalEstimatedHours: generated.totalEstimatedHours,
+-        groupedTasks: generated.groupedTasks,
+-        planSource: 'cloud_pending',
+-        sourceGeneratedAt: Date.now()
+-      };
+-      this.cloudPendingPlan = pendingPlan;
+-      this.cloudPendingGeneratedAt = Date.now();
+-      this.editablePendingPlan = cloneSavedTodayPlan(pendingPlan);
+-      this.showSupplementTasks = false;
+-      this.emptyMessage = '';
+-      this.showToast('AI 计划已生成，请调整后采纳');
+-    } catch (error) {
+-      logger.error('TodayPlanPage generatePlan error', error as Object);
+-      this.showToast('AI 生成失败，请稍后重试');
+-    } finally {
+-      this.isGeneratingPlan = false;
+     }
+   }
+ 
+@@ -495,8 +397,6 @@
+       Text(this.getHeroTitle())
+         .fontSize(22)
+         .fontWeight(FontWeight.Bold)
+-        .maxLines(2)
+-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+         .fontColor(this.themeColors.textPrimary)
+         .width('100%')
+ 
+@@ -667,16 +567,14 @@
+     Column({ space: SPACE_SM }) {
+       if (!this.getPrimaryPlan()) {
+         AppDialogActions({
+-          secondaryText: '手动选择任务',
+-          primaryText: this.isGeneratingPlan ? '生成中...' : 'AI 生成计划',
+-          primaryIconName: 'ai',
+-          primaryLoading: this.isGeneratingPlan,
+-          primaryDisabled: this.isGeneratingPlan,
++          secondaryText: '返回首页',
++          primaryText: '手动选择任务',
++          primaryIconName: 'task',
+           onSecondary: () => {
+-            this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskSelectPage' });
++            this.getUIContext().getRouter().back();
+           },
+           onPrimary: () => {
+-            void this.handleGeneratePlan();
++            this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskSelectPage' });
+           }
+         })
+       } else if (this.isPendingPreview()) {
+@@ -747,11 +645,13 @@
+                 iconName: 'plan',
+                 iconTone: 'primary',
+                 title: '今天还没有可用计划',
+-                description: '暂时还没有预生成结果。你可以让 AI 根据当前待办即时生成一份计划，也可以手动挑选任务。',
+-                actionText: this.isGeneratingPlan ? '生成中...' : 'AI 生成计划',
+-                actionIconName: 'ai',
++                description: this.emptyMessage && this.emptyMessage.length > 0
++                  ? this.emptyMessage
++                  : '暂时还没有预生成结果。你可以先手动挑选任务，后续再回来采纳 AI 计划。',
++                actionText: '手动选择任务',
++                actionIconName: 'task',
+                 onAction: () => {
+-                  void this.handleGeneratePlan();
++                  this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskSelectPage' });
+                 }
+               })
+             } else {

@@ -1,0 +1,379 @@
+--- current/entry\src\main\ets\pages\TaskDetailPage.ets
++++ backup/entry\src\main\ets\pages\TaskDetailPage.ets
+@@ -1,9 +1,11 @@
++import router from '@ohos.router';
+ import { TaskPriority, TaskStatus, type Task, type Subtask } from '../models/Task';
+ import { type Goal } from '../models/Goal';
+ import { type Pomodoro } from '../models/Pomodoro';
+ import { db } from '../storage/Database';
+ import { LightTheme, type ThemeColors } from '../theme/AppTheme';
+ import { authService } from '../services/AuthService';
++import promptAction from '@ohos.promptAction';
+ import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
+ import { AppButton } from '../ui/base/AppButton';
+ import { AppCard } from '../ui/base/AppCard';
+@@ -11,12 +13,8 @@
+ import { AppIcon } from '../ui/base/AppIcon';
+ import { AppPageHeader } from '../ui/base/AppPageHeader';
+ import { AVATAR_SIZE_MD, BUTTON_HEIGHT_MD, BUTTON_HEIGHT_SM, CHECKBOX_SIZE_SM, ICON_BUTTON_SIZE_SM } from '../foundation/tokens/ComponentSizeTokens';
+-import { ICON_SIZE_SM, ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
+-import { PAGE_PADDING, PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XL, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+-import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('TaskDetailPage');
++import { ICON_SIZE_SM } from '../foundation/tokens/IconTokens';
++import { PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XL, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+ 
+ @Entry
+ @Component
+@@ -31,7 +29,7 @@
+   @State newSubtaskTitle: string = '';
+ 
+   aboutToAppear(): void {
+-    const params: Record<string, string> = this.getUIContext().getRouter().getParams() as Record<string, string>;
++    const params: Record<string, string> = router.getParams() as Record<string, string>;
+     if (params && params.taskId) {
+       this.taskId = params.taskId;
+     }
+@@ -66,13 +64,13 @@
+         return sum + this.getPomodoroDuration(pomodoro);
+       }, 0);
+     } catch (error) {
+-      logger.error('TaskDetailPage loadTaskData error', error as Object);
++      console.error('TaskDetailPage loadTaskData error:', JSON.stringify(error));
+     }
+   }
+ 
+   startPomodoro(): void {
+     try {
+-      this.getUIContext().getRouter().pushUrl({
++      router.pushUrl({
+         url: 'pages/CreatePomodoroPage',
+         params: {
+           taskId: this.taskId,
+@@ -80,7 +78,7 @@
+         }
+       });
+     } catch (error) {
+-      logger.error('TaskDetailPage startPomodoro error', error as Object);
++      console.error('TaskDetailPage startPomodoro error:', JSON.stringify(error));
+     }
+   }
+ 
+@@ -90,7 +88,7 @@
+     }
+ 
+     try {
+-      this.getUIContext().getRouter().pushUrl({
++      router.pushUrl({
+         url: 'pages/CreateTaskPage',
+         params: {
+           taskId: this.task.id,
+@@ -98,7 +96,7 @@
+         }
+       });
+     } catch (error) {
+-      logger.error('TaskDetailPage editTask error', error as Object);
++      console.error('TaskDetailPage editTask error:', JSON.stringify(error));
+     }
+   }
+ 
+@@ -124,7 +122,7 @@
+       }
+       this.loadTaskData();
+     } catch (error) {
+-      logger.error('TaskDetailPage toggleTaskCompletion error', error as Object);
++      console.error('TaskDetailPage toggleTaskCompletion error:', JSON.stringify(error));
+     } finally {
+       this.isUpdatingTask = false;
+     }
+@@ -140,13 +138,13 @@
+       const currentUser = await authService.getCurrentUser();
+       const isPremium = authService.isPremiumUser(currentUser);
+       if (!isPremium) {
+-        this.getUIContext().getPromptAction().showDialog({
++        promptAction.showDialog({
+           title: '升级高级会员',
+           message: '基础会员不支持子任务拆解。升级高级会员，畅享无限子任务分解功能！',
+           buttons: [{ text: '暂不升级', color: this.themeColors.textMuted }, { text: '查看特权', color: this.themeColors.premium }]
+         }).then(data => {
+           if (data.index === 1) {
+-            this.getUIContext().getRouter().pushUrl({ url: 'pages/MembershipPage' });
++            router.pushUrl({ url: 'pages/MembershipPage' });
+           }
+         });
+         this.isUpdatingTask = false;
+@@ -166,7 +164,7 @@
+       await db.updateTask(this.task);
+       this.newSubtaskTitle = '';
+     } catch (error) {
+-      logger.error('TaskDetailPage addSubtask error', error as Object);
++      console.error('TaskDetailPage addSubtask error:', JSON.stringify(error));
+     } finally {
+       this.isUpdatingTask = false;
+     }
+@@ -186,7 +184,7 @@
+       this.task.updatedAt = Date.now();
+       await db.updateTask(this.task);
+     } catch (error) {
+-      logger.error('TaskDetailPage toggleSubtask error', error as Object);
++      console.error('TaskDetailPage toggleSubtask error:', JSON.stringify(error));
+     } finally {
+       this.isUpdatingTask = false;
+     }
+@@ -206,7 +204,7 @@
+       this.task.updatedAt = Date.now();
+       await db.updateTask(this.task);
+     } catch (error) {
+-      logger.error('TaskDetailPage deleteSubtask error', error as Object);
++      console.error('TaskDetailPage deleteSubtask error:', JSON.stringify(error));
+     } finally {
+       this.isUpdatingTask = false;
+     }
+@@ -385,7 +383,7 @@
+               .margin({ top: SPACE_CARD })
+             }
+             .width('100%')
+-            .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: 120 })
++            .padding({ left: 16, right: 16, bottom: 120 })
+           }
+           .width('100%')
+           .layoutWeight(1)
+@@ -415,7 +413,7 @@
+       actionText: !this.isCompleted() ? '编辑' : '',
+       actionIconName: 'note',
+       onBack: () => {
+-        this.getUIContext().getRouter().back();
++        router.back();
+       },
+       onAction: () => {
+         if (!this.isCompleted()) {
+@@ -450,7 +448,7 @@
+       .width('100%')
+ 
+       Text(this.task?.title || '')
+-        .fontSize(TYPE_HERO_TITLE)
++        .fontSize(18)
+         .fontWeight(FontWeight.Bold)
+         .fontColor(this.themeColors.textPrimary)
+         .width('100%')
+@@ -458,7 +456,7 @@
+         .margin({ top: SPACE_MD })
+ 
+       Text(this.getPomodoroSummaryText())
+-        .fontSize(TYPE_META)
++        .fontSize(13)
+         .fontColor(this.themeColors.textSecondary)
+         .width('100%')
+         .lineHeight(18)
+@@ -480,13 +478,13 @@
+ 
+       Column() {
+         Text('任务说明')
+-          .fontSize(TYPE_CAPTION)
++          .fontSize(12)
+           .fontWeight(FontWeight.Medium)
+           .fontColor(this.themeColors.textMuted)
+           .width('100%')
+ 
+         Text(this.getDescriptionText())
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.task?.description ? this.themeColors.textPrimary : this.themeColors.textMuted)
+           .lineHeight(18)
+           .width('100%')
+@@ -542,18 +540,18 @@
+     Column() {
+       AppCard({ variant: 'soft', spacing: 4, paddingLevel: 'md' }) {
+         Text(title)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+ 
+         Text(value)
+-          .fontSize(TYPE_HERO_TITLE)
++          .fontSize(18)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(accentColor)
+           .width('100%')
+ 
+         Text(subtitle)
+-          .fontSize(TYPE_CAPTION)
++          .fontSize(12)
+           .fontColor(this.themeColors.textMuted)
+           .width('100%')
+           .maxLines(2)
+@@ -619,10 +617,10 @@
+         .layoutWeight(1)
+ 
+         Text('查看完整报告 →')
+-          .fontSize(TYPE_CAPTION)
++          .fontSize(12)
+           .fontColor(this.themeColors.primary)
+           .onClick(() => {
+-            this.getUIContext().getRouter().pushUrl({ url: 'pages/StatsHubPage' });
++            router.pushUrl({ url: 'pages/StatsHubPage' });
+           })
+       }
+       .width('100%')
+@@ -636,7 +634,7 @@
+             .margin({ bottom: PANEL_GAP })
+ 
+           Text('还没有记录，点击下方按钮立即开始专注')
+-            .fontSize(TYPE_SECTION_TITLE)
++            .fontSize(16)
+             .fontWeight(FontWeight.Medium)
+             .fontColor(this.themeColors.textPrimary)
+             .margin({ bottom: SPACE_XS })
+@@ -662,13 +660,13 @@
+   SectionHeader(title: string, subtitle: string) {
+     Column() {
+       Text(title)
+-        .fontSize(TYPE_BODY)
++        .fontSize(15)
+         .fontWeight(FontWeight.Bold)
+         .fontColor(this.themeColors.textPrimary)
+         .width('100%')
+ 
+       Text(subtitle)
+-        .fontSize(TYPE_CAPTION)
++        .fontSize(12)
+         .fontColor(this.themeColors.textSecondary)
+         .width('100%')
+         .lineHeight(18)
+@@ -682,12 +680,12 @@
+   InfoTile(label: string, value: string, valueColor: string) {
+     Column() {
+       Text(label)
+-        .fontSize(TYPE_CAPTION)
++        .fontSize(12)
+         .fontColor(this.themeColors.textMuted)
+         .width('100%')
+ 
+       Text(value)
+-        .fontSize(TYPE_BODY)
++        .fontSize(14)
+         .fontWeight(FontWeight.Medium)
+         .fontColor(valueColor)
+         .width('100%')
+@@ -708,7 +706,7 @@
+   TagChip(text: string, textColor: string, backgroundColor: string) {
+     Row() {
+       Text(text)
+-        .fontSize(TYPE_CAPTION)
++        .fontSize(12)
+         .fontWeight(FontWeight.Medium)
+         .fontColor(textColor)
+     }
+@@ -722,11 +720,11 @@
+   MetaPill(label: string, value: string) {
+     Row() {
+       Text(`${label} · `)
+-        .fontSize(TYPE_CAPTION)
++        .fontSize(12)
+         .fontColor(this.themeColors.textMuted)
+ 
+       Text(value)
+-        .fontSize(TYPE_CAPTION)
++        .fontSize(12)
+         .fontWeight(FontWeight.Medium)
+         .fontColor(this.themeColors.textPrimary)
+         .maxLines(1)
+@@ -755,7 +753,7 @@
+       Column() {
+         Row() {
+           Text(`第 ${this.pomodoros.length - index} 次专注`)
+-            .fontSize(TYPE_BODY)
++            .fontSize(15)
+             .fontWeight(FontWeight.Medium)
+             .fontColor(this.themeColors.textPrimary)
+ 
+@@ -770,13 +768,13 @@
+         .width('100%')
+ 
+         Text(`${this.formatDateTime(pomodoro.startTime)} - ${this.formatDateTime(pomodoro.endTime || pomodoro.startTime + pomodoro.duration * 60000)}`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .margin({ top: SPACE_XS })
+ 
+         Text(`专注时长 ${this.getPomodoroDuration(pomodoro)} 分钟`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textMuted)
+           .width('100%')
+           .margin({ top: SPACE_2XS })
+@@ -854,7 +852,7 @@
+         actionText: '返回',
+         actionIconName: 'chevron-left',
+         onAction: () => {
+-          this.getUIContext().getRouter().back();
++          router.back();
+         }
+       })
+     }
+@@ -871,7 +869,7 @@
+         Blank()
+         if (this.task?.subtasks && this.task.subtasks.length > 0) {
+           Text(`${this.task.subtasks.filter(s => s.isCompleted).length}/${this.task.subtasks.length}`)
+-            .fontSize(TYPE_BODY)
++            .fontSize(14)
+             .fontWeight(FontWeight.Medium)
+             .fontColor(this.themeColors.primary)
+             .backgroundColor(this.themeColors.primarySubtle)
+@@ -896,7 +894,7 @@
+                 })
+ 
+               Text(subtask.title)
+-                .fontSize(TYPE_BODY)
++                .fontSize(15)
+                 .fontColor(subtask.isCompleted ? this.themeColors.textMuted : this.themeColors.textPrimary)
+                 .decoration({ type: subtask.isCompleted ? TextDecorationType.LineThrough : TextDecorationType.None })
+                 .layoutWeight(1)
+@@ -904,7 +902,7 @@
+               Button() {
+                 AppIcon({
+                   name: 'close',
+-                  iconSize: ICON_SIZE_XS,
++                  iconSize: 14,
+                   framed: false,
+                   color: this.themeColors.textMuted
+                 })
+@@ -927,7 +925,7 @@
+           TextInput({ placeholder: '添加新子任务...', text: this.newSubtaskTitle })
+             .layoutWeight(1)
+             .height(BUTTON_HEIGHT_SM)
+-            .fontSize(TYPE_BODY)
++            .fontSize(15)
+             .backgroundColor(Color.Transparent)
+             .fontColor(this.themeColors.textPrimary)
+             .placeholderColor(this.themeColors.textMuted)
+@@ -938,16 +936,16 @@
+               this.addSubtask();
+             })
+           
+-          AppButton({
+-            text: '添加',
+-            variant: this.newSubtaskTitle.trim() ? 'primary' : 'secondary',
+-            buttonSize: 'sm',
+-            disabled: !this.newSubtaskTitle.trim(),
+-            tapAction: () => {
++          Button('添加')
++            .height(BUTTON_HEIGHT_SM)
++            .fontSize(14)
++            .fontColor(this.newSubtaskTitle.trim() ? this.themeColors.textOnPrimary : this.themeColors.textMuted)
++            .backgroundColor(this.newSubtaskTitle.trim() ? this.themeColors.primary : this.themeColors.surface)
++            .borderRadius(8)
++            .margin({ right: SPACE_XS })
++            .onClick(() => {
+               this.addSubtask();
+-            }
+-          })
+-            .margin({ right: SPACE_XS })
++            })
+         }
+         .width('100%')
+         .padding({ left: SPACE_MD, right: SPACE_XS, top: SPACE_2XS, bottom: SPACE_2XS })

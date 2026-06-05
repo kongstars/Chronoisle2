@@ -6,6 +6,7 @@ import { authService } from './AuthService';
 import picker from '@ohos.file.picker';
 import fs from '@ohos.file.fs';
 import { Logger } from '../Utils/Logger';
+import { CATEGORIES, CATEGORY_COLORS, type CategoryInfo } from '../common/Constants';
 
 const logger = Logger.create('StatsService');
 
@@ -210,9 +211,10 @@ export class StatsService {
     const categories: GoalCategory[] = [
       GoalCategory.HEALTH, GoalCategory.LEARNING, GoalCategory.FINANCE, GoalCategory.FUN
     ];
-    const categoryNames: Record<string, string> = { '健康': '健康', '成长': '成长', '理财': '理财', '快乐': '快乐' };
-      const categoryIcons: Record<string, string> = { '健康': 'health', '成长': 'growth', '理财': 'finance', '快乐': 'joy' };
-    const categoryColors: Record<string, string> = { '健康': '#52C41A', '成长': '#FA8C16', '理财': '#722ED1', '快乐': '#F5222D' };
+    const categoryInfoMap: Record<GoalCategory, CategoryInfo> = CATEGORIES.reduce((map, item) => {
+      map[item.value] = item;
+      return map;
+    }, {} as Record<GoalCategory, CategoryInfo>);
     
     const allCategoryStats = categories.map((category: GoalCategory): CategoryStat => {
       const categoryGoals = goals.filter((g: Goal) => g.category === category);
@@ -224,9 +226,9 @@ export class StatsService {
       
       return {
         category: category,
-        categoryName: categoryNames[catStr],
-        icon: categoryIcons[catStr],
-        color: categoryColors[catStr],
+        categoryName: categoryInfoMap[category]?.label || catStr,
+        icon: categoryInfoMap[category]?.icon || 'goal',
+        color: categoryInfoMap[category]?.color || CATEGORY_COLORS[category],
         totalGoals: categoryGoals.length,
         completedGoals: categoryCompletedGoals,
         completionRate: categoryGoals.length > 0 ? Math.round((categoryCompletedGoals / categoryGoals.length) * 100) : 0,
@@ -361,8 +363,8 @@ export class StatsService {
 
     // 目标分布
     const goalColors = [
-      '#5B8FF9', '#5AD8A6', '#F6BD16', '#E86452', '#6DC8EC',
-      '#945FB9', '#FF9845', '#1E9493', '#FF99C3', '#269A99'
+      '#9A96FF', '#59B294', '#F1A765', '#D978A6', '#BEB6FF',
+      '#7A9FEF', '#D98C86', '#78B8A7', '#C79A4C', '#A68BE8'
     ];
     const goalMap: Record<string, GoalFocusItem> = {};
 

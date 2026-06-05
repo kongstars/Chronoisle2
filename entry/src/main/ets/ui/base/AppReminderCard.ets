@@ -4,7 +4,7 @@ import { BORDER_DEFAULT } from '../../foundation/tokens/BorderTokens';
 import { STATUS_STRIP_HEIGHT, STATUS_STRIP_WIDTH_SM } from '../../foundation/tokens/ComponentSizeTokens';
 import { ICON_SIZE_LG } from '../../foundation/tokens/IconTokens';
 import { REMINDER_CARD_HEIGHT, REMINDER_CARD_MIN_WIDTH } from '../../foundation/tokens/PageDensityTokens';
-import { RADIUS_MD } from '../../foundation/tokens/RadiusTokens';
+import { RADIUS_MD, RADIUS_PILL } from '../../foundation/tokens/RadiusTokens';
 import { SPACE_MD, SPACE_SM, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../../foundation/tokens/TypographyTokens';
 import { DISABLED_OPACITY } from '../../foundation/tokens/VisualTokens';
@@ -56,7 +56,7 @@ export struct AppReminderCard {
         .width(STATUS_STRIP_WIDTH_SM)
         .height(STATUS_STRIP_HEIGHT)
         .backgroundColor(getToneBorderColor(this.themeColors, this.tone))
-        .borderRadius(999)
+        .borderRadius(RADIUS_PILL)
 
       if (this.iconName.length > 0) {
         AppIcon({

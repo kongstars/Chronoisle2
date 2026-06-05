@@ -324,6 +324,7 @@ struct ThirdPartyLoginPage {
         .width('100%')
         .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: PAGE_PADDING })
       }
+      .align(Alignment.Top)
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .backgroundColor(this.themeColors.background)

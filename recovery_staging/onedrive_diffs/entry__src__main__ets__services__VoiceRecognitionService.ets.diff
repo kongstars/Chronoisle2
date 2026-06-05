@@ -1,0 +1,92 @@
+--- current/entry\src\main\ets\services\VoiceRecognitionService.ets
++++ backup/entry\src\main\ets\services\VoiceRecognitionService.ets
+@@ -12,9 +12,6 @@
+ } from 'neonui';
+ import { hasMicrophonePermission } from '../Utils/UserPerm';
+ import { TokenService } from './TokenService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('VoiceRecognitionService');
+ 
+ class Uint8ArrayFIFOQueue {
+   private queue: Uint8Array[] = [];
+@@ -129,7 +126,7 @@
+       this.isRecording = true;
+       this.statusDescription = '正在录音';
+       return '';
+-    } catch (e) { logger.error('VoiceRecognitionService error', e as Object);
++    } catch (_) {
+       const message = '语音识别暂时不可用，请稍后重试';
+       this.isRecording = false;
+       this.statusDescription = message;
+@@ -165,8 +162,8 @@
+     this.audioQueue.clear();
+     try {
+       this.nui.cancelDialog();
+-    } catch (e) { logger.error('VoiceRecognitionService error', e as Object);
+-      logger.warn('[VoiceRecognitionService] cancelDialog failed');
++    } catch (_) {
++      console.warn('[VoiceRecognitionService] cancelDialog failed');
+     }
+   }
+ 
+@@ -194,8 +191,8 @@
+     this.initContextKey = '';
+     try {
+       this.nui.release();
+-    } catch (e) { logger.error('VoiceRecognitionService error', e as Object);
+-      logger.warn('[VoiceRecognitionService] release failed');
++    } catch (_) {
++      console.warn('[VoiceRecognitionService] release failed');
+     }
+   }
+ 
+@@ -267,7 +264,7 @@
+ 
+   onNuiLogTrackCallback(_level: Constants.LogLevel, log: string): void {
+     if (log) {
+-      logger.debug(log);
++      console.info(`[VoiceRecognitionService] ${log}`);
+     }
+   }
+ 
+@@ -285,8 +282,8 @@
+       if (fetched && fetched.trim()) {
+         deviceId = fetched;
+       }
+-    } catch (e) { logger.error('VoiceRecognitionService error', e as Object);
+-      logger.warn('[VoiceRecognitionService] getDeviceInfo failed');
++    } catch (_) {
++      console.warn('[VoiceRecognitionService] getDeviceInfo failed');
+     }
+     this.deviceId = deviceId;
+ 
+@@ -344,7 +341,7 @@
+       return;
+     }
+     this.audioCapturer.start().catch((error: BusinessError) => {
+-      logger.error('[VoiceRecognitionService] start capturer failed: ${error.message}');
++      console.error(`[VoiceRecognitionService] start capturer failed: ${error.message}`);
+     });
+   }
+ 
+@@ -353,7 +350,7 @@
+       return;
+     }
+     this.audioCapturer.stop().catch((error: BusinessError) => {
+-      logger.warn('[VoiceRecognitionService] stop capturer failed: ${error.message}');
++      console.warn(`[VoiceRecognitionService] stop capturer failed: ${error.message}`);
+     });
+   }
+ 
+@@ -389,8 +386,8 @@
+       const payload = result['payload'] as Record<string, string> | undefined;
+       const text = payload ? payload['result'] : '';
+       return text || this.realtimeText;
+-    } catch (e) { logger.error('VoiceRecognitionService error', e as Object);
+-      logger.warn('[VoiceRecognitionService] parse ASR text failed');
++    } catch (_) {
++      console.warn('[VoiceRecognitionService] parse ASR text failed');
+       return this.realtimeText;
+     }
+   }

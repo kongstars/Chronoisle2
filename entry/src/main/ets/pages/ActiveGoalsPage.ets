@@ -225,6 +225,7 @@ struct ActiveGoalsPage {
       }
       .width('100%')
     }
+    .align(Alignment.Top)
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)

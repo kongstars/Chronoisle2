@@ -1,11 +1,12 @@
 import dataPreferences from '@ohos.data.preferences';
 import { UIContext } from '@ohos.arkui.UIContext';
 import AppConfig from '../Utils/AppConfig';
-import { TelemetryService } from './TelemetryService';
+import { TelemetryService, type TelemetryProperties } from './TelemetryService';
 import { TelemetryErrorCode } from '../models/TelemetryErrorCode';
 import { HttpClient } from './HttpClient';
 import { trackApiError } from './TelemetryHelper';
 import { Logger } from '../Utils/Logger';
+import { LightTheme } from '../theme/AppTheme';
 
 const logger = Logger.create('AuthService');
 
@@ -130,6 +131,13 @@ interface MembershipPurchaseRequestPayload {
   plan: string;
 }
 
+interface SessionEventTelemetryProps {
+  accountType?: string;
+  method?: string;
+  reason?: string;
+  offlineMode?: boolean;
+}
+
 export const AVATAR_LIST: string[] = [
   'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=cute%20cat%20cartoon%20avatar%20flat%20design&image_size=square',
   'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=cool%20dog%20cartoon%20avatar%20flat%20design&image_size=square',
@@ -145,6 +153,10 @@ const JWT_TOKEN_KEY = 'jwt_token';
 class AuthService {
   private prefs: dataPreferences.Preferences | null = null;
   private tokenCache: string | null = null;
+
+  private trackSessionEvent(eventName: string, properties?: SessionEventTelemetryProps): void {
+    TelemetryService.trackImmediate(eventName, properties as TelemetryProperties, 'session');
+  }
 
   async initialize(context: Context): Promise<void> {
     if (!this.prefs) {
@@ -248,14 +260,34 @@ class AuthService {
         }
         if (token && user) {
           await this.saveLoginState(user, token);
+          const successProps: SessionEventTelemetryProps = {
+            accountType: accountType,
+            method: 'verification_code'
+          };
+          this.trackSessionEvent('session_register_success', successProps);
           return { success: true, message: '注册成功', user: user };
         }
+        const invalidResponseProps: SessionEventTelemetryProps = {
+          accountType: accountType,
+          reason: 'invalid_response'
+        };
+        this.trackSessionEvent('session_register_failed', invalidResponseProps);
         return { success: false, message: '注册响应数据异常', user: null };
       }
+      const registerFailedProps: SessionEventTelemetryProps = {
+        accountType: accountType,
+        reason: result.message || 'register_failed'
+      };
+      this.trackSessionEvent('session_register_failed', registerFailedProps);
       return { success: false, message: result.message || '账号已存在或验证码错误', user: null };
     } catch (error) {
       logger.error('注册网络请求失败:', error as Object);
       trackApiError(TelemetryErrorCode.ERR_NET_TIMEOUT, error, 'auth/register');
+      const networkErrorProps: SessionEventTelemetryProps = {
+        accountType: accountType,
+        reason: 'network_error'
+      };
+      this.trackSessionEvent('session_register_failed', networkErrorProps);
       return { success: false, message: '网络请求失败', user: null };
     }
   }
@@ -276,12 +308,29 @@ class AuthService {
 
       if (result.success && result.data) {
         await this.saveLoginState(result.data.user, result.data.token);
+        const successProps: SessionEventTelemetryProps = {
+          accountType: accountType,
+          method: 'verification_code'
+        };
+        this.trackSessionEvent('session_login_success', successProps);
         return { success: true, message: '登录成功', user: result.data.user };
       }
+      const loginFailedProps: SessionEventTelemetryProps = {
+        accountType: accountType,
+        method: 'verification_code',
+        reason: result.message || 'login_failed'
+      };
+      this.trackSessionEvent('session_login_failed', loginFailedProps);
       return { success: false, message: result.message || '验证码错误或未注册', user: null };
     } catch (error) {
       logger.error('登录网络请求失败:', error as Object);
       trackApiError(TelemetryErrorCode.ERR_NET_TIMEOUT, error, 'auth/login');
+      const loginNetworkErrorProps: SessionEventTelemetryProps = {
+        accountType: accountType,
+        method: 'verification_code',
+        reason: 'network_error'
+      };
+      this.trackSessionEvent('session_login_failed', loginNetworkErrorProps);
       return { success: false, message: '网络请求失败', user: null };
     }
   }
@@ -310,6 +359,12 @@ class AuthService {
 
   async saveThirdPartyLoginState(user: UserAccount, token: string): Promise<void> {
     await this.saveLoginState(user, token);
+    const loginProps: SessionEventTelemetryProps = {
+      accountType: user.accountType,
+      method: 'oauth',
+      offlineMode: token.startsWith('offline-')
+    };
+    this.trackSessionEvent('session_login_success', loginProps);
   }
 
   async updateAvatar(avatar: string): Promise<UserAccount | null> {
@@ -320,8 +375,10 @@ class AuthService {
     const user = await this.getCurrentUser();
     if (user) {
       user.avatar = avatar;
-      await this.prefs.put(CURRENT_USER_KEY, JSON.stringify(user));
-      await this.prefs.flush();
+      try {
+        await this.prefs.put(CURRENT_USER_KEY, JSON.stringify(user));
+        await this.prefs.flush();
+      } catch (_) {}
       // 这里可拓展: 请求远端API更新云端用户的头像信息
       return user;
     }
@@ -408,8 +465,10 @@ class AuthService {
         user.pendingMembershipProductId = patch.pendingMembershipProductId;
         user.pendingMembershipEffectiveAt = patch.pendingMembershipEffectiveAt;
       }
-      await this.prefs.put(CURRENT_USER_KEY, JSON.stringify(user));
-      await this.prefs.flush();
+      try {
+        await this.prefs.put(CURRENT_USER_KEY, JSON.stringify(user));
+        await this.prefs.flush();
+      } catch (_) {}
       return user;
     }
     return null;
@@ -555,8 +614,8 @@ class AuthService {
         title: '请先登录',
         message: 'AI 专属功能需要登录后才能使用，以便为您提供更精准的个性化服务并记录使用数据。',
         buttons: [
-          { text: '稍后再说', color: '#AAAAAA' },
-          { text: '去登录', color: '#D4AF37' }
+          { text: '稍后再说', color: LightTheme.textMuted },
+          { text: '去登录', color: LightTheme.primary }
         ]
       });
       if (dialogResult.index === 1) {
@@ -571,6 +630,14 @@ class AuthService {
   async logout(): Promise<void> {
     if (!this.prefs) {
       return;
+    }
+    const hadToken = !!this.tokenCache;
+    const offlineMode = !!this.tokenCache && this.tokenCache.startsWith('offline-');
+    if (hadToken) {
+      const logoutProps: SessionEventTelemetryProps = {
+        offlineMode: offlineMode
+      };
+      this.trackSessionEvent('session_logout', logoutProps);
     }
     this.tokenCache = null;
     // 登出时清空埋点 SDK 的 token
@@ -597,12 +664,29 @@ class AuthService {
 
       if (result.success && result.data) {
         await this.saveLoginState(result.data.user, result.data.token);
+        const huaweiLoginSuccessProps: SessionEventTelemetryProps = {
+          accountType: 'huawei',
+          method: 'native_huawei'
+        };
+        this.trackSessionEvent('session_login_success', huaweiLoginSuccessProps);
         return { success: true, message: '华为账号登录成功', user: result.data.user };
       }
+      const huaweiLoginFailedProps: SessionEventTelemetryProps = {
+        accountType: 'huawei',
+        method: 'native_huawei',
+        reason: result.message || 'huawei_login_failed'
+      };
+      this.trackSessionEvent('session_login_failed', huaweiLoginFailedProps);
       return { success: false, message: result.message || '华为账号登录失败', user: null };
     } catch (error) {
       logger.error('华为账号登录网络请求失败:', error as Object);
       trackApiError(TelemetryErrorCode.ERR_AUTH_HW_OAUTH_FAIL, error, 'auth/huawei-login');
+      const huaweiLoginNetworkErrorProps: SessionEventTelemetryProps = {
+        accountType: 'huawei',
+        method: 'native_huawei',
+        reason: 'network_error'
+      };
+      this.trackSessionEvent('session_login_failed', huaweiLoginNetworkErrorProps);
       return { success: false, message: '网络请求失败', user: null };
     }
   }

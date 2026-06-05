@@ -9,6 +9,7 @@ import { CounterUnit, DayEvent, DayEventData, DayEventType, getEventTypeIcon, ge
 import { formatDayEventDate, formatDayEventTime } from '../common/DayEventUtils';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
+import { AppFormCard } from '../ui/base/AppFormCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
@@ -16,6 +17,7 @@ import { ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { COMFORTABLE_PAGE_PADDING, COMFORTABLE_SECTION_GAP } from '../foundation/tokens/PageTierTokens';
+import { RADIUS_MD } from '../foundation/tokens/RadiusTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('GoalInfoPage');
@@ -373,7 +375,7 @@ struct GoalInfoPage {
     .alignItems(HorizontalAlign.Center)
     .padding({ left: 6, right: 6, top: 8, bottom: 8 })
     .backgroundColor(this.isSelectedGoalType(type) ? this.themeColors.primarySubtle : this.themeColors.surface)
-    .borderRadius(14)
+    .borderRadius(RADIUS_MD)
     .border({
       width: this.isSelectedGoalType(type) ? 1.5 : 1,
       color: this.isSelectedGoalType(type) ? this.themeColors.primary : this.themeColors.borderColor
@@ -440,7 +442,7 @@ struct GoalInfoPage {
     .width('100%')
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .backgroundColor(this.themeColors.primarySubtle)
-    .borderRadius(14)
+    .borderRadius(RADIUS_MD)
     .border({ width: 1, color: this.themeColors.primary + '26' })
   }
 
@@ -496,7 +498,7 @@ struct GoalInfoPage {
     .width('100%')
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .backgroundColor(this.themeColors.successSubtle)
-    .borderRadius(14)
+    .borderRadius(RADIUS_MD)
     .border({ width: 1, color: this.themeColors.success + '33' })
   }
 
@@ -523,7 +525,7 @@ struct GoalInfoPage {
       .width('100%')
 
       Text('先把方向说清，再补第一步')
-        .fontSize(18)
+        .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
@@ -626,7 +628,7 @@ struct GoalInfoPage {
             .width('100%')
             .padding({ left: 12, right: 12, top: 10, bottom: 10 })
             .backgroundColor(this.themeColors.surfaceSoft)
-            .borderRadius(14)
+            .borderRadius(RADIUS_MD)
             .border({ width: 1, color: this.themeColors.borderColor })
           }, (reminder: DayEventData, index: number) => `reminder_${reminder.id}_${index}`)
         }
@@ -679,6 +681,7 @@ struct GoalInfoPage {
       AppPageHeader({
         title: '创建目标',
         subtitle: '先确定方向，再补充关键结果、起步任务和长期提醒。',
+        insetHorizontal: COMFORTABLE_PAGE_PADDING,
         onBack: () => {
           this.navigateBack();
         }
@@ -702,7 +705,7 @@ struct GoalInfoPage {
             this.SelectedGoalTypeDetail()
           }
 
-          AppCard({ variant: 'base', spacing: SPACE_MD }) {
+          AppFormCard({ variant: 'base', spacing: SPACE_MD }) {
             this.SectionHeading('目标信息', '先写清你想达到的状态，后续再决定要不要让 AI 帮你拆成路线。')
 
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
@@ -720,10 +723,11 @@ struct GoalInfoPage {
               .width('100%')
 
             TextInput({ placeholder: '输入目标名称', text: this.goalTitle })
+              .width('100%')
               .height(48)
               .padding({ left: 16, right: 16 })
               .backgroundColor(this.themeColors.inputBackground)
-              .borderRadius(14)
+              .borderRadius(RADIUS_MD)
               .fontColor(this.themeColors.textPrimary)
               .placeholderColor(this.themeColors.textMuted)
               .onChange((value: string) => {
@@ -737,10 +741,11 @@ struct GoalInfoPage {
               .width('100%')
 
             TextArea({ placeholder: '补充这个目标的背景、意义或你想达到的状态', text: this.goalDescription })
+              .width('100%')
               .height(104)
               .padding(16)
               .backgroundColor(this.themeColors.inputBackground)
-              .borderRadius(14)
+              .borderRadius(RADIUS_MD)
               .fontColor(this.themeColors.textPrimary)
               .placeholderColor(this.themeColors.textMuted)
               .onChange((value: string) => {
@@ -769,7 +774,7 @@ struct GoalInfoPage {
               .width('100%')
           }
 
-          AppCard({ variant: 'base', spacing: SPACE_MD }) {
+          AppFormCard({ variant: 'base', spacing: SPACE_MD }) {
             this.SectionHeading(
               '衡量标准（可选）',
               '写 1 到 3 个能判断进展的结果，比如次数、体重、存款或完成度。'
@@ -781,7 +786,7 @@ struct GoalInfoPage {
                 .height(46)
                 .padding({ left: 14, right: 14 })
                 .backgroundColor(this.themeColors.inputBackground)
-                .borderRadius(14)
+                .borderRadius(RADIUS_MD)
                 .fontColor(this.themeColors.textPrimary)
                 .placeholderColor(this.themeColors.textMuted)
                 .onChange((value: string) => {
@@ -806,7 +811,7 @@ struct GoalInfoPage {
             this.KeyResultDraftList()
           }
 
-          AppCard({ variant: 'base', spacing: SPACE_MD }) {
+          AppFormCard({ variant: 'base', spacing: SPACE_MD }) {
             this.SectionHeading(
               '起步行动（可选）',
               '先放 1 到 3 个最容易启动的动作，创建后就能立刻开始做。'
@@ -818,7 +823,7 @@ struct GoalInfoPage {
                 .height(46)
                 .padding({ left: 14, right: 14 })
                 .backgroundColor(this.themeColors.inputBackground)
-                .borderRadius(14)
+                .borderRadius(RADIUS_MD)
                 .fontColor(this.themeColors.textPrimary)
                 .placeholderColor(this.themeColors.textMuted)
                 .onChange((value: string) => {
@@ -883,6 +888,7 @@ struct GoalInfoPage {
         .width('100%')
         .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 8, bottom: COMFORTABLE_PAGE_PADDING + 12 })
       }
+      .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .layoutWeight(1)
       .backgroundColor(this.themeColors.background)

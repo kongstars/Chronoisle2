@@ -110,11 +110,15 @@ export class WidgetRefreshService {
     if (!this.context) {
       return [];
     }
-    const prefs = await dataPreferences.getPreferences(this.context, { name: WIDGET_STORAGE_NAME });
-    const raw = await prefs.get(FORM_IDS_KEY, '[]') as string;
     try {
-      return JSON.parse(raw) as string[];
-    } catch (error) {
+      const prefs = await dataPreferences.getPreferences(this.context, { name: WIDGET_STORAGE_NAME });
+      const raw = await prefs.get(FORM_IDS_KEY, '[]') as string;
+      try {
+        return JSON.parse(raw) as string[];
+      } catch (error) {
+        return [];
+      }
+    } catch (_) {
       return [];
     }
   }
@@ -123,9 +127,13 @@ export class WidgetRefreshService {
     if (!this.context) {
       return WidgetType.VOICE;
     }
-    const prefs = await dataPreferences.getPreferences(this.context, { name: WIDGET_STORAGE_NAME });
-    const value = await prefs.get(`${FORM_NAME_KEY_PREFIX}${formId}`, WidgetType.VOICE) as string;
-    return WidgetFormDataService.normalizeFormName(value);
+    try {
+      const prefs = await dataPreferences.getPreferences(this.context, { name: WIDGET_STORAGE_NAME });
+      const value = await prefs.get(`${FORM_NAME_KEY_PREFIX}${formId}`, WidgetType.VOICE) as string;
+      return WidgetFormDataService.normalizeFormName(value);
+    } catch (_) {
+      return WidgetType.VOICE;
+    }
   }
 }
 

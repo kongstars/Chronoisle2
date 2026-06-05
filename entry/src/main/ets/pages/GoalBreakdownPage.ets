@@ -2165,8 +2165,9 @@ struct GoalBreakdownPage {
 
             Blank().height(BOTTOM_CONTENT_SPACER)
           }
-          .width('100%').padding({ left: 14, right: 14, top: 10 })
+          .width('100%').padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 10 })
         }
+        .align(Alignment.Top)
         .layoutWeight(1).scrollBar(BarState.Off)
       }
 

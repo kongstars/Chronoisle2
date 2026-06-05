@@ -142,9 +142,13 @@ export class WidgetFormDataService {
   }
 
   private static async readPreferenceString(context: common.UIAbilityContext | common.ExtensionContext, storageName: string, key: string, fallback: string): Promise<string> {
-    const prefs = await dataPreferences.getPreferences(context, { name: storageName });
-    const value = await prefs.get(key, fallback);
-    return value as string;
+    try {
+      const prefs = await dataPreferences.getPreferences(context, { name: storageName });
+      const value = await prefs.get(key, fallback);
+      return value as string;
+    } catch (_) {
+      return fallback;
+    }
   }
 
   private static buildTodoFormData(tasks: TaskData[]): TodoWidgetData {
@@ -305,10 +309,11 @@ export class WidgetFormDataService {
   }
 
   private static async buildFocusFormData(context: common.UIAbilityContext | common.ExtensionContext): Promise<FocusWidgetData> {
-    const prefs = await dataPreferences.getPreferences(context, { name: 'chronoisle_settings' });
-    const focusMinutesToday = await prefs.get('focus_minutes_today', 0) as number;
-    const activePomodoroJson = await prefs.get('active_pomodoro', '{}') as string;
-    const activePomodoro: ActivePomodoroSnapshot | null = WidgetFormDataService.parseActivePomodoro(activePomodoroJson);
+    try {
+      const prefs = await dataPreferences.getPreferences(context, { name: 'chronoisle_settings' });
+      const focusMinutesToday = await prefs.get('focus_minutes_today', 0) as number;
+      const activePomodoroJson = await prefs.get('active_pomodoro', '{}') as string;
+      const activePomodoro: ActivePomodoroSnapshot | null = WidgetFormDataService.parseActivePomodoro(activePomodoroJson);
 
     const focus: WidgetFocus = new WidgetFocus();
     focus.totalFocusMinutes = focusMinutesToday || 0;
@@ -328,6 +333,13 @@ export class WidgetFormDataService {
     data.focus = focus;
     data.emptyMessage = !focus.isFocusing && focus.totalFocusMinutes === 0 ? '点击开始专注' : '';
     return data;
+    } catch (_) {
+      const data: FocusWidgetData = new FocusWidgetData();
+      const focus: WidgetFocus = new WidgetFocus();
+      data.focus = focus;
+      data.emptyMessage = '数据加载失败';
+      return data;
+    }
   }
 
   private static parseActivePomodoro(raw: string): ActivePomodoroSnapshot | null {

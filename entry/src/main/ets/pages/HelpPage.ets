@@ -5,7 +5,7 @@ import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { PAGE_PADDING, SECTION_GAP, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { MOTION_CURVE_STANDARD, MOTION_DURATION_BASE } from '../foundation/tokens/MotionTokens';
 
 interface FaqItem {
@@ -76,7 +76,7 @@ struct HelpPage {
   private GettingStartedStep(index: string, title: string, description: string) {
     Row({ space: 14 }) {
       Text(index)
-        .fontSize(20)
+        .fontSize(TYPE_HERO_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.primary)
         .width(28)
@@ -84,7 +84,7 @@ struct HelpPage {
 
       Column({ space: 4 }) {
         Text(title)
-          .fontSize(15)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .width('100%')
@@ -106,7 +106,7 @@ struct HelpPage {
     AppCard({ variant: this.expandedId === item.id ? 'accent' : 'base', spacing: 12 }) {
       Row() {
         Text(item.question)
-          .fontSize(16)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeColors.textPrimary)
           .layoutWeight(1)
@@ -198,6 +198,7 @@ struct HelpPage {
       .width('100%')
       .padding({ bottom: PAGE_PADDING })
     }
+    .align(Alignment.Top)
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)

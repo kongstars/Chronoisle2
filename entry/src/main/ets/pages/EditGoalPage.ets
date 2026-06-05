@@ -8,11 +8,13 @@ import { dataSyncService } from '../services/DataSyncService';
 import window from '@ohos.window';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
+import { AppFormCard } from '../ui/base/AppFormCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppPanelSection } from '../ui/base/AppPanelSection';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { COMFORTABLE_PAGE_PADDING, COMFORTABLE_SECTION_GAP } from '../foundation/tokens/PageTierTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
@@ -191,13 +193,11 @@ struct EditGoalPage {
       window.getLastWindow(this.getUIContext().getHostContext() as Context).then((windowClass) => {
         try {
           windowClass.setWindowBackgroundColor(this.themeColors.background);
-          const isDarkTheme = themeService.isDarkThemeActive();
-
           const sysBarProps: window.SystemBarProperties = {
             statusBarColor: this.themeColors.background,
             navigationBarColor: this.themeColors.background,
-            statusBarContentColor: isDarkTheme ? '#FFFFFF' : '#000000',
-            navigationBarContentColor: isDarkTheme ? '#FFFFFF' : '#000000'
+            statusBarContentColor: this.themeColors.textPrimary,
+            navigationBarContentColor: this.themeColors.textPrimary
           };
           windowClass.setWindowSystemBarProperties(sysBarProps);
         } catch (err) {
@@ -322,13 +322,14 @@ struct EditGoalPage {
       AppPageHeader({
         title: '编辑目标',
         subtitle: '调整标题、说明和优先级，不改变现有功能',
+        insetHorizontal: COMFORTABLE_PAGE_PADDING,
         onBack: () => {
           this.getUIContext().getRouter().back();
         }
       })
 
       Scroll() {
-        Column({ space: SPACE_LG }) {
+        Column({ space: COMFORTABLE_SECTION_GAP }) {
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
             Text(this.categoryTitle)
               .fontSize(TYPE_CAPTION)
@@ -348,7 +349,7 @@ struct EditGoalPage {
           }
           .width('100%')
 
-          AppCard({ spacing: SPACE_MD, paddingLevel: 'md' }) {
+          AppFormCard({ spacing: SPACE_MD, paddingLevel: 'md' }) {
             Column({ space: SPACE_XS }) {
               Text('目标名称')
                 .fontSize(TYPE_BODY)
@@ -446,8 +447,9 @@ struct EditGoalPage {
           Blank().height(8)
         }
         .width('100%')
-        .padding({ left: SPACE_LG, right: SPACE_LG, bottom: SPACE_LG })
+        .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, bottom: SPACE_LG })
       }
+      .align(Alignment.Top)
       .width('100%')
       .layoutWeight(1)
 
@@ -470,7 +472,7 @@ struct EditGoalPage {
         }
       }
       .width('100%')
-      .padding({ left: SPACE_LG, right: SPACE_LG, bottom: 24, top: SPACE_XS })
+      .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, bottom: 24, top: SPACE_XS })
       .backgroundColor(this.themeColors.navBackground)
     }
     .width('100%')

@@ -357,8 +357,8 @@ export default class EntryAbility extends UIAbility {
       const sysBarProps: window.SystemBarProperties = {
         statusBarColor: colors.background,
         navigationBarColor: colors.background,
-        statusBarContentColor: isDarkTheme ? '#FFFFFF' : '#000000',
-        navigationBarContentColor: isDarkTheme ? '#FFFFFF' : '#000000'
+        statusBarContentColor: colors.textPrimary,
+        navigationBarContentColor: colors.textPrimary
       };
       this.mainWindow.setWindowSystemBarProperties(sysBarProps);
     } catch (err) {

@@ -40,6 +40,11 @@ interface SavePlanBody {
   adoptedPlanData: SavedTodayPlan;
 }
 
+interface TodayPlanRequestHeaders {
+  'Content-Type': string;
+  'Authorization': string;
+}
+
 export interface TodayPlanLoadResult {
   plan: SavedTodayPlan | null;
   source: TodayPlanSource;
@@ -61,20 +66,48 @@ interface ParsedPlanResult {
 
 type PlanTaskLike = SavedPlanTaskItem | CloudPlanTaskRef | string;
 
+interface TaskLookupItem {
+  taskId: string;
+  task: Task;
+}
+
+interface SnapshotLookupItem {
+  taskId: string;
+  snapshot: CloudTaskSnapshotItem;
+}
+
+function createTaskLookupItem(task: Task): TaskLookupItem {
+  return {
+    taskId: task.id,
+    task: task
+  };
+}
+
+function createSnapshotLookupItem(item: CloudTaskSnapshotItem): SnapshotLookupItem {
+  return {
+    taskId: item.id,
+    snapshot: item
+  };
+}
+
 export class TodayPlanService {
   private static readonly PREFS_NAME: string = 'chronoisle_settings';
   private static readonly CONNECT_TIMEOUT: number = 5000;
   private static readonly READ_TIMEOUT: number = 7000;
 
   private static async getPreferences(context: Context): Promise<dataPreferences.Preferences> {
-    return dataPreferences.getPreferences(context, TodayPlanService.PREFS_NAME);
+    try {
+      return dataPreferences.getPreferences(context, TodayPlanService.PREFS_NAME);
+    } catch (_) {
+      throw new Error('Failed to get preferences');
+    }
   }
 
   private static canUseCloud(token: string | null): boolean {
     return !!token && !token.startsWith('offline-');
   }
 
-  private static async buildHeaders(): Promise<Record<string, string> | null> {
+  private static async buildHeaders(): Promise<TodayPlanRequestHeaders | null> {
     const token = await authService.getToken();
     if (!TodayPlanService.canUseCloud(token)) {
       return null;
@@ -153,20 +186,22 @@ export class TodayPlanService {
     return db.getAllTasks();
   }
 
-  private static getTaskMap(tasks: Task[]): Record<string, Task> {
-    const taskMap: Record<string, Task> = {};
-    tasks.forEach((task: Task) => {
-      taskMap[task.id] = task;
-    });
-    return taskMap;
+  private static buildTaskLookup(tasks: Task[]): TaskLookupItem[] {
+    return tasks.map((task: Task) => createTaskLookupItem(task));
   }
 
-  private static getSnapshotMap(snapshotList: CloudTaskSnapshotItem[]): Record<string, CloudTaskSnapshotItem> {
-    const snapshotMap: Record<string, CloudTaskSnapshotItem> = {};
-    snapshotList.forEach((item: CloudTaskSnapshotItem) => {
-      snapshotMap[item.id] = item;
-    });
-    return snapshotMap;
+  private static findTaskById(taskLookup: TaskLookupItem[], taskId: string): Task | undefined {
+    const matched = taskLookup.find((item: TaskLookupItem) => item.taskId === taskId);
+    return matched ? matched.task : undefined;
+  }
+
+  private static buildSnapshotLookup(snapshotList: CloudTaskSnapshotItem[]): SnapshotLookupItem[] {
+    return snapshotList.map((item: CloudTaskSnapshotItem) => createSnapshotLookupItem(item));
+  }
+
+  private static findSnapshotById(snapshotLookup: SnapshotLookupItem[], taskId: string): CloudTaskSnapshotItem | undefined {
+    const matched = snapshotLookup.find((item: SnapshotLookupItem) => item.taskId === taskId);
+    return matched ? matched.snapshot : undefined;
   }
 
   private static parseEstimatedMinutes(task: Task | undefined, snapshot: CloudTaskSnapshotItem | undefined): number | undefined {
@@ -181,8 +216,8 @@ export class TodayPlanService {
 
   private static parseTaskItem(
     rawItem: PlanTaskLike,
-    taskMap: Record<string, Task>,
-    snapshotMap: Record<string, CloudTaskSnapshotItem>,
+    taskLookup: TaskLookupItem[],
+    snapshotLookup: SnapshotLookupItem[],
     defaultReason: string
   ): SavedPlanTaskItem | null {
     let taskId: string = '';
@@ -207,8 +242,8 @@ export class TodayPlanService {
       return null;
     }
 
-    const task = taskMap[taskId];
-    const snapshot = snapshotMap[taskId];
+    const task = TodayPlanService.findTaskById(taskLookup, taskId);
+    const snapshot = TodayPlanService.findSnapshotById(snapshotLookup, taskId);
     if (!title || title.length === 0) {
       if (task && task.title.length > 0) {
         title = task.title;
@@ -258,15 +293,15 @@ export class TodayPlanService {
       return null;
     }
 
-    const taskMap = TodayPlanService.getTaskMap(localTasks);
-    const snapshotMap = TodayPlanService.getSnapshotMap(snapshotList);
+    const taskLookup = TodayPlanService.buildTaskLookup(localTasks);
+    const snapshotLookup = TodayPlanService.buildSnapshotLookup(snapshotList);
     const planData = rawPlan as SavedTodayPlan;
     const rawFocusTasks = Array.isArray(planData.focusTasks) ? planData.focusTasks : [];
     const rawDeferTasks = Array.isArray(planData.deferTasks) ? planData.deferTasks : [];
 
     const focusTasks: SavedPlanTaskItem[] = [];
     rawFocusTasks.forEach((item: PlanTaskLike) => {
-      const parsed = TodayPlanService.parseTaskItem(item, taskMap, snapshotMap, '已加入今日计划');
+      const parsed = TodayPlanService.parseTaskItem(item, taskLookup, snapshotLookup, '已加入今日计划');
       if (parsed) {
         focusTasks.push(parsed);
       }
@@ -274,7 +309,7 @@ export class TodayPlanService {
 
     const deferTasks: SavedPlanTaskItem[] = [];
     rawDeferTasks.forEach((item: PlanTaskLike) => {
-      const parsed = TodayPlanService.parseTaskItem(item, taskMap, snapshotMap, '建议延后，释放今天带宽');
+      const parsed = TodayPlanService.parseTaskItem(item, taskLookup, snapshotLookup, '建议延后，释放今天带宽');
       if (parsed) {
         deferTasks.push(parsed);
       }
@@ -374,10 +409,12 @@ export class TodayPlanService {
     }
 
     const serialized = JSON.stringify(planToStore);
-    for (const key of keys) {
-      await prefs.put(key, serialized);
-    }
-    await prefs.flush();
+    try {
+      for (const key of keys) {
+        await prefs.put(key, serialized);
+      }
+      await prefs.flush();
+    } catch (_) {}
   }
 
   public static async loadPlan(context: Context): Promise<TodayPlanLoadResult> {

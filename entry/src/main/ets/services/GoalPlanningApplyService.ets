@@ -6,7 +6,6 @@ import {
   ApplyResult
 } from '../models/PlanningSession';
 import { db } from '../storage/Database';
-import { dataSyncService } from '../services/DataSyncService';
 import { Goal, GoalCategory, KeyResult } from '../models/Goal';
 import { Task, TaskPriority } from '../models/Task';
 import { DayEvent, DayEventType, ReminderRule, ReminderType } from '../models/DayEvent';
@@ -31,17 +30,13 @@ export class GoalPlanningApplyService {
       if (session.source === 'create_goal') {
         goal = GoalPlanningApplyService.createGoal(session);
         await db.addGoal(goal);
-        // 同步更新 DataSyncService 内存缓存，确保首页立即显示
-        dataSyncService.setGoals([...dataSyncService.getGoals(), goal]);
       } else if (session.source === 'enhance_goal' && session.targetGoalId) {
         goal = await GoalPlanningApplyService.updateExistingGoal(session);
         if (!goal) {
           goal = GoalPlanningApplyService.createGoal(session);
           await db.addGoal(goal);
-          dataSyncService.setGoals([...dataSyncService.getGoals(), goal]);
         } else {
           await db.updateGoal(goal);
-          dataSyncService.updateGoal(goal);
         }
       } else {
         return { success: false, message: '无效的会话来源配置' };
@@ -67,7 +62,6 @@ export class GoalPlanningApplyService {
             }
             task.aiGenerated = true;
             await db.addTask(task);
-            dataSyncService.setTasks([...dataSyncService.getTasks(), task]);
             createdTaskIds.push(task.id);
           }
         } catch (e) {
@@ -172,8 +166,8 @@ export class GoalPlanningApplyService {
     return existingGoal;
   }
 
-  private static mapGoalCategory(rawCategory: string): GoalCategory {
-    const cat = rawCategory.toUpperCase();
+  private static mapGoalCategory(rawCategory?: string | null): GoalCategory {
+    const cat = (rawCategory || '').toUpperCase();
     if (cat === 'HEALTH') return GoalCategory.HEALTH;
     if (cat === 'FINANCE') return GoalCategory.FINANCE;
     if (cat === 'FUN') return GoalCategory.FUN;

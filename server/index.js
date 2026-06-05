@@ -32,6 +32,7 @@ const agentRescheduleRoutes = require('./routes/agentReschedule');
 const PlanScheduler = require('./services/PlanScheduler');
 const UsageRecord = require('./models/UsageRecord');
 const UsageSummary = require('./models/UsageSummary');
+const { attachTraceId, sendError } = require('./utils/apiResponse');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +61,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // 中间件
+app.use(attachTraceId);
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST'],
@@ -74,7 +76,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 健康检查端点
 app.get('/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
-  const dbStates: Record<number, string> = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  const dbStates = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
   const healthy = dbState === 1;
   res.status(healthy ? 200 : 503).json({
     status: healthy ? 'ok' : 'degraded',
@@ -208,7 +210,7 @@ function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: '请求未携带Token，请先登录' });
+    return sendError(res, 401, 'AUTH_REQUIRED', '请求未携带Token，请先登录');
   }
   
   const token = authHeader.substring(7);
@@ -217,7 +219,7 @@ function authenticate(req, res, next) {
     req.user = decoded; // 挂载解码后的用户信息
     next();
   } catch(err) {
-    return res.status(401).json({ success: false, message: 'Token无效或已过期' });
+    return sendError(res, 401, 'AUTH_TOKEN_INVALID', 'Token无效或已过期');
   }
 }
 
@@ -380,7 +382,7 @@ app.post('/api/agent/completion', agentRateLimiter, async (req, res) => {
       const authHeader = req.headers.authorization;
       if (modelUsage && authHeader && authHeader.startsWith('Bearer ')) {
         const userToken = authHeader.substring(7);
-        const decoded = jwt.verify(userToken, JWT_SECRET);
+        const decoded = jwt.verify(userToken, _JWT_SECRET);
         const userId = decoded.userId;
         if (userId) {
           const inputTokens = modelUsage.input_tokens || 0;
@@ -448,7 +450,9 @@ app.get('/api/speech/token/protected', authenticate, async (req, res) => {
     const tokenData = await getTokenWithCache();
     res.json({ success: true, data: tokenData });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    sendError(res, 500, 'SPEECH_TOKEN_FETCH_FAILED', '语音服务Token获取失败', {
+      error: error.message
+    });
   }
 });
 
@@ -456,27 +460,21 @@ app.get('/api/speech/token/protected', authenticate, async (req, res) => {
 app.use((err, req, res, next) => {
   if (err && (err.type === 'entity.too.large' || err.status === 413)) {
     console.warn(`请求体过大: ${req.method} ${req.originalUrl} limit=${JSON_BODY_LIMIT}`);
-    return res.status(413).json({
-      success: false,
-      error: '请求内容过大',
-      message: '需要重排的任务内容过多，请先减少超长描述或稍后重试'
+    return sendError(res, 413, 'REQUEST_TOO_LARGE', '需要重排的任务内容过多，请先减少超长描述或稍后重试', {
+      error: '请求内容过大'
     });
   }
 
   console.error('服务器错误:', err.stack);
-  res.status(500).json({
-    success: false,
-    error: process.env.NODE_ENV === 'development' ? err.message : '服务器内部错误',
-    message: '服务暂时不可用'
+  sendError(res, 500, 'INTERNAL_SERVER_ERROR', '服务暂时不可用', {
+    error: process.env.NODE_ENV === 'development' ? err.message : '服务器内部错误'
   });
 });
 
 // 404处理
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: '未找到请求的资源',
-    message: '请检查API路径'
+  sendError(res, 404, 'ROUTE_NOT_FOUND', '请检查API路径', {
+    error: '未找到请求的资源'
   });
 });
 

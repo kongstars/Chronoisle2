@@ -1,0 +1,73 @@
+--- current/entry\src\main\ets\pages\TaskSelectPage.ets
++++ backup/entry\src\main\ets\pages\TaskSelectPage.ets
+@@ -1,4 +1,5 @@
+ import dataPreferences from '@ohos.data.preferences';
++import promptAction from '@ohos.promptAction';
+ import { ThemeColors, LightTheme } from '../theme/AppTheme';
+ import { Task, TaskStatus } from '../models/Task';
+ import { Goal } from '../models/Goal';
+@@ -14,9 +15,6 @@
+ import { AppStatusBadge } from '../ui/base/AppStatusBadge';
+ import { PAGE_PADDING, SECTION_GAP, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+ import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('TaskSelectPage');
+ 
+ @Entry
+ @Component
+@@ -68,7 +66,7 @@
+       this.existingPlan = JSON.parse(raw) as SavedTodayPlan;
+       this.selectedIds = this.existingPlan.focusTasks.map((item: SavedPlanTaskItem) => item.id);
+     } catch (error) {
+-      logger.error('TaskSelectPage loadExistingPlan error', error as Object);
++      console.error('TaskSelectPage loadExistingPlan error:', JSON.stringify(error));
+       this.existingPlan = null;
+       this.selectedIds = [];
+     }
+@@ -76,7 +74,7 @@
+ 
+   private showToast(message: string): void {
+     try {
+-      this.getUIContext().getPromptAction().showToast({ message });
++      promptAction.showToast({ message });
+     } catch (_) {
+     }
+   }
+@@ -256,7 +254,7 @@
+       this.getUIContext().getRouter().back();
+     } catch (error) {
+       this.showToast('保存失败，请重试');
+-      logger.error('TaskSelectPage persistPlan error', error as Object);
++      console.error('TaskSelectPage persistPlan error:', JSON.stringify(error));
+     } finally {
+       this.saving = false;
+     }
+@@ -419,16 +417,18 @@
+ 
+       Column({ space: 10 }) {
+         Row() {
+-          AppButton({
+-            text: this.saving ? '保存中...' : (this.existingPlan ? '更新今日计划' : '加入今日计划'),
+-            variant: 'primary',
+-            buttonSize: 'lg',
+-            loading: this.saving,
+-            tapAction: () => {
++          Button(this.saving ? '保存中...' : (this.existingPlan ? '更新今日计划' : '加入今日计划'))
++            .width('100%')
++            .height(44)
++            .fontSize(15)
++            .fontWeight(FontWeight.Medium)
++            .fontColor('#FFFFFF')
++            .backgroundColor(this.themeColors.primary)
++            .borderRadius(22)
++            .enabled(!this.saving)
++            .onClick(() => {
+               void this.persistPlan();
+-            }
+-          })
+-            .width('100%')
++            })
+         }
+         .width('100%')
+ 

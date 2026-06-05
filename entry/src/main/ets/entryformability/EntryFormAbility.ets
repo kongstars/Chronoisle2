@@ -88,14 +88,20 @@ export default class EntryFormAbility extends FormExtensionAbility {
   }
 
   private async getStoredFormName(formId: string): Promise<string> {
-    const prefs = await dataPreferences.getPreferences(this.context, { name: WIDGET_STORAGE_NAME });
-    const value = await prefs.get(`${FORM_NAME_KEY_PREFIX}${formId}`, WidgetType.VOICE) as string;
-    return WidgetFormDataService.normalizeFormName(value);
+    try {
+      const prefs = await dataPreferences.getPreferences(this.context, { name: WIDGET_STORAGE_NAME });
+      const value = await prefs.get(`${FORM_NAME_KEY_PREFIX}${formId}`, WidgetType.VOICE) as string;
+      return WidgetFormDataService.normalizeFormName(value);
+    } catch (_) {
+      return WidgetType.VOICE;
+    }
   }
 
   private async updateFormData(formId: string, formName: string): Promise<void> {
-    const payload: WidgetFormDataPayload = await WidgetFormDataService.buildFormData(this.context, formName);
-    await formProvider.updateForm(formId, this.createBindingData(payload));
+    try {
+      const payload: WidgetFormDataPayload = await WidgetFormDataService.buildFormData(this.context, formName);
+      await formProvider.updateForm(formId, this.createBindingData(payload));
+    } catch (_) {}
   }
 
   private createBindingData(payload: WidgetFormDataPayload): formBindingData.FormBindingData {

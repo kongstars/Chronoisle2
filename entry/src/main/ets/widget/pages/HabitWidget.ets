@@ -40,7 +40,7 @@ struct HabitWidget {
           Row()
             .layoutWeight(1)
             .height(6)
-            .backgroundColor('#E6E6E6')
+            .backgroundColor(WIDGET_COLOR_INACTIVE_SURFACE)
             .borderRadius(3)
         }
         .width('100%')

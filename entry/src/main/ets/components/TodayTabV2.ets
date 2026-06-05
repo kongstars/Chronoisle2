@@ -1,0 +1,758 @@
+/**
+ * TodayTab V2 — 首页重构样板
+ *
+ * 设计方向：清新简洁 · 轻科技感 · 结构清晰 · 呼吸感
+ *
+ * 布局结构：
+ * 1. 问候区（纯文字 + 日期，左对齐）
+ * 2. 快速操作栏（4 个圆形图标按钮）
+ * 3. 今日计划卡片（核心区域，最大视觉权重）
+ * 4. 今日提醒（横向滚动小卡片）
+ * 5. 目标进度（2 列网格，进度环 + 标题）
+ * 6. 逾期提示（仅在有逾期任务时显示）
+ */
+
+import { Goal, GoalCategory } from '../models/Goal';
+import { Task, TaskStatus } from '../models/Task';
+import { DayEvent, DayEventType } from '../models/DayEvent';
+import { getDayEventOccurrenceTimeOnDate, getEventsForDate, isDayEventEnded, startOfDay } from '../common/DayEventUtils';
+import { CATEGORIES, CategoryInfo } from '../common/Constants';
+import type { SavedPlanTaskItem, SavedTodayPlan } from '../models/TodayPlan';
+import type { UserAccount } from '../services/AuthService';
+import { ThemeColors, LightTheme } from '../theme/AppTheme';
+import { db } from '../storage/Database';
+import { dataSyncService } from '../services/DataSyncService';
+import { AppIcon } from '../ui/base/AppIcon';
+
+// ========== 设计 Token（V2 规范） ==========
+
+const V2_PAGE_PADDING: number = 16;
+const V2_SECTION_GAP: number = 16;
+const V2_CARD_RADIUS: number = 14;
+const V2_CARD_PADDING: number = 16;
+const V2_INNER_CARD_RADIUS: number = 10;
+
+const V2_FONT_DISPLAY: number = 24;
+const V2_FONT_TITLE: number = 18;
+const V2_FONT_SUBTITLE: number = 14;
+const V2_FONT_BODY: number = 14;
+const V2_FONT_CAPTION: number = 12;
+const V2_FONT_MICRO: number = 11;
+const V2_FONT_NUMERIC: number = 22;
+
+const V2_QUICK_ACTION_SIZE: number = 44;
+const V2_PROGRESS_RING_SIZE: number = 38;
+
+// ========== 接口 ==========
+
+interface QuickAction {
+  icon: string;
+  label: string;
+  action: () => void;
+}
+
+interface ReminderSnapshot {
+  id: string;
+  title: string;
+  typeLabel: string;
+  timeText: string;
+  isDueNow: boolean;
+  completedToday: boolean;
+}
+
+@Component
+export struct TodayTabV2 {
+  @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
+  @Prop goals: Goal[] = [];
+  @Prop tasks: Task[] = [];
+  @Prop savedPlan: SavedTodayPlan | null = null;
+  @Prop user: UserAccount | null = null;
+  @Prop dayEvents: DayEvent[] = [];
+
+  // 回调
+  onCreateTask?: () => void;
+  onCreateGoal?: () => void;
+  onCreateReminder?: () => void;
+  onStartFocus?: () => void;
+  onOpenSearch?: () => void;
+  onOpenTodayPlan?: () => void;
+  onOpenGoalDetail?: (goalId: string) => void;
+  onOpenReschedule?: () => void;
+  onOpenReminderCenter?: () => void;
+  onToggleTaskComplete?: (task: Task) => void;
+  onOpenTaskDetail?: (taskId: string) => void;
+  onCompleteReminder?: (eventId: string) => void;
+
+  // ========== 数据计算 ==========
+
+  private getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 6) return '夜深了，早点休息';
+    if (hour < 9) return '早上好';
+    if (hour < 12) return '上午好';
+    if (hour < 14) return '中午好';
+    if (hour < 18) return '下午好';
+    if (hour < 22) return '晚上好';
+    return '夜深了';
+  }
+
+  private getDateText(): string {
+    const now = new Date();
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return `${now.getMonth() + 1}月${now.getDate()}日 ${weekdays[now.getDay()]}`;
+  }
+
+  private getDisplayName(): string {
+    if (this.user?.nickname) return this.user.nickname;
+    if (this.user?.account) return this.user.account;
+    return '';
+  }
+
+  private getPendingTasks(): Task[] {
+    return this.tasks.filter((t: Task) => t.status === TaskStatus.PENDING);
+  }
+
+  private getOverdueTasks(): Task[] {
+    const now = Date.now();
+    return this.getPendingTasks().filter((t: Task) => {
+      return t.dueDate !== undefined && t.dueDate < now;
+    });
+  }
+
+  private getDayProgressPercent(): number {
+    const now = new Date();
+    const minutesPassed = now.getHours() * 60 + now.getMinutes();
+    return Math.round((minutesPassed / 1440) * 100);
+  }
+
+  private getCompletedTodayCount(): number {
+    const todayStart = startOfDay(Date.now());
+    return this.tasks.filter((t: Task) => {
+      return t.status === TaskStatus.COMPLETED && t.completedAt !== undefined && startOfDay(t.completedAt) === todayStart;
+    }).length;
+  }
+
+  private getPlanFocusTasks(): SavedPlanTaskItem[] {
+    if (!this.savedPlan || !this.savedPlan.focusTasks) return [];
+    return this.savedPlan.focusTasks;
+  }
+
+  private getPlanFocusTasksDisplay(): SavedPlanTaskItem[] {
+    return this.getPlanFocusTasks().slice(0, 7);
+  }
+
+  private getFeaturedGoals(): Goal[] {
+    return this.goals
+      .filter((g: Goal) => !g.isArchived)
+      .sort((a: Goal, b: Goal) => {
+        if (a.isPriority && !b.isPriority) return -1;
+        if (!a.isPriority && b.isPriority) return 1;
+        return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
+      })
+      .slice(0, 5);
+  }
+
+  private getTodayReminders(): ReminderSnapshot[] {
+    const now = Date.now();
+    const todayStart = startOfDay(now);
+
+    // 收集今天已完成的提醒 id
+    const completedIds = new Set<string>();
+    this.tasks.forEach((t: Task) => {
+      if (t.reminderId && t.status === TaskStatus.COMPLETED && t.completedAt && startOfDay(t.completedAt) === todayStart) {
+        completedIds.add(t.reminderId);
+      }
+    });
+
+    // 直接查"今天有触发的事件"
+    const todayEvents = getEventsForDate(this.dayEvents, now);
+
+    const results: ReminderSnapshot[] = [];
+
+    todayEvents.forEach((event: DayEvent) => {
+      // 跳过已结束/已暂停的
+      if (event.isCompleted) return;
+      if (!event.isEnabled) return;
+      if (isDayEventEnded(event, now)) return;
+
+      const occurrenceTime = getDayEventOccurrenceTimeOnDate(event, now);
+      const completedToday = completedIds.has(event.id);
+
+      let timeText: string;
+      let isDueNow = false;
+      if (completedToday) {
+        timeText = '已完成';
+      } else if (occurrenceTime !== undefined) {
+        isDueNow = occurrenceTime <= now;
+        const date = new Date(occurrenceTime);
+        timeText = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      } else {
+        timeText = '今天';
+      }
+
+      results.push({
+        id: event.id,
+        title: event.title,
+        typeLabel: this.getDayEventTypeLabel(event),
+        timeText,
+        isDueNow,
+        completedToday
+      });
+    });
+
+    // 还要把今天虽然没"触发"但今天已被打卡完成的事件加进来（习惯计数型可能不在 today 列表）
+    completedIds.forEach((eventId: string) => {
+      if (results.some((r: ReminderSnapshot) => r.id === eventId)) return;
+      const event = this.dayEvents.find((e: DayEvent) => e.id === eventId);
+      if (!event) return;
+      results.push({
+        id: event.id,
+        title: event.title,
+        typeLabel: this.getDayEventTypeLabel(event),
+        timeText: '已完成',
+        isDueNow: false,
+        completedToday: true
+      });
+    });
+
+    return results.sort((a: ReminderSnapshot, b: ReminderSnapshot) => {
+      if (a.completedToday && !b.completedToday) return 1;
+      if (!a.completedToday && b.completedToday) return -1;
+      if (a.isDueNow && !b.isDueNow) return -1;
+      if (!a.isDueNow && b.isDueNow) return 1;
+      return 0;
+    }).slice(0, 8);
+  }
+
+  private getDayEventTypeLabel(event: DayEvent): string {
+    switch (event.type) {
+      case DayEventType.HABIT: return '习惯';
+      case DayEventType.PERIODIC: return '周期';
+      case DayEventType.COUNTDOWN: return '倒计时';
+      case DayEventType.MILESTONE: return '里程碑';
+      case DayEventType.COUNTER: return '计数';
+      default: return '提醒';
+    }
+  }
+
+  private getGoalProgress(goal: Goal): number {
+    return Math.min(100, Math.max(0, goal.progress || 0));
+  }
+
+  private getQuickActions(): QuickAction[] {
+    return [
+      { icon: 'task', label: '新建任务', action: () => { if (this.onCreateTask) this.onCreateTask(); } },
+      { icon: 'goal', label: '新建目标', action: () => { if (this.onCreateGoal) this.onCreateGoal(); } },
+      { icon: 'reminder', label: '新建提醒', action: () => { if (this.onCreateReminder) this.onCreateReminder(); } },
+      { icon: 'focus', label: '开始专注', action: () => { if (this.onStartFocus) this.onStartFocus(); } }
+    ];
+  }
+
+  // ========== UI Builders ==========
+
+  @Builder
+  private GreetingSection() {
+    Column({ space: 4 }) {
+      Row({ space: 8 }) {
+        Column({ space: 2 }) {
+          Text(`${this.getGreeting()}${this.getDisplayName() ? '，' + this.getDisplayName() : ''}`)
+            .fontSize(V2_FONT_DISPLAY)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeColors.textPrimary)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+          Text(this.getDateText())
+            .fontSize(V2_FONT_BODY)
+            .fontColor(this.themeColors.textSecondary)
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        // 搜索图标
+        Stack({ alignContent: Alignment.Center }) {
+          Row()
+            .width(40)
+            .height(40)
+            .backgroundColor(this.themeColors.surfaceSoft)
+            .borderRadius(20)
+
+          AppIcon({ name: 'search', iconSize: 22, framed: false, color: this.themeColors.textSecondary })
+        }
+        .width(40)
+        .height(40)
+        .onClick(() => {
+          if (this.onOpenSearch) this.onOpenSearch();
+        })
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  private QuickActionsBar() {
+    Row({ space: 0 }) {
+      ForEach(this.getQuickActions(), (item: QuickAction) => {
+        Column({ space: 4 }) {
+          Stack({ alignContent: Alignment.Center }) {
+            Row()
+              .width(V2_QUICK_ACTION_SIZE)
+              .height(V2_QUICK_ACTION_SIZE)
+              .backgroundColor(this.themeColors.primarySubtle)
+              .borderRadius(V2_QUICK_ACTION_SIZE / 2)
+              .border({ width: 1, color: this.themeColors.primaryLight + '55' })
+              .shadow({ radius: 4, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
+
+            AppIcon({ name: item.icon, iconSize: 22, framed: false, color: this.themeColors.primary })
+          }
+          .width(V2_QUICK_ACTION_SIZE)
+          .height(V2_QUICK_ACTION_SIZE)
+
+          Text(item.label)
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.textSecondary)
+            .textAlign(TextAlign.Center)
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          item.action();
+        })
+      }, (item: QuickAction) => item.label)
+    }
+    .width('100%')
+  }
+
+  @Builder
+  private PlanCard() {
+    Column({ space: 8 }) {
+      // 标题行
+      Row() {
+        Column({ space: 2 }) {
+          Text('今日计划')
+            .fontSize(V2_FONT_TITLE)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeColors.textPrimary)
+          Text(this.savedPlan ? '把今天最重要的事收在一张焦点卡里' : '先收拢今天的重点，再开始推进')
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.textSecondary)
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        if (this.savedPlan) {
+          Text(`${this.getPlanFocusTasks().length} 项`)
+            .fontSize(V2_FONT_CAPTION)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.primary)
+            .padding({ left: 7, right: 7, top: 2, bottom: 2 })
+            .backgroundColor(this.themeColors.surfaceRaised)
+            .border({ width: 1, color: this.themeColors.primaryLight + '55' })
+            .borderRadius(10)
+        }
+      }
+      .width('100%')
+
+      if (!this.savedPlan || this.getPlanFocusTasks().length === 0) {
+        Column({ space: 6 }) {
+          Text('还没有今日计划')
+            .fontSize(V2_FONT_BODY)
+            .fontColor(this.themeColors.textSecondary)
+          Text('点击生成 AI 计划，或手动选择今天要做的事')
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.textMuted)
+        }
+        .width('100%')
+        .padding({ top: 8, bottom: 8 })
+        .alignItems(HorizontalAlign.Start)
+      } else {
+        Column({ space: 0 }) {
+          ForEach(this.getPlanFocusTasksDisplay(), (item: SavedPlanTaskItem) => {
+            this.PlanTaskRow(item)
+          }, (item: SavedPlanTaskItem) => `${item.id}_${item.completed}`)
+        }
+        .width('100%')
+
+        if (this.getPlanFocusTasks().length > 7) {
+          Text(`还有 ${this.getPlanFocusTasks().length - 7} 项`)
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.textMuted)
+            .width('100%')
+        }
+      }
+
+      // 底部操作
+      Row({ space: 8 }) {
+        Text(this.savedPlan ? '查看完整计划' : '生成 AI 计划')
+          .fontSize(V2_FONT_BODY)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.themeColors.primary)
+          .onClick(() => {
+            if (this.onOpenTodayPlan) this.onOpenTodayPlan();
+          })
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .padding(V2_CARD_PADDING)
+    .backgroundColor(this.themeColors.announcementSurface)
+    .borderRadius(V2_CARD_RADIUS)
+    .border({ width: 1, color: this.themeColors.primaryLight + '66' })
+    .shadow({ radius: 12, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 4 })
+  }
+
+  @Builder
+  private PlanTaskRow(item: SavedPlanTaskItem) {
+    Row({ space: 10 }) {
+      // 完成状态圆圈（点击切换完成状态）
+      Stack({ alignContent: Alignment.Center }) {
+        Row()
+          .width(22)
+          .height(22)
+          .borderRadius(11)
+          .border({ width: item.completed ? 0 : 1.5, color: item.completed ? 'transparent' : (item.type === 'reminder' ? this.themeColors.primary : this.themeColors.borderColor) })
+          .backgroundColor(item.completed ? this.themeColors.successSubtle : 'transparent')
+
+        if (item.completed) {
+          AppIcon({ name: 'success', iconSize: 14, framed: false, color: this.themeColors.success })
+        } else if (item.type === 'reminder') {
+          AppIcon({ name: 'reminder', iconSize: 12, framed: false, color: this.themeColors.primary })
+        }
+      }
+      .width(32)
+      .height(32)
+      .onClick(() => {
+        if (item.type === 'reminder') {
+          // 提醒类型：调用打卡回调
+          if (this.onCompleteReminder) this.onCompleteReminder(item.id);
+        } else {
+          // 任务类型：切换完成状态
+          const task = this.tasks.find((t: Task) => t.id === item.id);
+          if (task && this.onToggleTaskComplete) {
+            this.onToggleTaskComplete(task);
+          }
+        }
+      })
+
+      // 内容区
+      Column({ space: 2 }) {
+        Row({ space: 6 }) {
+          // 分类标签（任务类型）
+          if (item.type !== 'reminder' && this.getTaskCategory(item.id) !== null) {
+            Text(this.getTaskCategory(item.id)!.label)
+              .fontSize(V2_FONT_MICRO)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.getTaskCategory(item.id)!.color)
+              .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+              .backgroundColor(this.getTaskCategory(item.id)!.color + '1A')
+              .borderRadius(4)
+          }
+
+          // 提醒标签
+          if (item.type === 'reminder') {
+            Text('提醒')
+              .fontSize(V2_FONT_MICRO)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeColors.primary)
+              .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+              .backgroundColor(this.themeColors.primarySubtle)
+              .borderRadius(4)
+          }
+
+          Text(item.title)
+            .fontSize(V2_FONT_BODY)
+            .fontColor(item.completed ? this.themeColors.textMuted : this.themeColors.textPrimary)
+            .decoration({ type: item.completed ? TextDecorationType.LineThrough : TextDecorationType.None })
+            .layoutWeight(1)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .onClick(() => {
+              if (item.type !== 'reminder' && this.onOpenTaskDetail) this.onOpenTaskDetail(item.id);
+            })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+
+        // 副信息行：目标名称 / 时间
+        if ((item.goalTitle && item.goalTitle.length > 0) || (item.reminderTime && item.reminderTime.length > 0)) {
+          Row({ space: 6 }) {
+            if (item.goalTitle && item.goalTitle.length > 0) {
+              Text(item.goalTitle)
+                .fontSize(V2_FONT_CAPTION)
+                .fontColor(this.themeColors.textMuted)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            if (item.reminderTime && item.reminderTime.length > 0) {
+              Text(item.reminderTime)
+                .fontSize(V2_FONT_CAPTION)
+                .fontColor(this.themeColors.textSecondary)
+            }
+          }
+          .width('100%')
+        }
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      if (item.estimatedMinutes && !item.completed) {
+        Text(this.formatEstimatedHours(item.estimatedMinutes))
+          .fontSize(V2_FONT_CAPTION)
+          .fontColor(this.themeColors.textMuted)
+      }
+    }
+    .width('100%')
+    .padding({ top: 6, bottom: 6 })
+    .alignItems(VerticalAlign.Center)
+  }
+
+  private formatEstimatedHours(minutes: number): string {
+    const hours = minutes / 60;
+    if (hours >= 1) {
+      // 整数小时不显示小数
+      return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+    }
+    // 小于 1 小时，显示一位小数
+    return `${hours.toFixed(1)}h`;
+  }
+
+  private getTaskCategory(taskId: string): CategoryInfo | null {
+    const task = this.tasks.find((t: Task) => t.id === taskId);
+    if (!task || !task.category) {
+      return null;
+    }
+    const found = CATEGORIES.find((c: CategoryInfo) => c.value === task.category);
+    return found || null;
+  }
+
+  @Builder
+  private RemindersSection() {
+    Column({ space: 6 }) {
+      Row() {
+        Text('今日提醒')
+          .fontSize(V2_FONT_TITLE)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
+          .layoutWeight(1)
+
+        Text('全部')
+          .fontSize(V2_FONT_CAPTION)
+          .fontColor(this.themeColors.primary)
+          .onClick(() => {
+            if (this.onOpenReminderCenter) this.onOpenReminderCenter();
+          })
+      }
+      .width('100%')
+
+      if (this.getTodayReminders().length === 0) {
+        Text('今天没有待处理的提醒')
+          .fontSize(V2_FONT_BODY)
+          .fontColor(this.themeColors.textMuted)
+          .padding({ top: 4, bottom: 4 })
+      } else {
+        Column({ space: 0 }) {
+          ForEach(this.getTodayReminders(), (item: ReminderSnapshot) => {
+            this.ReminderRow(item)
+          }, (item: ReminderSnapshot) => `${item.id}_${item.completedToday}`)
+        }
+        .width('100%')
+      }
+    }
+    .width('100%')
+  }
+
+  @Builder
+  private ReminderRow(item: ReminderSnapshot) {
+    Row({ space: 10 }) {
+      // 左侧内容
+      Column({ space: 3 }) {
+        // 提醒名称（允许换行）
+        Text(item.title)
+          .fontSize(V2_FONT_BODY)
+          .fontColor(item.completedToday ? this.themeColors.textMuted : this.themeColors.textPrimary)
+          .decoration({ type: item.completedToday ? TextDecorationType.LineThrough : TextDecorationType.None })
+          .width('100%')
+
+        // 类型 + 时间
+        Row({ space: 8 }) {
+          Text(item.typeLabel)
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.primary)
+            .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+            .backgroundColor(this.themeColors.primarySubtle)
+            .borderRadius(4)
+
+          Text(item.timeText)
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(item.completedToday ? this.themeColors.success : (item.isDueNow ? this.themeColors.danger : this.themeColors.textSecondary))
+        }
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      // 右侧操作按钮
+      if (!item.completedToday) {
+        Text('标记完成')
+          .fontSize(V2_FONT_CAPTION)
+          .fontColor(this.themeColors.primary)
+          .fontWeight(FontWeight.Medium)
+          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+          .borderRadius(6)
+          .backgroundColor(this.themeColors.primarySubtle)
+          .onClick(() => {
+            if (this.onCompleteReminder) this.onCompleteReminder(item.id);
+          })
+      } else {
+        AppIcon({ name: 'success', iconSize: 16, framed: false, color: this.themeColors.success })
+      }
+    }
+    .width('100%')
+    .padding({ top: 8, bottom: 8 })
+    .alignItems(VerticalAlign.Center)
+  }
+
+  @Builder
+  private GoalsSection() {
+    Column({ space: 6 }) {
+      Text('目标进度')
+        .fontSize(V2_FONT_TITLE)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.themeColors.textPrimary)
+        .width('100%')
+
+      if (this.getFeaturedGoals().length === 0) {
+        Text('还没有进行中的目标')
+          .fontSize(V2_FONT_BODY)
+          .fontColor(this.themeColors.textMuted)
+          .padding({ top: 4, bottom: 4 })
+      } else {
+        Column({ space: 6 }) {
+          ForEach(this.getFeaturedGoals(), (goal: Goal) => {
+            this.GoalCard(goal)
+          }, (goal: Goal) => goal.id)
+        }
+        .width('100%')
+      }
+    }
+    .width('100%')
+  }
+
+  @Builder
+  private GoalCard(goal: Goal) {
+    Row({ space: 12 }) {
+      // 进度环
+      Stack({ alignContent: Alignment.Center }) {
+        Circle()
+          .width(V2_PROGRESS_RING_SIZE)
+          .height(V2_PROGRESS_RING_SIZE)
+          .fill('transparent')
+          .stroke(this.themeColors.surfaceSoft)
+          .strokeWidth(3.5)
+
+        Text(`${this.getGoalProgress(goal)}%`)
+          .fontSize(V2_FONT_MICRO)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getGoalProgress(goal) >= 80 ? this.themeColors.success : this.themeColors.primary)
+      }
+      .width(V2_PROGRESS_RING_SIZE)
+      .height(V2_PROGRESS_RING_SIZE)
+
+      Column({ space: 3 }) {
+        Text(goal.title)
+          .fontSize(V2_FONT_SUBTITLE)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.themeColors.textPrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+
+        Row({ space: 6 }) {
+          Text(`${goal.keyResults?.length || 0} 个关键结果`)
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.textMuted)
+
+          if (goal.isPriority) {
+            Text('优先')
+              .fontSize(V2_FONT_CAPTION - 1)
+              .fontColor(this.themeColors.warning)
+              .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+              .backgroundColor(this.themeColors.warningSubtle)
+              .borderRadius(4)
+          }
+        }
+        .width('100%')
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      AppIcon({ name: 'chevron-right', iconSize: 14, framed: false, color: this.themeColors.textMuted })
+    }
+    .width('100%')
+    .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+    .backgroundColor(this.themeColors.surface)
+    .borderRadius(V2_CARD_RADIUS)
+    .shadow({ radius: 6, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
+    .onClick(() => {
+      if (this.onOpenGoalDetail) this.onOpenGoalDetail(goal.id);
+    })
+  }
+
+  @Builder
+  private OverdueAlert() {
+    if (this.getOverdueTasks().length > 0) {
+      Row({ space: 8 }) {
+        AppIcon({ name: 'warning', iconSize: 16, framed: false, color: this.themeColors.danger })
+
+        Column({ space: 1 }) {
+          Text(`${this.getOverdueTasks().length} 项任务已逾期`)
+            .fontSize(V2_FONT_BODY)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.danger)
+
+          Text('点击查看 AI 重排建议')
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.textSecondary)
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        AppIcon({ name: 'chevron-right', iconSize: 14, framed: false, color: this.themeColors.textMuted })
+      }
+      .width('100%')
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+      .backgroundColor(this.themeColors.riskSurface)
+      .borderRadius(V2_INNER_CARD_RADIUS)
+      .border({ width: 1, color: this.themeColors.danger + '26' })
+      .onClick(() => {
+        if (this.onOpenReschedule) this.onOpenReschedule();
+      })
+    }
+  }
+
+  // ========== 主 Build ==========
+
+  build() {
+    Scroll() {
+      Column({ space: V2_SECTION_GAP }) {
+        this.GreetingSection()
+        this.QuickActionsBar()
+        this.OverdueAlert()
+        this.PlanCard()
+        this.RemindersSection()
+
+        // 底部安全区
+        Blank().height(50)
+      }
+      .width('100%')
+      .padding({ left: V2_PAGE_PADDING, right: V2_PAGE_PADDING, top: 8, bottom: 10 })
+    }
+    .align(Alignment.Top)
+    .scrollBar(BarState.Off)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.themeColors.background)
+  }
+}

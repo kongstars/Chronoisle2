@@ -1,6 +1,6 @@
 import { ThemeColors, LightTheme } from '../../theme/AppTheme';
 import { BORDER_DEFAULT } from '../../foundation/tokens/BorderTokens';
-import { RADIUS_LG, RADIUS_SM } from '../../foundation/tokens/RadiusTokens';
+import { RADIUS_LG, RADIUS_PILL, RADIUS_SM } from '../../foundation/tokens/RadiusTokens';
 import { SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../../foundation/tokens/TypographyTokens';
 import { DISABLED_OPACITY } from '../../foundation/tokens/VisualTokens';
@@ -62,7 +62,7 @@ export struct AppGoalCard {
     if (this.isHovered && this.isInteractive()) {
       return this.themeColors.primaryLight;
     }
-    return this.getAccentColor();
+    return this.themeColors.borderColor;
   }
 
   private getVisibleKeyResultCount(): number {
@@ -83,7 +83,7 @@ export struct AppGoalCard {
         .width(4)
         .height(this.getAccentHeight())
         .backgroundColor(this.getAccentColor())
-        .borderRadius(999)
+        .borderRadius(RADIUS_PILL)
 
       Column({ space: SPACE_XS }) {
         Row() {
@@ -93,7 +93,7 @@ export struct AppGoalCard {
                 .width(6)
                 .height(6)
                 .backgroundColor(this.getAccentColor())
-                .borderRadius(999)
+                .borderRadius(RADIUS_PILL)
 
               Text(this.badgeText)
                 .fontSize(TYPE_CAPTION)
@@ -114,7 +114,7 @@ export struct AppGoalCard {
             Text(this.percentText)
               .fontSize(TYPE_SECTION_TITLE)
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeColors.textPrimary)
+              .fontColor(this.getAccentColor())
           }
         }
         .width('100%')

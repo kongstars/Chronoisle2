@@ -1,0 +1,21 @@
+--- current/entry\src\main\ets\services\StatsService.ets
++++ backup/entry\src\main\ets\services\StatsService.ets
+@@ -5,9 +5,6 @@
+ import { authService } from './AuthService';
+ import picker from '@ohos.file.picker';
+ import fs from '@ohos.file.fs';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('StatsService');
+ 
+ // 时间范围选项
+ export enum TimeRange {
+@@ -448,7 +445,7 @@
+       }
+       return false; // 取消保存
+     } catch (e) {
+-      logger.error('Export failed', e as Object);
++      console.error('Export failed: ' + JSON.stringify(e));
+       return false;
+     }
+   }

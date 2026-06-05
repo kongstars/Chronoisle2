@@ -190,6 +190,7 @@ struct AboutPage {
       .width('100%')
       .padding({ bottom: PAGE_PADDING })
     }
+    .align(Alignment.Top)
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)

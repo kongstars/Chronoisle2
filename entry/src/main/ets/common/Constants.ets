@@ -7,19 +7,25 @@ export interface CategoryInfo {
   color: string;
   icon: string;
 }
+
+export const CATEGORY_HEALTH_COLOR: string = '#59B294';
+export const CATEGORY_LEARNING_COLOR: string = '#F1A765';
+export const CATEGORY_FINANCE_COLOR: string = '#9A96FF';
+export const CATEGORY_FUN_COLOR: string = '#D978A6';
+
 // 4 大生活维度配置
 export const CATEGORIES: CategoryInfo[] = [
-  { value: GoalCategory.HEALTH, label: '健康', color: '#52C41A', icon: 'health' },
-  { value: GoalCategory.LEARNING, label: '成长', color: '#FA8C16', icon: 'growth' },
-  { value: GoalCategory.FINANCE, label: '理财', color: '#722ED1', icon: 'finance' },
-  { value: GoalCategory.FUN, label: '快乐', color: '#F5222D', icon: 'joy' }
+  { value: GoalCategory.HEALTH, label: '健康', color: CATEGORY_HEALTH_COLOR, icon: 'health' },
+  { value: GoalCategory.LEARNING, label: '成长', color: CATEGORY_LEARNING_COLOR, icon: 'growth' },
+  { value: GoalCategory.FINANCE, label: '理财', color: CATEGORY_FINANCE_COLOR, icon: 'finance' },
+  { value: GoalCategory.FUN, label: '快乐', color: CATEGORY_FUN_COLOR, icon: 'joy' }
 ];
 // 分类颜色映射
 export const CATEGORY_COLORS: Record<GoalCategory, string> = {
-  [GoalCategory.HEALTH]: '#52C41A',
-  [GoalCategory.LEARNING]: '#FA8C16',
-  [GoalCategory.FINANCE]: '#722ED1',
-  [GoalCategory.FUN]: '#F5222D'
+  [GoalCategory.HEALTH]: CATEGORY_HEALTH_COLOR,
+  [GoalCategory.LEARNING]: CATEGORY_LEARNING_COLOR,
+  [GoalCategory.FINANCE]: CATEGORY_FINANCE_COLOR,
+  [GoalCategory.FUN]: CATEGORY_FUN_COLOR
 };
 
 // 分类背景图片映射

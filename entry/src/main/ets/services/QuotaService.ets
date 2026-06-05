@@ -193,10 +193,14 @@ export class QuotaService {
   }
 
   private static async getPreferences(context: Context): Promise<dataPreferences.Preferences> {
-    if (!QuotaService.instance) {
-      QuotaService.instance = await dataPreferences.getPreferences(context, QuotaService.PREF_NAME);
+    try {
+      if (!QuotaService.instance) {
+        QuotaService.instance = await dataPreferences.getPreferences(context, QuotaService.PREF_NAME);
+      }
+      return QuotaService.instance;
+    } catch (_) {
+      throw new Error('Failed to get preferences');
     }
-    return QuotaService.instance;
   }
 
   private static getMonthKey(): string {
@@ -407,110 +411,138 @@ export class QuotaService {
   }
 
   public static async incrementAITaskCount(context: Context): Promise<SpendResult> {
-    // 先调用服务端扣除积分
     const spendResult = await QuotaService.spendCredit('ai_task');
     if (spendResult.success) {
-      // 扣费成功后更新本地计数
-      const prefs = await QuotaService.getPreferences(context);
-      const key = `ai_task_${QuotaService.getMonthKey()}`;
-      const count = await prefs.get(key, 0) as number;
-      await prefs.put(key, count + 1);
-      await prefs.flush();
+      try {
+        const prefs = await QuotaService.getPreferences(context);
+        const key = `ai_task_${QuotaService.getMonthKey()}`;
+        const count = await prefs.get(key, 0) as number;
+        await prefs.put(key, count + 1);
+        await prefs.flush();
+      } catch (_) {}
       QuotaService.reportUsageToServer('ai_feature', 1, { feature: 'ai_task', action: 'trigger' } as UsageDetail);
     }
     return spendResult;
   }
 
   public static async getAITaskCount(context: Context): Promise<number> {
-    const prefs = await QuotaService.getPreferences(context);
-    const key = `ai_task_${QuotaService.getMonthKey()}`;
-    return await prefs.get(key, 0) as number;
+    try {
+      const prefs = await QuotaService.getPreferences(context);
+      const key = `ai_task_${QuotaService.getMonthKey()}`;
+      return await prefs.get(key, 0) as number;
+    } catch (_) {
+      return 0;
+    }
   }
 
   // --- 高阶 AI 独立配额 ---
   public static async incrementGoalBreakdownCount(context: Context): Promise<SpendResult> {
     const spendResult = await QuotaService.spendCredit('goal_breakdown');
     if (spendResult.success) {
-      const prefs = await QuotaService.getPreferences(context);
-      const count = await prefs.get('ai_goal_breakdown', 0) as number;
-      await prefs.put('ai_goal_breakdown', count + 1);
-      await prefs.flush();
+      try {
+        const prefs = await QuotaService.getPreferences(context);
+        const count = await prefs.get('ai_goal_breakdown', 0) as number;
+        await prefs.put('ai_goal_breakdown', count + 1);
+        await prefs.flush();
+      } catch (_) {}
       QuotaService.reportUsageToServer('ai_feature', 1, { feature: 'goal_breakdown', action: 'trigger' } as UsageDetail);
     }
     return spendResult;
   }
 
   public static async checkGoalBreakdownQuota(context: Context): Promise<QuotaResult> {
-    const user = await authService.getCurrentUser();
-    const isPremium = authService.isPremiumUser(user);
-    const limit = isPremium ? 999999 : 3;
-    const prefs = await QuotaService.getPreferences(context);
-    const count = await prefs.get('ai_goal_breakdown', 0) as number;
-    return { allowed: count < limit, remaining: Math.max(0, limit - count), limit };
+    try {
+      const user = await authService.getCurrentUser();
+      const isPremium = authService.isPremiumUser(user);
+      const limit = isPremium ? 999999 : 3;
+      const prefs = await QuotaService.getPreferences(context);
+      const count = await prefs.get('ai_goal_breakdown', 0) as number;
+      return { allowed: count < limit, remaining: Math.max(0, limit - count), limit };
+    } catch (_) {
+      return { allowed: false, remaining: 0, limit: 0 };
+    }
   }
 
   public static async incrementTodayPlanCount(context: Context): Promise<SpendResult> {
     const spendResult = await QuotaService.spendCredit('today_plan');
     if (spendResult.success) {
-      const prefs = await QuotaService.getPreferences(context);
-      const key = `ai_today_plan_${QuotaService.getMonthKey()}`;
-      const count = await prefs.get(key, 0) as number;
-      await prefs.put(key, count + 1);
-      await prefs.flush();
+      try {
+        const prefs = await QuotaService.getPreferences(context);
+        const key = `ai_today_plan_${QuotaService.getMonthKey()}`;
+        const count = await prefs.get(key, 0) as number;
+        await prefs.put(key, count + 1);
+        await prefs.flush();
+      } catch (_) {}
       QuotaService.reportUsageToServer('ai_feature', 1, { feature: 'today_plan', action: 'trigger' } as UsageDetail);
     }
     return spendResult;
   }
   public static async checkTodayPlanQuota(context: Context): Promise<QuotaResult> {
-    const user = await authService.getCurrentUser();
-    const isPremium = authService.isPremiumUser(user);
-    const limit = isPremium ? 999999 : 5;
-    const prefs = await QuotaService.getPreferences(context);
-    const key = `ai_today_plan_${QuotaService.getMonthKey()}`;
-    const count = await prefs.get(key, 0) as number;
-    return { allowed: count < limit, remaining: Math.max(0, limit - count), limit };
+    try {
+      const user = await authService.getCurrentUser();
+      const isPremium = authService.isPremiumUser(user);
+      const limit = isPremium ? 999999 : 5;
+      const prefs = await QuotaService.getPreferences(context);
+      const key = `ai_today_plan_${QuotaService.getMonthKey()}`;
+      const count = await prefs.get(key, 0) as number;
+      return { allowed: count < limit, remaining: Math.max(0, limit - count), limit };
+    } catch (_) {
+      return { allowed: false, remaining: 0, limit: 0 };
+    }
   }
 
   public static async incrementRescheduleCount(context: Context): Promise<SpendResult> {
     const spendResult = await QuotaService.spendCredit('reschedule');
     if (spendResult.success) {
-      const prefs = await QuotaService.getPreferences(context);
-      const key = `ai_reschedule_${QuotaService.getMonthKey()}`;
-      const count = await prefs.get(key, 0) as number;
-      await prefs.put(key, count + 1);
-      await prefs.flush();
+      try {
+        const prefs = await QuotaService.getPreferences(context);
+        const key = `ai_reschedule_${QuotaService.getMonthKey()}`;
+        const count = await prefs.get(key, 0) as number;
+        await prefs.put(key, count + 1);
+        await prefs.flush();
+      } catch (_) {}
       QuotaService.reportUsageToServer('ai_feature', 1, { feature: 'reschedule', action: 'trigger' } as UsageDetail);
     }
     return spendResult;
   }
   public static async checkRescheduleQuota(context: Context): Promise<QuotaResult> {
-    const user = await authService.getCurrentUser();
-    const isPremium = authService.isPremiumUser(user);
-    const limit = isPremium ? 999999 : 5;
-    const prefs = await QuotaService.getPreferences(context);
-    const key = `ai_reschedule_${QuotaService.getMonthKey()}`;
-    const count = await prefs.get(key, 0) as number;
-    return { allowed: count < limit, remaining: Math.max(0, limit - count), limit };
+    try {
+      const user = await authService.getCurrentUser();
+      const isPremium = authService.isPremiumUser(user);
+      const limit = isPremium ? 999999 : 5;
+      const prefs = await QuotaService.getPreferences(context);
+      const key = `ai_reschedule_${QuotaService.getMonthKey()}`;
+      const count = await prefs.get(key, 0) as number;
+      return { allowed: count < limit, remaining: Math.max(0, limit - count), limit };
+    } catch (_) {
+      return { allowed: false, remaining: 0, limit: 0 };
+    }
   }
   // ----------------------
 
   public static async incrementVoiceDuration(context: Context, seconds: number): Promise<SpendResult> {
     const spendResult = await QuotaService.spendCredit('voice_task');
     if (spendResult.success) {
-      const prefs = await QuotaService.getPreferences(context);
-      const key = `voice_dur_${QuotaService.getMonthKey()}`;
-      const currentDur = await prefs.get(key, 0) as number;
-      await prefs.put(key, currentDur + seconds);
-      await prefs.flush();
+      try {
+        const prefs = await QuotaService.getPreferences(context);
+        const key = `voice_dur_${QuotaService.getMonthKey()}`;
+        const currentDur = await prefs.get(key, 0) as number;
+        await prefs.put(key, currentDur + seconds);
+        await prefs.flush();
+      } catch (_) {}
       QuotaService.reportUsageToServer('voice', seconds, {} as UsageDetail);
     }
     return spendResult;
   }
 
   public static async getVoiceDuration(context: Context): Promise<number> {
-    const prefs = await QuotaService.getPreferences(context);
-    const key = `voice_dur_${QuotaService.getMonthKey()}`;
-    return await prefs.get(key, 0) as number;
+    try {
+      const prefs = await QuotaService.getPreferences(context);
+      const key = `voice_dur_${QuotaService.getMonthKey()}`;
+      return await prefs.get(key, 0) as number;
+    } catch (_) {
+      return 0;
+    }
   }
   public static async checkAITaskQuota(context: Context): Promise<QuotaResult> {
     const user = await authService.getCurrentUser();
@@ -541,16 +573,16 @@ export class QuotaService {
    * 在用户从 basic 升级为 premium 时调用
    */
   public static async resetFreeQuotas(context: Context): Promise<void> {
-    const prefs = await QuotaService.getPreferences(context);
-    const monthKey = QuotaService.getMonthKey();
-
-    // 清除所有本月计数
-    await prefs.delete(`ai_task_${monthKey}`);
-    await prefs.delete('ai_goal_breakdown');
-    await prefs.delete(`ai_today_plan_${monthKey}`);
-    await prefs.delete(`ai_reschedule_${monthKey}`);
-    await prefs.delete(`voice_dur_${monthKey}`);
-    await prefs.flush();
+    try {
+      const prefs = await QuotaService.getPreferences(context);
+      const monthKey = QuotaService.getMonthKey();
+      await prefs.delete(`ai_task_${monthKey}`);
+      await prefs.delete('ai_goal_breakdown');
+      await prefs.delete(`ai_today_plan_${monthKey}`);
+      await prefs.delete(`ai_reschedule_${monthKey}`);
+      await prefs.delete(`voice_dur_${monthKey}`);
+      await prefs.flush();
+    } catch (_) {}
   }
 
   /**

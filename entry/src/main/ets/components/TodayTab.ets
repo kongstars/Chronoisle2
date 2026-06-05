@@ -37,6 +37,16 @@ interface ReminderInsight {
   isDueNow: boolean;
 }
 
+interface TaskLookupEntry {
+  id: string;
+  task: Task;
+}
+
+interface GoalTaskCountEntry {
+  goalId: string;
+  count: number;
+}
+
 @Component
 export struct TodayTab {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
@@ -59,15 +69,15 @@ export struct TodayTab {
   private reminderInsightsCacheEventSource: DayEvent[] | null = null;
   private reminderInsightsCacheDate: number = -1;
   private reminderInsightsCache: ReminderInsight[] = [];
-  private taskMapCacheSource: Task[] | null = null;
-  private taskMapCache: Record<string, Task> = {};
+  private taskEntriesCacheSource: Task[] | null = null;
+  private taskEntriesCache: TaskLookupEntry[] = [];
   private planFocusTasksCachePlanSource: SavedTodayPlan | null = null;
   private planFocusTasksCacheTaskSource: Task[] | null = null;
   private planFocusTasksCache: SavedPlanTaskItem[] = [];
   private featuredGoalsCacheSource: Goal[] | null = null;
   private featuredGoalsCache: Goal[] = [];
   private goalPendingTaskCountCacheSource: Task[] | null = null;
-  private goalPendingTaskCountCache: Record<string, number> = {};
+  private goalPendingTaskCountCache: GoalTaskCountEntry[] = [];
   @State contentWidth: number = 0;
 
   private isWideLayout(): boolean {
@@ -347,18 +357,22 @@ export struct TodayTab {
       this.savedPlan.focusTasks.length > 0;
   }
 
-  private getTaskMap(): Record<string, Task> {
-    if (this.taskMapCacheSource === this.tasks) {
-      return this.taskMapCache;
+  private getTaskEntries(): TaskLookupEntry[] {
+    if (this.taskEntriesCacheSource === this.tasks) {
+      return this.taskEntriesCache;
     }
 
-    const taskMap: Record<string, Task> = {};
-    this.tasks.forEach((task: Task) => {
-      taskMap[task.id] = task;
-    });
-    this.taskMapCacheSource = this.tasks;
-    this.taskMapCache = taskMap;
-    return this.taskMapCache;
+    this.taskEntriesCache = this.tasks.map((task: Task) => ({
+      id: task.id,
+      task
+    }));
+    this.taskEntriesCacheSource = this.tasks;
+    return this.taskEntriesCache;
+  }
+
+  private findTaskById(taskId: string): Task | undefined {
+    const entry = this.getTaskEntries().find((item: TaskLookupEntry) => item.id === taskId);
+    return entry ? entry.task : undefined;
   }
 
   private getPlanFocusTasks(): SavedPlanTaskItem[] {
@@ -368,20 +382,23 @@ export struct TodayTab {
     if (this.planFocusTasksCachePlanSource === this.savedPlan && this.planFocusTasksCacheTaskSource === this.tasks) {
       return this.planFocusTasksCache;
     }
-    const taskMap = this.getTaskMap();
-    const orderMap: Record<string, number> = {};
-    this.savedPlan.focusTasks.forEach((item: SavedPlanTaskItem, index: number) => {
-      orderMap[item.id] = index;
-    });
+    const orderEntries = this.savedPlan.focusTasks.map((item: SavedPlanTaskItem, index: number) => ({
+      id: item.id,
+      order: index
+    }));
+    const getTaskOrder = (taskId: string): number => {
+      const entry = orderEntries.find((item: { id: string; order: number }) => item.id === taskId);
+      return entry ? entry.order : 0;
+    };
     this.planFocusTasksCache = this.savedPlan.focusTasks
       .slice()
       .sort((first: SavedPlanTaskItem, second: SavedPlanTaskItem) => {
-        const firstCompleted = taskMap[first.id]?.status === TaskStatus.COMPLETED || !!first.completed;
-        const secondCompleted = taskMap[second.id]?.status === TaskStatus.COMPLETED || !!second.completed;
+        const firstCompleted = this.findTaskById(first.id)?.status === TaskStatus.COMPLETED || !!first.completed;
+        const secondCompleted = this.findTaskById(second.id)?.status === TaskStatus.COMPLETED || !!second.completed;
         if (firstCompleted !== secondCompleted) {
           return firstCompleted ? 1 : -1;
         }
-        return (orderMap[first.id] ?? 0) - (orderMap[second.id] ?? 0);
+        return getTaskOrder(first.id) - getTaskOrder(second.id);
       });
     this.planFocusTasksCachePlanSource = this.savedPlan;
     this.planFocusTasksCacheTaskSource = this.tasks;
@@ -389,7 +406,7 @@ export struct TodayTab {
   }
 
   private isPlanTaskCompleted(item: SavedPlanTaskItem): boolean {
-    const task = this.getTaskMap()[item.id];
+    const task = this.findTaskById(item.id);
     if (task) {
       return task.status === TaskStatus.COMPLETED;
     }
@@ -417,7 +434,7 @@ export struct TodayTab {
   }
 
   private getPlanTaskMeta(item: SavedPlanTaskItem): string {
-    const task = this.getTaskMap()[item.id];
+    const task = this.findTaskById(item.id);
     if (item.reason && item.reason.trim().length > 0) {
       return item.reason.trim();
     }
@@ -431,11 +448,13 @@ export struct TodayTab {
   }
 
   private openTaskDetail(taskId: string): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId } });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId } });
+    } catch (_) {}
   }
 
   private async togglePlanTaskCompletion(taskId: string): Promise<void> {
-    const task = this.getTaskMap()[taskId];
+    const task = this.findTaskById(taskId);
     if (!task) {
       return;
     }
@@ -473,17 +492,25 @@ export struct TodayTab {
 
   private getGoalTaskCount(goal: Goal): number {
     if (this.goalPendingTaskCountCacheSource !== this.tasks) {
-      const countMap: Record<string, number> = {};
+      this.goalPendingTaskCountCache = [];
       this.tasks.forEach((task: Task) => {
         if (task.status !== TaskStatus.PENDING || !task.goalId) {
           return;
         }
-        countMap[task.goalId] = (countMap[task.goalId] || 0) + 1;
+        const entry = this.goalPendingTaskCountCache.find((item: GoalTaskCountEntry) => item.goalId === task.goalId);
+        if (entry) {
+          entry.count += 1;
+          return;
+        }
+        this.goalPendingTaskCountCache.push({
+          goalId: task.goalId,
+          count: 1
+        });
       });
       this.goalPendingTaskCountCacheSource = this.tasks;
-      this.goalPendingTaskCountCache = countMap;
     }
-    return this.goalPendingTaskCountCache[goal.id] || 0;
+    const entry = this.goalPendingTaskCountCache.find((item: GoalTaskCountEntry) => item.goalId === goal.id);
+    return entry ? entry.count : 0;
   }
 
   private getVisibleKeyResults(goal: Goal): KeyResult[] {
@@ -567,11 +594,15 @@ export struct TodayTab {
       this.onOpenSearch();
       return;
     }
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/SearchPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/SearchPage' });
+    } catch (_) {}
   }
 
   private openActiveGoalsPage(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/ActiveGoalsPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ActiveGoalsPage' });
+    } catch (_) {}
   }
 
   private openReminderCenter(): void {
@@ -579,11 +610,15 @@ export struct TodayTab {
       this.onOpenReminderCenter();
       return;
     }
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+    } catch (_) {}
   }
 
   private openReminderDetail(eventId: string): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/DayEventDetailPage', params: { eventId } });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/DayEventDetailPage', params: { eventId } });
+    } catch (_) {}
   }
 
   @Builder
@@ -691,6 +726,7 @@ export struct TodayTab {
           }
           .padding({ right: SPACE_MD })
         }
+        .align(Alignment.Top)
         .scrollable(ScrollDirection.Horizontal)
         .scrollBar(BarState.Off)
         .width('100%')
@@ -1037,6 +1073,7 @@ export struct TodayTab {
       .alignSelf(ItemAlign.Center)
       .padding({ left: COMPACT_PAGE_PADDING, right: COMPACT_PAGE_PADDING, top: COMPACT_PAGE_PADDING, bottom: COMPACT_PAGE_PADDING + BOTTOM_CONTENT_SPACER })
     }
+    .align(Alignment.Top)
     .scrollBar(BarState.Off)
     .backgroundColor(this.themeColors.background)
     .onAreaChange((_oldValue, newValue) => {

@@ -118,7 +118,7 @@ struct MainWidget {
             }
             .width('100%')
             .padding({ left: 10, right: 10, top: 8, bottom: 8 })
-            .backgroundColor('#FAFAFA')
+            .backgroundColor(WIDGET_COLOR_SURFACE)
             .borderRadius(12)
             .onClick(() => {
               this.openTaskDetail(task.id);
@@ -130,7 +130,7 @@ struct MainWidget {
     }
     .width('100%')
     .padding(12)
-    .backgroundColor('#F8F9FC')
+    .backgroundColor(WIDGET_COLOR_SURFACE_SOFT)
     .borderRadius(16)
   }
 

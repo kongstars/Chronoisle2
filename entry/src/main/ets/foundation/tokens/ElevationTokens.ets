@@ -9,16 +9,16 @@ export interface AppShadowStyle {
 
 export function getCardShadow(theme: ThemeColors): AppShadowStyle {
   return {
-    radius: 8,
+    radius: 10,
     color: theme.cardShadow,
     offsetX: 0,
-    offsetY: 3
+    offsetY: 4
   };
 }
 
 export function getRaisedCardShadow(theme: ThemeColors): AppShadowStyle {
   return {
-    radius: 14,
+    radius: 16,
     color: theme.cardShadow,
     offsetX: 0,
     offsetY: 6
@@ -27,7 +27,7 @@ export function getRaisedCardShadow(theme: ThemeColors): AppShadowStyle {
 
 export function getFloatingShadow(theme: ThemeColors): AppShadowStyle {
   return {
-    radius: 20,
+    radius: 22,
     color: theme.cardShadow,
     offsetX: 0,
     offsetY: 10

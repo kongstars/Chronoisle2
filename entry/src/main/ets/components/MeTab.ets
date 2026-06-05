@@ -10,12 +10,11 @@ import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppChip } from '../ui/base/AppChip';
 import { AppListRow } from '../ui/base/AppListRow';
-import { AppPanelSection } from '../ui/base/AppPanelSection';
-import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
-import { PAGE_PADDING, PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
 import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_NUMERIC_LG, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
-import { BOTTOM_CONTENT_SPACER, AVATAR_RADIUS_MD, AVATAR_SIZE_MD } from '../foundation/tokens/ComponentSizeTokens';
+import { AVATAR_RADIUS_MD, AVATAR_SIZE_MD } from '../foundation/tokens/ComponentSizeTokens';
 import { LINE_HEIGHT_BODY, LINE_HEIGHT_TIGHT } from '../foundation/tokens/VisualTokens';
 import { Logger } from '../Utils/Logger';
 
@@ -201,43 +200,63 @@ export struct MeTab {
       return;
     }
     this.currentThemeMode = mode;
-    await themeService.setThemeMode(mode);
-    this.getUIContext().getPromptAction().showToast({ message: '主题已切换' });
+    try {
+      await themeService.setThemeMode(mode);
+    } catch (_) {}
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: '主题已切换' });
+    } catch (_) {}
   }
 
   private openMembershipPage(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/MembershipPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/MembershipPage' });
+    } catch (_) {}
   }
 
   private openCreditTransactionsPage(): void {
     TelemetryService.track('credit_transactions_entry_clicked', undefined, 'other');
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/CreditTransactionsPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/CreditTransactionsPage' });
+    } catch (_) {}
   }
 
   private openStatsPage(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/StatsHubPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/StatsHubPage' });
+    } catch (_) {}
   }
 
   private openArchivedGoals(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/ArchivedGoalsPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ArchivedGoalsPage' });
+    } catch (_) {}
   }
 
   private openHelpPage(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/HelpPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/HelpPage' });
+    } catch (_) {}
   }
 
   private openAboutPage(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/AboutPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/AboutPage' });
+    } catch (_) {}
   }
 
   private openLoginPage(): void {
-    this.getUIContext().getRouter().replaceUrl({ url: 'pages/LoginPage' });
+    try {
+      this.getUIContext().getRouter().replaceUrl({ url: 'pages/LoginPage' });
+    } catch (_) {}
   }
 
   private async handleLogout(): Promise<void> {
     await authService.logout();
     this.localUser = null;
-    this.getUIContext().getPromptAction().showToast({ message: '已退出登录' });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: '已退出登录' });
+    } catch (_) {}
     this.openLoginPage();
   }
 
@@ -376,8 +395,15 @@ export struct MeTab {
 
   @Builder
   private ThemeCard() {
-    AppCard({ spacing: SPACE_MD, paddingLevel: 'md' }) {
+    AppCard({ spacing: SPACE_MD, paddingLevel: 'lg' }) {
       Row({ space: SPACE_SM }) {
+        AppChip({
+          label: '跟随系统',
+          active: this.isThemeSelected(ThemeMode.SYSTEM),
+          tone: 'primary',
+          iconName: 'gear',
+          tapAction: () => { void this.switchTheme(ThemeMode.SYSTEM); }
+        })
         AppChip({
           label: '浅色',
           active: this.isThemeSelected(ThemeMode.LIGHT),
@@ -391,13 +417,6 @@ export struct MeTab {
           tone: 'primary',
           iconName: 'focus',
           tapAction: () => { void this.switchTheme(ThemeMode.DARK); }
-        })
-        AppChip({
-          label: '跟随系统',
-          active: this.isThemeSelected(ThemeMode.SYSTEM),
-          tone: 'primary',
-          iconName: 'gear',
-          tapAction: () => { void this.switchTheme(ThemeMode.SYSTEM); }
         })
       }
       .width('100%')
@@ -428,47 +447,47 @@ export struct MeTab {
 
   @Builder
   private LoggedInView() {
-    Column({ space: SECTION_GAP }) {
-      AppPanelSection({
-        title: '账户',
-        subtitle: '账号与身份信息',
-        insetHorizontal: 0
-      }) {
-        this.ProfileCard()
-      }
+    Column({ space: 16 }) {
+      // 账户卡片
+      this.ProfileCard()
 
-      AppPanelSection({
-        title: '权益',
-        subtitle: '会员与积分概览',
-        insetHorizontal: 0
-      }) {
-        this.MembershipCard()
-      }
+      // 权益卡片
+      this.MembershipCard()
 
-      AppPanelSection({
-        title: '数据中心',
-        subtitle: '统计、积分和归档内容',
-        insetHorizontal: 0
-      }) {
+      // 数据中心
+      Column({ space: 6 }) {
+        Text('数据中心')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
         this.SyncAndDataCard()
       }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
 
-      AppPanelSection({
-        title: '主题偏好',
-        subtitle: '浅色、深色和跟随系统',
-        insetHorizontal: 0
-      }) {
+      // 主题偏好
+      Column({ space: 6 }) {
+        Text('主题偏好')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
         this.ThemeCard()
       }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
 
-      AppPanelSection({
-        title: '更多',
-        subtitle: '帮助与应用信息',
-        insetHorizontal: 0
-      }) {
+      // 更多
+      Column({ space: 6 }) {
+        Text('更多')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
         this.MoreCard()
       }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
 
+      // 退出登录
       Row() {
         AppButton({
           text: '退出登录',
@@ -486,72 +505,75 @@ export struct MeTab {
 
   @Builder
   private NotLoggedView() {
-    Column({ space: SECTION_GAP }) {
-      AppPanelSection({
-        title: '账户',
-        subtitle: '登录后查看会员状态、积分和完整设置',
-        insetHorizontal: 0
-      }) {
-        AppCard({ spacing: SPACE_MD, paddingLevel: 'md' }) {
-          Text('登录后可查看会员状态、积分余额和完整设置入口。')
-            .fontSize(TYPE_META)
-            .lineHeight(LINE_HEIGHT_BODY)
-            .fontColor(this.themeColors.textSecondary)
-            .width('100%')
-
-          Row() {
-            AppButton({
-              text: '去登录',
-              variant: 'primary',
-              fullWidth: true,
-              iconName: 'profile',
-              tapAction: () => this.openLoginPage()
-            })
-          }
+    Column({ space: 16 }) {
+      AppCard({ spacing: SPACE_MD, paddingLevel: 'md' }) {
+        Text('登录后可查看会员状态、积分余额和完整设置入口。')
+          .fontSize(TYPE_META)
+          .lineHeight(LINE_HEIGHT_BODY)
+          .fontColor(this.themeColors.textSecondary)
           .width('100%')
+
+        Row() {
+          AppButton({
+            text: '去登录',
+            variant: 'primary',
+            fullWidth: true,
+            iconName: 'profile',
+            tapAction: () => this.openLoginPage()
+          })
         }
+        .width('100%')
       }
 
-      AppPanelSection({
-        title: '主题偏好',
-        subtitle: '浅色、深色和跟随系统',
-        insetHorizontal: 0
-      }) {
+      Column({ space: 6 }) {
+        Text('主题偏好')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
         this.ThemeCard()
       }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
 
-      AppPanelSection({
-        title: '更多',
-        subtitle: '帮助与应用信息',
-        insetHorizontal: 0
-      }) {
+      Column({ space: 6 }) {
+        Text('更多')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
         this.MoreCard()
       }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
   }
 
   build() {
     Scroll() {
-      Column({ space: SECTION_GAP }) {
-        AppPageHeader({
-          title: '我的',
-          subtitle: '账户、权益、同步和帮助入口',
-          showBack: false
-        })
-
-        Column({ space: SECTION_GAP }) {
-          if (this.getCurrentUser()) {
-            this.LoggedInView()
-          } else {
-            this.NotLoggedView()
-          }
+      Column({ space: 16 }) {
+        // 顶部问候区（与今日页风格一致）
+        Column({ space: 4 }) {
+          Text('我的')
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeColors.textPrimary)
+          Text('账户、权益、同步和帮助入口')
+            .fontSize(14)
+            .fontColor(this.themeColors.textSecondary)
         }
         .width('100%')
-        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: PAGE_PADDING + BOTTOM_CONTENT_SPACER })
+        .alignItems(HorizontalAlign.Start)
+
+        if (this.getCurrentUser()) {
+          this.LoggedInView()
+        } else {
+          this.NotLoggedView()
+        }
       }
       .width('100%')
+      .padding({ left: COMPACT_PAGE_PADDING, right: COMPACT_PAGE_PADDING, top: 12, bottom: 80 })
     }
+    .align(Alignment.Top)
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)

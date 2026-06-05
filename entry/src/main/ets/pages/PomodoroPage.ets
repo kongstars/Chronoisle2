@@ -11,8 +11,9 @@ import { AppCard } from '../ui/base/AppCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SPACE_CARD } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_MICRO, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { MOTION_CURVE_STANDARD, MOTION_DURATION_BASE } from '../foundation/tokens/MotionTokens';
+import { RADIUS_LG, RADIUS_XL } from '../foundation/tokens/RadiusTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('PomodoroPage');
@@ -469,7 +470,7 @@ struct PomodoroPage {
         if (this.isCompleted && this.continuousMode && this.completedRoundsCount > 1) {
           Column() {
             Text('全部完成')
-              .fontSize(20)
+              .fontSize(TYPE_HERO_TITLE)
               .fontColor(this.themeColors.success)
               .margin({ top: 16 })
             Text(`${this.completedRoundsCount} 轮番茄 · 累计专注 ${this.totalFocusMinutes} 分钟`)
@@ -479,7 +480,7 @@ struct PomodoroPage {
           }
         } else if (this.isCompleted) {
           Text('完成')
-            .fontSize(20)
+            .fontSize(TYPE_HERO_TITLE)
             .fontColor(this.themeColors.success)
             .margin({ top: 16 })
         }
@@ -529,17 +530,17 @@ struct PomodoroPage {
             Row() {
               Row() {
                 Text(this.getSelectedNoiseIcon())
-                  .fontSize(20)
+                  .fontSize(TYPE_HERO_TITLE)
                   .fontColor(this.isPremium ? this.themeColors.primary : this.themeColors.textMuted)
                   .width(36)
                   .height(36)
                   .textAlign(TextAlign.Center)
                   .backgroundColor(this.isPremium ? this.themeColors.primary + '15' : this.themeColors.surfaceLight)
-                  .borderRadius(18)
+                  .borderRadius(RADIUS_LG)
 
                 Column() {
                   Text(this.isPremium ? this.getSelectedNoiseLabel() : '白噪音')
-                    .fontSize(15)
+                    .fontSize(TYPE_BODY)
                     .fontWeight(FontWeight.Medium)
                     .fontColor(this.themeColors.textPrimary)
                   Text(this.getNoiseHintText())
@@ -585,7 +586,7 @@ struct PomodoroPage {
                 .width('30%')
 
               Text('调整时长')
-                .fontSize(13)
+                .fontSize(TYPE_META)
                 .fontColor(this.themeColors.textMuted)
 
               AppButton({
@@ -700,7 +701,7 @@ struct PomodoroPage {
                         AppIcon({ name: option.icon, iconSize: 32, framed: false })
                         if (this.selectedNoiseKey === option.key) {
                           Text(this.isNoiseActive ? '●' : '○')
-                            .fontSize(10)
+                            .fontSize(TYPE_MICRO)
                             .fontColor(this.themeColors.primary)
                             .position({ x: 20, y: -2 })
                         }
@@ -709,7 +710,7 @@ struct PomodoroPage {
                       .height(44)
                       .backgroundColor(this.selectedNoiseKey === option.key ?
                         (this.isNoiseActive ? this.themeColors.primary + '25' : this.themeColors.primary + '12') : this.themeColors.surfaceLight)
-                      .borderRadius(22)
+                      .borderRadius(RADIUS_XL)
                       .border({
                         width: this.selectedNoiseKey === option.key ? 2 : 0,
                         color: this.themeColors.primary
@@ -717,7 +718,7 @@ struct PomodoroPage {
                       .alignContent(Alignment.Center)
 
                       Text(option.label)
-                        .fontSize(10)
+                        .fontSize(TYPE_MICRO)
                         .fontColor(this.themeColors.textMuted)
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -746,7 +747,7 @@ struct PomodoroPage {
                         AppIcon({ name: option.icon, iconSize: 32, framed: false })
                         if (this.selectedNoiseKey === option.key) {
                           Text(this.isNoiseActive ? '●' : '○')
-                            .fontSize(10)
+                            .fontSize(TYPE_MICRO)
                             .fontColor(this.themeColors.primary)
                             .position({ x: 20, y: -2 })
                         }
@@ -755,7 +756,7 @@ struct PomodoroPage {
                       .height(44)
                       .backgroundColor(this.selectedNoiseKey === option.key ?
                         (this.isNoiseActive ? this.themeColors.primary + '25' : this.themeColors.primary + '12') : this.themeColors.surfaceLight)
-                      .borderRadius(22)
+                      .borderRadius(RADIUS_XL)
                       .border({
                         width: this.selectedNoiseKey === option.key ? 2 : 0,
                         color: this.themeColors.primary
@@ -763,7 +764,7 @@ struct PomodoroPage {
                       .alignContent(Alignment.Center)
 
                       Text(option.label)
-                        .fontSize(10)
+                        .fontSize(TYPE_MICRO)
                         .fontColor(this.themeColors.textMuted)
                         .maxLines(1)
                         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -780,6 +781,7 @@ struct PomodoroPage {
               }
               .width('100%')
             }
+            .align(Alignment.Top)
             .scrollable(ScrollDirection.Vertical)
             .scrollBar(BarState.Auto)
           }

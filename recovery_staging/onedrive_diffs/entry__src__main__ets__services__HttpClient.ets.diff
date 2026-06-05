@@ -1,0 +1,39 @@
+--- current/entry\src\main\ets\services\HttpClient.ets
++++ backup/entry\src\main\ets\services\HttpClient.ets
+@@ -2,9 +2,6 @@
+ import { authService } from './AuthService';
+ import AppConfig from '../Utils/AppConfig';
+ import { AppErrorService } from './AppErrorService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('HttpClient');
+ 
+ export interface HttpRequestOptions {
+   method?: http.RequestMethod;
+@@ -102,7 +99,7 @@
+ 
+       return HttpClient.handleResponse<T>(response);
+     } catch (error) {
+-      logger.error('HTTP request failed for ${path}', error as Object);
++      console.error(`HTTP request failed for ${path}:`, JSON.stringify(error));
+       return {
+         success: false,
+         message: AppErrorService.fromUnknown(error, '网络请求失败')
+@@ -112,7 +109,7 @@
+         try {
+           request.destroy();
+         } catch (destroyError) {
+-          logger.warn('Failed to destroy http request', destroyError as Object);
++          console.warn('Failed to destroy http request:', JSON.stringify(destroyError));
+         }
+       }
+     }
+@@ -178,7 +175,7 @@
+           data: parsed.data
+         };
+       } catch (error) {
+-        logger.warn('Failed to parse success response', error as Object);
++        console.warn('Failed to parse success response:', JSON.stringify(error));
+         return {
+           success: false,
+           message: AppErrorService.fromMessage('JSON Parse Error', '服务响应异常'),

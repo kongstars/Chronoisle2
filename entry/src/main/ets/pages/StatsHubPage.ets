@@ -24,6 +24,7 @@ import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { SPACE_CARD, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_NUMERIC_MD, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { STATS_CONTENT_MAX_WIDTH, STATS_GRID_BREAKPOINT_LG, STATS_GRID_BREAKPOINT_MD } from '../foundation/tokens/PageDensityTokens';
+import { RADIUS_MD } from '../foundation/tokens/RadiusTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('StatsHubPage');
@@ -245,7 +246,7 @@ struct StatsHubPage {
     .alignItems(HorizontalAlign.Start)
     .padding(SPACE_MD)
     .backgroundColor(this.themeColors.surfaceSoft)
-    .borderRadius(14)
+    .borderRadius(RADIUS_MD)
   }
 
   @Builder
@@ -451,6 +452,7 @@ struct StatsHubPage {
           .alignSelf(ItemAlign.Center)
           .padding({ left: SPACE_LG, right: SPACE_LG, bottom: SPACE_LG })
         }
+        .align(Alignment.Top)
         .layoutWeight(1)
         .width('100%')
         .scrollBar(BarState.Off)

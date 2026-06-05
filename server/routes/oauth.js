@@ -6,7 +6,14 @@ const CreditTransaction = require('../models/CreditTransaction');
 const OAuthService = require('../services/OAuthService');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || (function() { throw new Error('JWT_SECRET must be set'); })();
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set');
+  }
+  console.warn('WARNING: JWT_SECRET not set, using insecure default for development only');
+}
+const _JWT_SECRET = JWT_SECRET || 'chronoisle-dev-insecure-key-do-not-use-in-production';
 const REGISTER_BONUS = 50;
 
 async function grantRegisterBonus(userId) {

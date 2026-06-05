@@ -668,6 +668,7 @@ struct UserPage {
             }
             .width('100%')
           }
+          .align(Alignment.Top)
           .constraintSize({ maxHeight: 248 })
           .scrollBar(BarState.Off)
           .width('100%')
@@ -714,6 +715,7 @@ struct UserPage {
           .width('100%')
           .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, bottom: COMFORTABLE_PAGE_PADDING + 16 })
         }
+        .align(Alignment.Top)
         .layoutWeight(1)
         .width('100%')
         .scrollBar(BarState.Off)

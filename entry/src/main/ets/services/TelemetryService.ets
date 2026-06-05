@@ -195,7 +195,8 @@ class TelemetryServiceClass {
 
   private async sendSingle(event: TelemetryEventData): Promise<void> {
     const request = http.createHttp();
-    await request.request(
+    try {
+      await request.request(
       `${this.apiBase}/api/telemetry/event`,
       {
         method: http.RequestMethod.POST,
@@ -208,6 +209,7 @@ class TelemetryServiceClass {
         readTimeout: 6000
       }
     );
+    } catch (_) {}
     request.destroy();
   }
 

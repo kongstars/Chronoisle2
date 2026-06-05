@@ -25,6 +25,7 @@ const goalSchema = new mongoose.Schema({
   endDate: Number,
   createdAt: Number,
   updatedAt: { type: Number, index: true },
+  completedAt: Number,
   isPriority: Boolean,
   isArchived: Boolean,
   archivedAt: Number

@@ -22,7 +22,7 @@ import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppPanelSection } from '../ui/base/AppPanelSection';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
-import { SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { PAGE_PADDING, SECTION_GAP, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
 import { BUTTON_HEIGHT_SM } from '../foundation/tokens/PageDensityTokens';
 import { RADIUS_XL } from '../foundation/tokens/RadiusTokens';
@@ -43,6 +43,7 @@ struct DayEventDetailPage {
   @State tasks: Task[] = [];
   @State loading: boolean = true;
   @State eventId: string = '';
+  @State refreshTick: number = 0;
 
   async aboutToAppear(): Promise<void> {
     const params = this.getUIContext().getRouter().getParams() as Record<string, string>;
@@ -81,6 +82,7 @@ struct DayEventDetailPage {
   private refreshCurrentData(): void {
     this.event = this.eventId ? db.getDayEventById(this.eventId) || null : null;
     this.tasks = db.getAllTasks();
+    this.refreshTick++;
   }
 
   private getRuleText(rule: ReminderRule): string {
@@ -546,7 +548,7 @@ struct DayEventDetailPage {
           AppLoadingState({ label: '正在加载提醒详情...' })
         }
         .width('100%')
-        .padding({ left: SPACE_LG, right: SPACE_LG })
+        .padding({ left: PAGE_PADDING, right: PAGE_PADDING })
       } else if (!this.event) {
         Column() {
           AppEmptyState({
@@ -562,10 +564,10 @@ struct DayEventDetailPage {
           })
         }
         .width('100%')
-        .padding({ left: SPACE_LG, right: SPACE_LG, top: 40 })
+        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 40 })
       } else {
         Scroll() {
-          Column({ space: SPACE_LG }) {
+          Column({ space: SECTION_GAP }) {
             AppHeroPanel({
               eyebrow: getEventTypeLabel(this.event.type),
               title: this.event.title,
@@ -659,7 +661,7 @@ struct DayEventDetailPage {
                 Column() {
                   ForEach(this.getDetailFields(), (field: DetailField, index: number) => {
                     this.DetailFieldRow(field, index === this.getDetailFields().length - 1)
-                  })
+                  }, (field: DetailField, index: number) => `${this.refreshTick}_${index}`)
                 }
                 .width('100%')
               }
@@ -681,7 +683,7 @@ struct DayEventDetailPage {
                   Column() {
                     ForEach(this.getRecentCompletedTasks(), (task: Task, index: number) => {
                       this.HistoryRow(task, index === this.getRecentCompletedTasks().length - 1)
-                    })
+                    }, (task: Task, index: number) => `${this.refreshTick}_${task.id}`)
                   }
                   .width('100%')
                 }
@@ -706,8 +708,9 @@ struct DayEventDetailPage {
             Blank().height(10)
           }
           .width('100%')
-          .padding({ left: SPACE_LG, right: SPACE_LG, bottom: SPACE_LG })
+          .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: PAGE_PADDING })
         }
+        .align(Alignment.Top)
         .scrollBar(BarState.Off)
       }
     }

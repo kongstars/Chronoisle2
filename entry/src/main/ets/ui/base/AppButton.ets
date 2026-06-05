@@ -140,6 +140,9 @@ export struct AppButton {
             muted: !this.isEnabled()
           })
         }
+        if (this.loading || (this.iconName.length > 0 && this.text.length > 0)) {
+          Blank().width(SPACE_XS)
+        }
         if (this.loading || this.text.length > 0) {
           Text(this.loading ? '加载中...' : this.text)
             .fontSize(this.getFontSize())
@@ -147,9 +150,6 @@ export struct AppButton {
             .fontColor(this.getTextColor())
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-          if (this.iconName.length > 0 || this.loading) {
-            Blank().width(SPACE_XS)
-          }
         }
       }
       .alignItems(VerticalAlign.Center)

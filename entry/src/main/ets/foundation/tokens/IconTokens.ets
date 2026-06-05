@@ -6,9 +6,9 @@ import {
 
 export const ICON_SIZE_XS: number = 16;
 export const ICON_SIZE_SM: number = 22;
-export const ICON_SIZE_MD: number = 26;
-export const ICON_SIZE_LG: number = 30;
-export const ICON_SIZE_XL: number = 36;
+export const ICON_SIZE_MD: number = 28;
+export const ICON_SIZE_LG: number = 32;
+export const ICON_SIZE_XL: number = 38;
 
 export const ICON_STROKE_SM: number = 1;
 export const ICON_STROKE_MD: number = 1.25;

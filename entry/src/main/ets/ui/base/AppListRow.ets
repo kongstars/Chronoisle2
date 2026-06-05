@@ -63,16 +63,18 @@ export struct AppListRow {
     Column({ space: 0 }) {
       Row({ space: SPACE_SM }) {
         if (this.leadingIcon.length > 0) {
-          Row() {
-            AppIcon({ name: this.leadingIcon, iconSize: ICON_SIZE_LG })
+          Stack({ alignContent: Alignment.Center }) {
+            AppIcon({ name: this.leadingIcon, iconSize: ICON_SIZE_SM })
           }
-          .width(ICON_SIZE_XL)
-          .justifyContent(FlexAlign.Center)
+          .width(ICON_SIZE_LG)
+          .height(ICON_SIZE_LG)
         } else if (this.leadingText.length > 0) {
-          Text(this.leadingText)
-            .fontSize(ICON_SIZE_SM)
-            .width(ICON_SIZE_XL)
-            .textAlign(TextAlign.Center)
+          Stack({ alignContent: Alignment.Center }) {
+            Text(this.leadingText)
+              .fontSize(ICON_SIZE_SM)
+          }
+          .width(ICON_SIZE_LG)
+          .height(ICON_SIZE_LG)
         }
 
         Column({ space: SPACE_XS }) {
@@ -143,7 +145,7 @@ export struct AppListRow {
         Divider()
           .strokeWidth(BORDER_SUBTLE)
           .color(this.themeColors.divider)
-          .margin({ left: ICON_SIZE_XL + SPACE_SM })
+          .margin({ left: ICON_SIZE_LG + SPACE_SM })
       }
     }
     .width('100%')

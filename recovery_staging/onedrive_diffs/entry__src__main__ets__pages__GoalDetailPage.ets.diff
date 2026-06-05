@@ -1,0 +1,1048 @@
+--- current/entry\src\main\ets\pages\GoalDetailPage.ets
++++ backup/entry\src\main\ets\pages\GoalDetailPage.ets
+@@ -2,6 +2,8 @@
+ import { Goal, KeyResult, GoalCategory } from '../models/Goal';
+ import { db } from '../storage/Database';
+ import { CATEGORIES, CATEGORY_COLORS, CategoryInfo } from '../common/Constants';
++import router from '@ohos.router';
++import promptAction from '@ohos.promptAction';
+ import { ThemeColors, LightTheme } from '../theme/AppTheme';
+ import { Task, TaskStatus } from '../models/Task';
+ import { DayEvent, getEventTypeIcon, getEventTypeLabel } from '../models/DayEvent';
+@@ -9,17 +11,13 @@
+ import { dataSyncService } from '../services/DataSyncService';
+ import { GoalBreakdownResult } from '../services/AgentService';
+ import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
+-import { Logger } from '../Utils/Logger';
+ import { AppEmptyState } from '../ui/base/AppEmptyState';
+ import { AppDialogActions } from '../ui/base/AppDialogActions';
+-import { AppButton } from '../ui/base/AppButton';
+ import { AppIcon } from '../ui/base/AppIcon';
+ import { AppPageHeader } from '../ui/base/AppPageHeader';
+ import { ACTION_CHIP_HEIGHT, BUTTON_HEIGHT_LG, BUTTON_HEIGHT_MD, BUTTON_HEIGHT_SM, CHECKBOX_SIZE_SM, REMINDER_CARD_HEIGHT } from '../foundation/tokens/ComponentSizeTokens';
+-import { STATS_CONTENT_MAX_WIDTH } from '../foundation/tokens/PageDensityTokens';
+ import { ICON_SIZE_LG, ICON_SIZE_MD, ICON_SIZE_XL, ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
+ import { PAGE_PADDING, PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+-import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+ import { MOTION_CURVE_STANDARD, MOTION_DURATION_BASE, MOTION_SHIFT_ENTER_Y } from '../foundation/tokens/MotionTokens';
+ 
+ interface ReminderCreateParams {
+@@ -54,23 +52,24 @@
+   @State filteredTasks: Task[] = [];
+   @State reminders: DayEvent[] = [];
+   private returnToMainOnBack: boolean = false;
+-  private taskMap: Map<string, Task> = new Map();
+-  private logger: Logger = Logger.create('GoalDetailPage');
+ 
+ 
+   
+   
+   private dataChangeListener: () => void = () => {
++    console.log('GoalDetailPage: data changed, refreshing');
+     try {
++      // 增加刷新标志以强制触发 UI 更新
+       this.refreshFlag++;
+       this.loadGoalData();
++      console.log('GoalDetailPage: refresh completed, goal progress:', this.goal?.progress);
+     } catch (error) {
+-      this.logger.error('GoalDetailPage listener error', error as Object);
++      console.error('GoalDetailPage listener error:', JSON.stringify(error));
+     }
+   };
+ 
+   aboutToAppear(): void {
+-    let params = this.getUIContext().getRouter().getParams() as Record<string, string>;
++    let params = router.getParams() as Record<string, string>;
+     this.goalId = params['goalId'] || '';
+     this.returnToMainOnBack = params['returnToMainOnBack'] === 'true';
+     // 注册全局状态监听器
+@@ -127,35 +126,36 @@
+       await db.updateGoal(this.goal);
+       this.refreshFlag++;
+       this.loadGoalData();
+-      this.getUIContext().getPromptAction().showToast({ message: 'AI 目标拆解应用成功' });
++      promptAction.showToast({ message: 'AI 目标拆解应用成功' });
+     }
+   }
+   
+   loadGoalData(): void {
++    console.log('GoalDetailPage loadGoalData: goalId =', this.goalId);
++    // 从全局状态获取数据
+     const allGoals = dataSyncService.getGoals();
+     const allTasks = dataSyncService.getTasks();
+     const allReminders = db.getAllDayEvents();
+-
++    
++    console.log('GoalDetailPage: got', allGoals.length, 'goals');
+     const goalData = allGoals.find(g => g.id === this.goalId);
+-
++    console.log('GoalDetailPage: found goal', goalData?.id, 'progress:', goalData?.progress);
++    
++    // 创建新的对象和数组以确保触发 UI 更新
+     if (goalData) {
+       this.goal = goalData;
+     } else {
+       this.goal = null;
+     }
+-
++    
+     this.tasks = Array.from(allTasks);
+     this.filteredTasks = this.tasks.filter(t => t.goalId === this.goalId);
+     this.reminders = allReminders.filter((event: DayEvent) => event.goalId === this.goalId);
+-    this.taskMap.clear();
+-    for (const t of this.tasks) {
+-      this.taskMap.set(t.id, t);
+-    }
+   }
+ 
+   getCurrentTask(task: Task): Task {
+-    const current = this.taskMap.get(task.id);
+-    return current ? current : task;
++    const currentTask = this.tasks.find((item: Task) => item.id === task.id);
++    return currentTask ? currentTask : task;
+   }
+ 
+   isArchivedGoal(): boolean {
+@@ -163,7 +163,7 @@
+   }
+ 
+   showArchivedToast(): void {
+-    this.getUIContext().getPromptAction().showToast({ message: '已归档目标仅支持查看' });
++    promptAction.showToast({ message: '已归档目标仅支持查看' });
+   }
+   
+   editGoal(): void {
+@@ -174,7 +174,7 @@
+       this.showArchivedToast();
+       return;
+     }
+-    this.getUIContext().getRouter().pushUrl({
++    router.pushUrl({
+       url: 'pages/EditGoalPage',
+       params: {
+         goalId: this.goal.id,
+@@ -196,7 +196,7 @@
+       this.showArchivedToast();
+       return;
+     }
+-    this.getUIContext().getRouter().pushUrl({
++    router.pushUrl({
+       url: 'pages/CreateTaskPage',
+       params: {
+         goalId: this.goal.id,
+@@ -221,10 +221,10 @@
+         actionIconName: 'note',
+         onBack: () => {
+           if (this.returnToMainOnBack) {
+-            this.getUIContext().getRouter().replaceUrl({ url: 'pages/MainPage' });
++            router.replaceUrl({ url: 'pages/MainPage' });
+             return;
+           }
+-          this.getUIContext().getRouter().back();
++          router.back();
+         },
+         onAction: () => {
+           this.editGoal();
+@@ -241,7 +241,6 @@
+             Blank().height(SPACE_MD)
+           }
+           .width('100%')
+-          .constraintSize({ maxWidth: STATS_CONTENT_MAX_WIDTH })
+           .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 4, bottom: PAGE_PADDING + 68 })
+         }
+         .layoutWeight(1)
+@@ -258,7 +257,7 @@
+               actionText: '返回首页',
+               actionIconName: 'today',
+               onAction: () => {
+-                this.getUIContext().getRouter().replaceUrl({ url: 'pages/MainPage' });
++                router.replaceUrl({ url: 'pages/MainPage' });
+               }
+             })
+           }
+@@ -315,18 +314,18 @@
+       Row() {
+         AppIcon({ name: icon, iconSize: ICON_SIZE_MD, framed: false })
+           .margin({ right: SPACE_2XS })
+-        Text(title).fontSize(TYPE_META).fontColor(this.themeColors.textSecondary)
++        Text(title).fontSize(13).fontColor(this.themeColors.textSecondary)
+       }
+       .margin({ bottom: SPACE_SM })
+ 
+       Text(value)
+-        .fontSize(TYPE_SECTION_TITLE)
++        .fontSize(17)
+         .fontWeight(FontWeight.Bold)
+         .fontColor(this.themeColors.primary)
+         .margin({ bottom: SPACE_2XS })
+ 
+       Text(subtext)
+-        .fontSize(TYPE_META)
++        .fontSize(12)
+         .fontColor(this.themeColors.textSecondary)
+     }
+     .width('48%')
+@@ -355,7 +354,7 @@
+   }
+ 
+   openReminderEditor(eventId: string): void {
+-    this.getUIContext().getRouter().pushUrl({
++    router.pushUrl({
+       url: 'pages/DayEventCreatePage',
+       params: { eventId }
+     });
+@@ -377,7 +376,7 @@
+       params.krId = krId;
+     }
+ 
+-    this.getUIContext().getRouter().pushUrl({
++    router.pushUrl({
+       url: 'pages/DayEventCreatePage',
+       params
+     });
+@@ -400,22 +399,23 @@
+         Blank()
+ 
+         if (!this.isArchivedGoal()) {
+-          AppButton({
+-            text: this.activeInfoTab === 'reminders' ? '＋ 新建提醒' : '＋ 新建代办',
+-            variant: 'primary',
+-            buttonSize: 'sm',
+-            iconName: 'task',
+-            tapAction: () => {
++          Button(this.activeInfoTab === 'reminders' ? '＋ 新建提醒' : '＋ 新建代办')
++            .fontSize(13)
++            .height(ACTION_CHIP_HEIGHT)
++            .padding({ left: SPACE_CARD, right: SPACE_CARD })
++            .backgroundColor(this.themeColors.primary)
++            .fontColor(this.themeColors.textOnPrimary)
++            .borderRadius(18)
++            .onClick(() => {
+               if (this.activeInfoTab === 'reminders') {
+                 this.createReminderForGoal();
+               } else {
+                 this.createTaskForGoal();
+               }
+-            }
+-          })
++            })
+         } else {
+           Text('只读')
+-            .fontSize(TYPE_META)
++            .fontSize(12)
+             .fontColor(this.themeColors.textMuted)
+         }
+       }
+@@ -436,12 +436,12 @@
+     Button() {
+       Row() {
+         Text(label)
+-          .fontSize(TYPE_BODY)
++          .fontSize(15)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.activeInfoTab === tab ? this.themeColors.textOnPrimary : this.themeColors.textPrimary)
+ 
+         Text(`${count}`)
+-          .fontSize(TYPE_META)
++          .fontSize(12)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.activeInfoTab === tab ? this.themeColors.textOnPrimary : this.themeColors.primary)
+           .margin({ left: SPACE_SM })
+@@ -466,7 +466,7 @@
+             .margin({ bottom: SPACE_SM })
+ 
+           Text('这个目标下还没有关联提醒')
+-            .fontSize(TYPE_BODY)
++            .fontSize(14)
+             .fontColor(this.themeColors.textSecondary)
+             .textAlign(TextAlign.Center)
+         }
+@@ -477,7 +477,7 @@
+       } else {
+         if (this.getDirectReminders().length > 0) {
+           Text('目标提醒')
+-            .fontSize(TYPE_META)
++            .fontSize(13)
+             .fontWeight(FontWeight.Medium)
+             .fontColor(this.themeColors.textSecondary)
+             .width('100%')
+@@ -493,7 +493,7 @@
+             Column() {
+               Row() {
+                 Text(kr.title)
+-                  .fontSize(TYPE_META)
++                  .fontSize(13)
+                   .fontWeight(FontWeight.Medium)
+                   .fontColor(this.themeColors.textSecondary)
+                   .layoutWeight(1)
+@@ -501,14 +501,16 @@
+                   .textOverflow({ overflow: TextOverflow.Ellipsis })
+ 
+                 if (!this.isArchivedGoal()) {
+-                  AppButton({
+-                    text: '新建提醒',
+-                    variant: 'secondary',
+-                    buttonSize: 'sm',
+-                    tapAction: () => {
++                  Button('新建提醒')
++                    .fontSize(11)
++                  .height(ACTION_CHIP_HEIGHT)
++                    .padding({ left: SPACE_MD, right: SPACE_MD })
++                    .fontColor(this.themeColors.primary)
++                    .backgroundColor(this.themeColors.surfaceLight)
++                    .borderRadius(13)
++                    .onClick(() => {
+                       this.createReminderForGoal(kr.id);
+-                    }
+-                  })
++                    })
+                 }
+               }
+               .width('100%')
+@@ -535,7 +537,7 @@
+           Column() {
+           Row() {
+             Text(event.title)
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .fontWeight(FontWeight.Medium)
+               .fontColor(this.themeColors.textPrimary)
+               .layoutWeight(1)
+@@ -544,7 +546,7 @@
+ 
+             if (isDayEventEnded(event)) {
+               Text('已结束')
+-                .fontSize(TYPE_CAPTION)
++                .fontSize(11)
+                 .fontColor(this.themeColors.textMuted)
+                 .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_2XS, bottom: SPACE_2XS })
+                 .backgroundColor(this.themeColors.surfaceLight)
+@@ -555,7 +557,7 @@
+           .width('100%')
+ 
+           Text(getEventTypeLabel(event.type))
+-            .fontSize(TYPE_META)
++            .fontSize(12)
+             .fontColor(this.themeColors.textMuted)
+             .width('100%')
+             .margin({ top: SPACE_2XS })
+@@ -565,14 +567,14 @@
+         .margin({ left: SPACE_SM })
+ 
+         Text(getDayEventMetricText(event))
+-          .fontSize(TYPE_META)
++          .fontSize(12)
+           .fontWeight(FontWeight.Medium)
+           .fontColor(isDayEventEnded(event) ? this.themeColors.textMuted : this.themeColors.primary)
+       }
+       .width('100%')
+ 
+       Text(getDayEventListSummary(event))
+-        .fontSize(TYPE_META)
++        .fontSize(13)
+         .lineHeight(20)
+         .fontColor(this.themeColors.textSecondary)
+         .width('100%')
+@@ -580,14 +582,14 @@
+ 
+       if (event.krTitle) {
+         Text(`衡量标准：${event.krTitle}`)
+-          .fontSize(TYPE_META)
++          .fontSize(12)
+           .fontColor(this.themeColors.primary)
+           .width('100%')
+           .margin({ top: SPACE_XS })
+       }
+ 
+       Text(`创建于 ${formatDayEventDate(event.createdAt)}`)
+-        .fontSize(TYPE_CAPTION)
++        .fontSize(11)
+         .fontColor(this.themeColors.textMuted)
+         .width('100%')
+         .margin({ top: SPACE_SM })
+@@ -619,7 +621,7 @@
+             AppIcon({ name: CATEGORIES.find((c) => c.value === this.goal!.category)?.icon || '', iconSize: ICON_SIZE_LG, framed: false })
+               .margin({ right: SPACE_2XS })
+             Text(this.goal!.category)
+-            .fontSize(TYPE_META)
++            .fontSize(13)
+             .fontColor(this.themeColors.textOnPrimary)
+             .fontWeight(FontWeight.Medium)
+         }
+@@ -630,7 +632,7 @@
+         if (this.goal!.isPriority) {
+           Row() {
+             Text('优先')
+-              .fontSize(TYPE_META)
++              .fontSize(13)
+               .fontColor(this.themeColors.textOnPrimary)
+               .fontWeight(FontWeight.Medium)
+           }
+@@ -643,7 +645,7 @@
+         Blank()
+ 
+         Text(`开始: ${this.formatDate(this.goal!.startDate)}`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+       }
+       .width('100%')
+@@ -652,7 +654,7 @@
+ 
+       // Row 2: Title
+       Text(this.goal!.title)
+-        .fontSize(TYPE_SECTION_TITLE)
++        .fontSize(17)
+         .fontWeight(FontWeight.Bold)
+         .fontColor(this.themeColors.textPrimary)
+         .margin({ bottom: SPACE_MD })
+@@ -660,7 +662,7 @@
+ 
+       if (this.goal!.description) {
+         Text(this.goal!.description)
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .lineHeight(18)
+@@ -670,13 +672,13 @@
+       // Row 3: Progress Label | Percentage
+       Row() {
+         Text('整体进度(衡量标准进度的平均值)')
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+ 
+         Blank()
+ 
+         Text(`${this.goal!.progress}%`)
+-          .fontSize(TYPE_SECTION_TITLE)
++          .fontSize(17)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.warning)
+       }
+@@ -704,12 +706,12 @@
+     Column() {
+       Row() {
+         Text('衡量标准')
+-          .fontSize(TYPE_SECTION_TITLE)
++          .fontSize(17)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.textPrimary)
+ 
+         Text(`(${this.goal!.keyResults.length})`)
+-          .fontSize(TYPE_BODY)
++          .fontSize(15)
+           .fontColor(this.themeColors.textSecondary)
+           .margin({ left: SPACE_SM })
+ 
+@@ -717,17 +719,19 @@
+ 
+         if (!this.isArchivedGoal()) {
+ 
+-        AppButton({
+-          text: '添加',
+-          variant: 'primary',
+-          buttonSize: 'sm',
+-          tapAction: () => {
++        Button('添加')
++          .fontSize(13)
++          .height(BUTTON_HEIGHT_SM)
++          .padding({ left: 12, right: 12 })
++          .backgroundColor(this.themeColors.primary)
++          .fontColor(this.themeColors.textOnPrimary)
++          .borderRadius(12)
++          .onClick(() => {
+             this.showAddKR = true;
+-          }
+-        })
++          })
+         } else {
+           Text('只读')
+-            .fontSize(TYPE_META)
++            .fontSize(12)
+             .fontColor(this.themeColors.textMuted)
+         }
+       }
+@@ -741,23 +745,25 @@
+             .margin({ bottom: SPACE_SM })
+           
+           Text('还没有衡量标准')
+-            .fontSize(TYPE_BODY)
++            .fontSize(15)
+             .fontWeight(FontWeight.Bold)
+             .fontColor(this.themeColors.textMuted)
+           
+           Text('点击下方按钮添加第一个衡量标准')
+-            .fontSize(TYPE_META)
++            .fontSize(13)
+             .fontColor(this.themeColors.textSecondary)
+             .margin({ top: SPACE_2XS })
+ 
+           if (!this.isArchivedGoal()) {
+-            AppButton({
+-              text: 'AI 补齐追踪和行动',
+-              variant: 'secondary',
+-              buttonSize: 'sm',
+-              iconName: 'ai',
+-              tapAction: () => {
+-                this.getUIContext().getRouter().pushUrl({
++            Button('AI 补齐追踪和行动')
++              .height(BUTTON_HEIGHT_SM)
++              .fontSize(13)
++              .padding({ left: PANEL_GAP, right: PANEL_GAP })
++              .backgroundColor(this.themeColors.primarySubtle)
++              .fontColor(this.themeColors.primary)
++              .margin({ top: SPACE_SM })
++              .onClick(() => {
++                router.pushUrl({
+                   url: 'pages/GoalBreakdownPage',
+                   params: {
+                     intent: this.goal?.title + (this.goal?.description ? '\n' + this.goal?.description : ''),
+@@ -765,9 +771,7 @@
+                     targetGoalId: this.goal?.id || ''
+                   }
+                 });
+-              }
+-            })
+-              .margin({ top: SPACE_SM })
++              })
+           }
+         }
+         .width('100%')
+@@ -787,7 +791,7 @@
+       // Header Row: Title & Update Button
+       Row() {
+         Text(kr.title)
+-          .fontSize(TYPE_BODY)
++          .fontSize(15)
+           .fontWeight(FontWeight.Medium)
+           .fontColor(this.themeColors.textPrimary)
+           .layoutWeight(1)
+@@ -797,14 +801,16 @@
+ 
+         if (!this.isArchivedGoal()) {
+ 
+-        AppButton({
+-          text: '更新',
+-          variant: 'primary',
+-          buttonSize: 'sm',
+-          tapAction: () => {
++        Button('更新')
++          .fontSize(12)
++          .height(BUTTON_HEIGHT_SM)
++          .padding({ left: SPACE_MD, right: SPACE_MD })
++          .backgroundColor(this.themeColors.primary)
++          .fontColor(this.themeColors.textOnPrimary)
++          .borderRadius(12)
++          .onClick(() => {
+             this.showUpdateKRDialog(kr);
+-          }
+-        })
++          })
+         }
+       }
+       .width('100%')
+@@ -814,17 +820,17 @@
+       // Values Row
+       Row() {
+         Text(`目标值: ${kr.targetValue}`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+           .margin({ right: SPACE_CARD })
+         
+         Text(`当前值: ${kr.currentValue}`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+           .margin({ right: SPACE_CARD })
+         
+         Text(`初始值: ${kr.initialValue}`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+       }
+       .width('100%')
+@@ -833,14 +839,14 @@
+       // Status Row
+       Row() {
+         Text(`完成度: ${Math.round(kr.progress)}%`)
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.warning) // Yellow
+         
+         Blank()
+         
+         Text(`关联任务: ${this.getKRTaskCount(kr.id)}`)
+-          .fontSize(TYPE_META)
++          .fontSize(13)
+           .fontColor(this.themeColors.textSecondary)
+       }
+       .width('100%')
+@@ -881,13 +887,13 @@
+       
+       Column() {
+         Text('添加衡量标准')
+-          .fontSize(TYPE_HERO_TITLE)
++          .fontSize(18)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.textPrimary)
+           .margin({ bottom: SECTION_GAP })
+         
+         Text('衡量标准名称')
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .margin({ bottom: SPACE_SM })
+@@ -895,7 +901,7 @@
+         TextInput({ placeholder: '例如：每周运动 3 次，每次 30 分钟', text: this.newKRTitle })
+           .width('100%')
+           .height(BUTTON_HEIGHT_LG)
+-          .fontSize(TYPE_BODY)
++          .fontSize(15)
+           .padding(SPACE_MD)
+           .backgroundColor(this.themeColors.inputBackground)
+           .borderRadius(8)
+@@ -906,7 +912,7 @@
+         Row() {
+           Column() {
+             Text('目标值')
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .fontColor(this.themeColors.textSecondary)
+               .width('100%')
+               .margin({ bottom: SPACE_SM })
+@@ -914,7 +920,7 @@
+             TextInput({ text: this.newKRTargetValue })
+               .width('100%')
+               .height(BUTTON_HEIGHT_LG)
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .type(InputType.Number)
+               .padding(SPACE_SM)
+               .backgroundColor(this.themeColors.inputBackground)
+@@ -927,7 +933,7 @@
+           
+           Column() {
+             Text('初始值（可选）')
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .fontColor(this.themeColors.textSecondary)
+               .width('100%')
+               .margin({ bottom: SPACE_SM })
+@@ -935,7 +941,7 @@
+             TextInput({ text: this.newKRInitialValue })
+               .width('100%')
+               .height(BUTTON_HEIGHT_LG)
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .type(InputType.Number)
+               .padding(SPACE_SM)
+               .backgroundColor(this.themeColors.inputBackground)
+@@ -955,7 +961,7 @@
+           AppIcon({ name: 'idea', iconSize: ICON_SIZE_MD, framed: false })
+             .margin({ right: SPACE_XS })
+           Text('完成度 = (当前值 - 初始值) / (目标值 - 初始值) × 100%')
+-            .fontSize(TYPE_META)
++            .fontSize(12)
+             .fontColor(this.themeColors.textSecondary)
+         }
+         .width('100%')
+@@ -1006,13 +1012,13 @@
+       
+       Column() {
+         Text('编辑衡量标准')
+-          .fontSize(TYPE_HERO_TITLE)
++          .fontSize(18)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.textPrimary)
+           .margin({ bottom: SECTION_GAP })
+         
+         Text('衡量标准名称')
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .margin({ bottom: SPACE_SM })
+@@ -1020,7 +1026,7 @@
+         TextInput({ placeholder: '输入衡量标准标题', text: this.editKRTitle })
+           .width('100%')
+           .height(BUTTON_HEIGHT_LG)
+-          .fontSize(TYPE_BODY)
++          .fontSize(15)
+           .padding(SPACE_MD)
+           .backgroundColor(this.themeColors.inputBackground)
+           .borderRadius(8)
+@@ -1031,7 +1037,7 @@
+         Row() {
+           Column() {
+             Text('目标值')
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .fontColor(this.themeColors.textSecondary)
+               .width('100%')
+               .margin({ bottom: SPACE_SM })
+@@ -1039,7 +1045,7 @@
+             TextInput({ text: this.editKRTargetValue })
+               .width('100%')
+               .height(BUTTON_HEIGHT_LG)
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .type(InputType.Number)
+               .padding(SPACE_SM)
+               .backgroundColor(this.themeColors.inputBackground)
+@@ -1052,7 +1058,7 @@
+           
+           Column() {
+             Text('初始值')
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .fontColor(this.themeColors.textSecondary)
+               .width('100%')
+               .margin({ bottom: SPACE_SM })
+@@ -1060,7 +1066,7 @@
+             TextInput({ text: this.editKRInitialValue })
+               .width('100%')
+               .height(BUTTON_HEIGHT_LG)
+-              .fontSize(TYPE_BODY)
++              .fontSize(14)
+               .type(InputType.Number)
+               .padding(SPACE_SM)
+               .backgroundColor(this.themeColors.inputBackground)
+@@ -1116,18 +1122,18 @@
+     const initialValue = parseFloat(this.newKRInitialValue) || 0;
+     const newKR = new KeyResult(this.newKRTitle.trim(), targetValue, initialValue);
+     newKR.updateProgress();
+-    this.logger.debug('addKR: created new KR', newKR.id, 'title:', newKR.title, 'target:', newKR.targetValue, 'initial:', newKR.initialValue, 'progress:', newKR.progress);
++    console.log('GoalDetailPage addKR: created new KR', newKR.id, 'title:', newKR.title, 'target:', newKR.targetValue, 'initial:', newKR.initialValue, 'progress:', newKR.progress);
+     if (!this.goal.keyResults) {
+       this.goal.keyResults = [];
+     }
+     this.goal.keyResults.push(newKR);
+     this.goal.updateProgress();
+-    this.logger.debug('addKR: goal progress updated to', this.goal.progress, 'keyResults count:', this.goal.keyResults.length);
++    console.log('GoalDetailPage addKR: goal progress updated to', this.goal.progress, 'keyResults count:', this.goal.keyResults.length);
+     // 验证关键结果数组
+-    this.logger.debug('addKR: goal.keyResults length:', this.goal.keyResults?.length);
++    console.log('GoalDetailPage addKR: goal.keyResults length:', this.goal.keyResults?.length);
+     if (this.goal.keyResults && this.goal.keyResults.length > 0) {
+       this.goal.keyResults.forEach((kr, index) => {
+-        this.logger.debug(`  KR[${index}]: id=${kr.id}, title=${kr.title}, progress=${kr.progress}`);
++        console.log(`  KR[${index}]: id=${kr.id}, title=${kr.title}, progress=${kr.progress}`);
+       });
+     }
+     this.newKRTitle = '';
+@@ -1139,20 +1145,18 @@
+     this.refreshFlag++;
+     
+     // 立即更新全局状态以触发其他页面的 UI 刷新
+-    this.logger.debug('addKR: calling dataSyncService.updateGoal');
++    console.log('GoalDetailPage addKR: calling dataSyncService.updateGoal');
+     try {
+       dataSyncService.updateGoal(this.goal);
+-      this.logger.debug('addKR: dataSyncService.updateGoal called successfully');
++      console.log('GoalDetailPage addKR: dataSyncService.updateGoal called successfully');
+     } catch (error) {
+-      this.logger.error('addKR: failed to call dataSyncService.updateGoal', error as Object);
++      console.error('GoalDetailPage addKR: failed to call dataSyncService.updateGoal:', JSON.stringify(error));
+     }
+     
+-    // 异步保存到数据库
+-    db.updateGoal(this.goal).catch((err: Error) => {
+-      this.logger.error('addKR: db.updateGoal failed', err as Object);
+-    });
+-  }
+-
++    // 然后异步保存到数据库
++    db.updateGoal(this.goal);
++  }
++  
+   showEditKRDialog(kr: KeyResult): void {
+     if (this.isArchivedGoal()) {
+       this.showArchivedToast();
+@@ -1181,23 +1185,21 @@
+       kr.initialValue = parseFloat(this.editKRInitialValue) || kr.initialValue;
+       kr.updateProgress();
+       this.goal.updateProgress();
+-      this.logger.debug('saveKREdit: goal progress updated to', this.goal.progress);
++      console.log('GoalDetailPage saveKREdit: goal progress updated to', this.goal.progress);
+       
+       // 强制本地UI更新
+       this.refreshFlag++;
+       
+       // 立即更新全局状态以触发其他页面的 UI 刷新
+-      this.logger.debug('saveKREdit: calling dataSyncService.updateGoal');
++      console.log('GoalDetailPage saveKREdit: calling dataSyncService.updateGoal');
+       try {
+         dataSyncService.updateGoal(this.goal);
+-        this.logger.debug('saveKREdit: dataSyncService.updateGoal called successfully');
++        console.log('GoalDetailPage saveKREdit: dataSyncService.updateGoal called successfully');
+       } catch (error) {
+-        this.logger.error('saveKREdit: failed to call dataSyncService.updateGoal', error as Object);
++        console.error('GoalDetailPage saveKREdit: failed to call dataSyncService.updateGoal:', JSON.stringify(error));
+       }
+       
+-      db.updateGoal(this.goal).catch((err: Error) => {
+-        this.logger.error('saveKREdit: db.updateGoal failed', err as Object);
+-      });
++      db.updateGoal(this.goal);
+       this.showEditKR = false;
+       this.editKRTitle = '';
+       this.editKRTargetValue = '';
+@@ -1229,23 +1231,21 @@
+       kr.currentValue = parseFloat(this.updateKRCurrentValue) || kr.currentValue;
+       kr.updateProgress();
+       this.goal.updateProgress();
+-      this.logger.debug('saveKRCurrentValue: goal progress updated to', this.goal.progress);
++      console.log('GoalDetailPage saveKRCurrentValue: goal progress updated to', this.goal.progress);
+       
+       // 强制本地UI更新
+       this.refreshFlag++;
+       
+       // 立即更新全局状态以触发其他页面的 UI 刷新
+-      this.logger.debug('saveKRCurrentValue: calling dataSyncService.updateGoal');
++      console.log('GoalDetailPage saveKRCurrentValue: calling dataSyncService.updateGoal');
+       try {
+         dataSyncService.updateGoal(this.goal);
+-        this.logger.debug('saveKRCurrentValue: dataSyncService.updateGoal called successfully');
++        console.log('GoalDetailPage saveKRCurrentValue: dataSyncService.updateGoal called successfully');
+       } catch (error) {
+-        this.logger.error('saveKRCurrentValue: failed to call dataSyncService.updateGoal', error as Object);
++        console.error('GoalDetailPage saveKRCurrentValue: failed to call dataSyncService.updateGoal:', JSON.stringify(error));
+       }
+       
+-      db.updateGoal(this.goal).catch((err: Error) => {
+-        this.logger.error('saveKRCurrentValue: db.updateGoal failed', err as Object);
+-      });
++      db.updateGoal(this.goal);
+       this.showUpdateKR = false;
+       this.updateKRCurrentValue = '';
+       this.editingKRId = '';
+@@ -1258,7 +1258,7 @@
+       return;
+     }
+     this.editingKRId = kr.id;
+-    this.getUIContext().showAlertDialog({
++    AlertDialog.show({
+       title: '衡量标准操作',
+       message: '请选择要执行的操作',
+       buttons: [
+@@ -1341,18 +1341,18 @@
+     });
+     this.goal.keyResults = this.goal.keyResults.filter((kr: KeyResult) => kr.id !== krId);
+     this.goal.updateProgress();
+-    this.logger.debug('deleteKR: goal progress updated to', this.goal.progress);
++    console.log('GoalDetailPage deleteKR: goal progress updated to', this.goal.progress);
+     
+     // 强制本地UI更新
+     this.refreshFlag++;
+     
+     // 立即更新全局状态以触发其他页面的 UI 刷新
+-    this.logger.debug('deleteKR: calling dataSyncService.updateGoal');
++    console.log('GoalDetailPage deleteKR: calling dataSyncService.updateGoal');
+     try {
+       dataSyncService.updateGoal(this.goal);
+-      this.logger.debug('deleteKR: dataSyncService.updateGoal called successfully');
++      console.log('GoalDetailPage deleteKR: dataSyncService.updateGoal called successfully');
+     } catch (error) {
+-      this.logger.error('deleteKR: failed to call dataSyncService.updateGoal', error as Object);
++      console.error('GoalDetailPage deleteKR: failed to call dataSyncService.updateGoal:', JSON.stringify(error));
+     }
+     
+     Promise.all([
+@@ -1382,13 +1382,13 @@
+       
+       Column() {
+         Text('更新当前值')
+-          .fontSize(TYPE_HERO_TITLE)
++          .fontSize(18)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.textPrimary)
+           .margin({ bottom: SECTION_GAP })
+         
+         Text('请输入新的当前值')
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .margin({ bottom: SPACE_SM })
+@@ -1396,7 +1396,7 @@
+         TextInput({ text: this.updateKRCurrentValue })
+           .width('100%')
+           .height(BUTTON_HEIGHT_LG)
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .type(InputType.Number)
+           .padding(SPACE_SM)
+           .backgroundColor(this.themeColors.inputBackground)
+@@ -1442,13 +1442,13 @@
+       
+       Column() {
+         Text('确认删除')
+-          .fontSize(TYPE_HERO_TITLE)
++          .fontSize(18)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.textPrimary)
+           .margin({ bottom: SPACE_CARD })
+         
+         Text('是否删除该衡量标准？删除后关联的行动将改为与目标直接关联。')
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .lineHeight(18)
+@@ -1500,7 +1500,7 @@
+     }
+     const task = this.selectedTaskForAction;
+     this.hideTaskActions();
+-    this.getUIContext().getRouter().pushUrl({
++    router.pushUrl({
+       url: 'pages/CreateTaskPage',
+       params: { taskId: task.id }
+     });
+@@ -1561,7 +1561,7 @@
+             .margin({ bottom: SPACE_MD })
+           
+           Text('该目标下暂无任务')
+-            .fontSize(TYPE_BODY)
++            .fontSize(15)
+             .fontColor(this.themeColors.textSecondary)
+         }
+         .width('100%')
+@@ -1601,14 +1601,14 @@
+         // 任务信息
+         Column() {
+           Text(this.getCurrentTask(task).title)
+-            .fontSize(TYPE_BODY)
++            .fontSize(15)
+             .fontColor(this.getCurrentTask(task).status === 'completed' ? this.themeColors.textMuted : this.themeColors.textPrimary)
+             .maxLines(2)
+             .textOverflow({ overflow: TextOverflow.Ellipsis })
+             .decoration({ type: this.getCurrentTask(task).status === 'completed' ? TextDecorationType.LineThrough : TextDecorationType.None })
+           Row() {
+             Text(this.getCurrentTask(task).description || '')
+-              .fontSize(TYPE_META)
++              .fontSize(12)
+               .fontColor(this.themeColors.textSecondary)
+               .maxLines(1)
+               .textOverflow({ overflow: TextOverflow.Ellipsis })
+@@ -1633,11 +1633,10 @@
+               // 番茄图标显示（最多 3 个）
+               if (this.getCurrentTask(task).pomodoroCount > 0) {
+                 Row() {
+-                ForEach(Array.from({length: Math.min(this.getCurrentTask(task).pomodoroCount, 3)}), (_t: undefined, index: number) => {
++                ForEach(Array.from({length: Math.min(this.getCurrentTask(task).pomodoroCount, 3)}), (item: undefined, index: number) => {
+                     Image($r('app.media.tomato'))
+                       .width(ICON_SIZE_XS)
+                       .height(ICON_SIZE_XS)
+-                      .syncLoad(true)
+                       .margin({ left: SPACE_2XS })
+                   })
+                 }
+@@ -1666,7 +1665,7 @@
+             }
+ 
+             Text(this.getPriorityText(this.getCurrentTask(task).priority))
+-              .fontSize(TYPE_CAPTION)
++              .fontSize(11)
+               .fontWeight(FontWeight.Medium)
+               .fontColor(this.getPriorityColor(this.getCurrentTask(task).priority))
+               .padding({ left: SPACE_XS, right: SPACE_XS, top: SPACE_2XS, bottom: SPACE_2XS })
+@@ -1677,7 +1676,7 @@
+           
+           if (this.getCurrentTask(task).dueDate) {
+             Text(this.formatDate(this.getCurrentTask(task).dueDate || 0) + (this.getCurrentTask(task).dueTime ? ` ${this.getCurrentTask(task).dueTime}` : ''))
+-              .fontSize(TYPE_CAPTION)
++              .fontSize(11)
+               .fontColor(
+                 this.getCurrentTask(task).isOverdue
+                   ? this.themeColors.danger 
+@@ -1699,7 +1698,7 @@
+           Row() {
+             Button() {
+               Text(this.getCurrentTask(task).isPinned ? '取消置顶' : '置顶')
+-                .fontSize(TYPE_BODY)
++                .fontSize(14)
+                 .fontWeight(FontWeight.Medium)
+                 .fontColor(this.themeColors.textOnPrimary)
+             }
+@@ -1712,23 +1711,35 @@
+               this.toggleTaskPinned(task);
+             })
+             
+-            AppButton({
+-              text: '编辑',
+-              variant: 'primary',
+-              buttonSize: 'md',
+-              tapAction: () => {
+-                this.editSelectedTask();
+-              }
++            Button() {
++              Text('编辑')
++                .fontSize(14)
++                .fontWeight(FontWeight.Medium)
++                .fontColor(this.themeColors.textOnPrimary)
++            }
++            .height(BUTTON_HEIGHT_MD)
++            .padding({ left: SPACE_CARD, right: SPACE_CARD })
++            .borderRadius(19)
++            .backgroundColor(this.themeColors.primary)
++            .margin({ left: SPACE_CARD, right: SPACE_CARD })
++            .shadow({ radius: 8, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
++            .onClick(() => {
++              this.editSelectedTask();
+             })
+-              .margin({ left: SPACE_CARD, right: SPACE_CARD })
+-
+-            AppButton({
+-              text: '删除',
+-              variant: 'danger',
+-              buttonSize: 'md',
+-              tapAction: () => {
+-                this.showDeleteTaskConfirm = true;
+-              }
++            
++            Button() {
++              Text('删除')
++                .fontSize(14)
++                .fontWeight(FontWeight.Medium)
++                .fontColor(this.themeColors.textOnPrimary)
++            }
++            .height(BUTTON_HEIGHT_MD)
++            .padding({ left: SPACE_CARD, right: SPACE_CARD })
++            .borderRadius(19)
++            .backgroundColor(this.themeColors.danger)
++            .shadow({ radius: 8, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
++            .onClick(() => {
++              this.showDeleteTaskConfirm = true;
+             })
+           }
+           .width('100%')
+@@ -1765,7 +1776,7 @@
+         if (this.isArchivedGoal()) {
+           this.showArchivedToast();
+         } else {
+-          this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: {taskId: task.id.toString() } });
++          router.pushUrl({ url: 'pages/TaskDetailPage', params: {taskId: task.id.toString() } });
+         }
+       }
+     })
+@@ -1792,13 +1803,13 @@
+       
+       Column() {
+         Text('确认删除任务')
+-          .fontSize(TYPE_HERO_TITLE)
++          .fontSize(18)
+           .fontWeight(FontWeight.Bold)
+           .fontColor(this.themeColors.textPrimary)
+           .margin({ bottom: SPACE_CARD })
+         
+         Text('是否删除该任务？')
+-          .fontSize(TYPE_BODY)
++          .fontSize(14)
+           .fontColor(this.themeColors.textSecondary)
+           .width('100%')
+           .textAlign(TextAlign.Center)

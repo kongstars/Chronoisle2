@@ -7,10 +7,12 @@ import { AIFillState } from '../services/AIFillState';
 import { AppAIFillBanner } from '../ui/base/AppAIFillBanner';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
+import { AppFormCard } from '../ui/base/AppFormCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { COMFORTABLE_PAGE_PADDING, COMFORTABLE_SECTION_GAP } from '../foundation/tokens/PageTierTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
@@ -948,6 +950,7 @@ struct DayEventCreatePage {
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
       TextInput({ text: value, placeholder })
+        .width('100%')
         .height(42)
         .fontSize(TYPE_BODY)
         .backgroundColor(this.themeColors.surfaceLight)
@@ -1131,7 +1134,7 @@ struct DayEventCreatePage {
       }
     }
     .width('100%')
-    .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: 16 })
+    .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 8, bottom: 16 })
     .backgroundColor(this.themeColors.navBackground)
     .border({ width: { top: 1 }, color: this.themeColors.borderColor })
   }
@@ -1182,6 +1185,7 @@ struct DayEventCreatePage {
           }
           .width('100%')
         }
+        .align(Alignment.Top)
         .width('100%')
         .constraintSize({ maxHeight: 320 })
       }
@@ -1305,6 +1309,7 @@ struct DayEventCreatePage {
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
           TextInput({ text: `${this.periodicDayOfMonth}`, placeholder: '1-31' })
+            .width('100%')
             .height(46)
             .backgroundColor(this.themeColors.surfaceLight)
             .borderRadius(14)
@@ -1326,6 +1331,7 @@ struct DayEventCreatePage {
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
           TextInput({ text: `${this.periodicIntervalDays}`, placeholder: '请输入间隔天数' })
+            .width('100%')
             .height(46)
             .backgroundColor(this.themeColors.surfaceLight)
             .borderRadius(14)
@@ -1381,6 +1387,7 @@ struct DayEventCreatePage {
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
           TextInput({ text: `${this.habitTimesPerPeriod}`, placeholder: '请输入次数' })
+            .width('100%')
             .height(46)
             .backgroundColor(this.themeColors.surfaceLight)
             .borderRadius(14)
@@ -1440,6 +1447,7 @@ struct DayEventCreatePage {
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
           TextInput({ text: `${this.counterOffsetValue}`, placeholder: '请输入数值' })
+            .width('100%')
             .height(46)
             .backgroundColor(this.themeColors.surfaceLight)
             .borderRadius(14)
@@ -1516,13 +1524,14 @@ struct DayEventCreatePage {
         AppPageHeader({
           title: this.getPageTitle(),
           subtitle: this.isGoalDraftMode() ? '配置类型、时间和提醒规则，保存后回到目标创建页。' : '配置类型、时间、目标和提醒规则，让提醒真正可执行。',
+          insetHorizontal: COMFORTABLE_PAGE_PADDING,
           onBack: () => {
             this.getUIContext().getRouter().back();
           }
         })
 
         Scroll() {
-          Column({ space: SECTION_GAP }) {
+          Column({ space: COMFORTABLE_SECTION_GAP }) {
             this.OverviewCard()
 
             if (this.aiFill.shouldShowBanner()) {
@@ -1536,7 +1545,7 @@ struct DayEventCreatePage {
 
             this.TypeSection()
 
-            AppCard() {
+            AppFormCard() {
               Column({ space: SPACE_MD }) {
                 this.LabeledInput('标题', '例如：' + this.getTypeTitle() + '提醒', this.title, (value: string) => {
                   this.title = value;
@@ -1550,7 +1559,7 @@ struct DayEventCreatePage {
             }
 
             if (this.selectedType === DayEventType.PERIODIC) {
-              AppCard() {
+              AppFormCard() {
                 Column({ space: SPACE_MD }) {
                   Text('时间规则')
                     .fontSize(TYPE_SECTION_TITLE)
@@ -1567,7 +1576,7 @@ struct DayEventCreatePage {
             }
 
             if (this.selectedType === DayEventType.HABIT) {
-              AppCard() {
+              AppFormCard() {
                 Column({ space: SPACE_MD }) {
                   Text('习惯规则')
                     .fontSize(TYPE_SECTION_TITLE)
@@ -1584,7 +1593,7 @@ struct DayEventCreatePage {
             }
 
             if (this.selectedType === DayEventType.MILESTONE) {
-              AppCard() {
+              AppFormCard() {
                 Column({ space: SPACE_MD }) {
                   Text('重要日期')
                     .fontSize(TYPE_SECTION_TITLE)
@@ -1601,7 +1610,7 @@ struct DayEventCreatePage {
             }
 
             if (this.selectedType === DayEventType.COUNTER) {
-              AppCard() {
+              AppFormCard() {
                 Column({ space: SPACE_MD }) {
                   Text('纪念日规则')
                     .fontSize(TYPE_SECTION_TITLE)
@@ -1618,7 +1627,7 @@ struct DayEventCreatePage {
             }
 
             if (this.selectedType === DayEventType.COUNTDOWN) {
-              AppCard() {
+              AppFormCard() {
                 Column({ space: SPACE_MD }) {
                   Text('倒计时设置')
                     .fontSize(TYPE_SECTION_TITLE)
@@ -1639,8 +1648,9 @@ struct DayEventCreatePage {
             Blank().height(64)
           }
           .width('100%')
-          .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 4, bottom: PAGE_PADDING - 2 })
+          .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 4, bottom: COMFORTABLE_PAGE_PADDING + 68 })
         }
+        .align(Alignment.Top)
         .layoutWeight(1)
         .scrollBar(BarState.Off)
 

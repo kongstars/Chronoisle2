@@ -183,6 +183,7 @@ struct DayEventListPage {
           .width('100%')
           .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: 12 })
         }
+        .align(Alignment.Top)
         .layoutWeight(1)
         .width('100%')
         .scrollBar(BarState.Off)

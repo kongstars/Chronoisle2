@@ -67,6 +67,10 @@ function getCompletedReminderTasksForDate(tasks: Task[], eventId: string, timest
   });
 }
 
+function isPendingOccurrenceLate(occurrenceTime: number, state: CalendarReminderState): boolean {
+  return state === 'pending' && occurrenceTime <= Date.now();
+}
+
 function isCountTargetAvailableOnDate(event: DayEvent, tasks: Task[], timestamp: number): boolean {
   const day = startOfDay(timestamp);
   if (!event.isEnabled || day < startOfDay(event.startDate)) {
@@ -107,20 +111,21 @@ function getCountTargetItem(event: DayEvent, tasks: Task[], timestamp: number, c
     statusText = '今日已打卡';
   }
 
+  const occurrenceTime = getRuleTimeForDate(day, countTargetRule);
+
   return {
     event,
-    occurrenceTime: getRuleTimeForDate(day, countTargetRule),
+    occurrenceTime,
     state,
     statusText,
     progressText,
     completedCountOnDate,
     isCountTarget: true,
-    isLate: state === 'pending' && day <= startOfDay(Date.now())
+    isLate: isPendingOccurrenceLate(occurrenceTime, state)
   };
 }
 
 function getDirectReminderItem(event: DayEvent, timestamp: number, occurrenceTime: number, completedCountOnDate: number): CalendarReminderItem {
-  const day = startOfDay(timestamp);
   const state: CalendarReminderState = completedCountOnDate > 0 ? 'completed' : 'pending';
   return {
     event,
@@ -130,7 +135,7 @@ function getDirectReminderItem(event: DayEvent, timestamp: number, occurrenceTim
     progressText: '',
     completedCountOnDate,
     isCountTarget: false,
-    isLate: completedCountOnDate === 0 && day <= startOfDay(Date.now())
+    isLate: isPendingOccurrenceLate(occurrenceTime, state)
   };
 }
 

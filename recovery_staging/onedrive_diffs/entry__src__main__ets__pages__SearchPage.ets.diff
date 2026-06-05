@@ -1,0 +1,110 @@
+--- current/entry\src\main\ets\pages\SearchPage.ets
++++ backup/entry\src\main\ets\pages\SearchPage.ets
+@@ -1,3 +1,4 @@
++import router from '@ohos.router';
+ import { ThemeColors, LightTheme } from '../theme/AppTheme';
+ import { db } from '../storage/Database';
+ import { Goal } from '../models/Goal';
+@@ -8,15 +9,11 @@
+ import { AppCard } from '../ui/base/AppCard';
+ import { AppEmptyState } from '../ui/base/AppEmptyState';
+ import { AppIcon } from '../ui/base/AppIcon';
+-import { AppButton } from '../ui/base/AppButton';
+ import { AppLoadingState } from '../ui/base/AppLoadingState';
+ import { AppStatusBadge } from '../ui/base/AppStatusBadge';
+ import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+ import { RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
+ import { TYPE_BODY, TYPE_META, TYPE_PAGE_TITLE, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('SearchPage');
+ 
+ interface SearchPageParams {
+   keyword?: string;
+@@ -53,7 +50,7 @@
+       return;
+     }
+     this.hasLoadedEntryParams = true;
+-    const params = this.getUIContext().getRouter().getParams() as SearchPageParams;
++    const params = router.getParams() as SearchPageParams;
+     if (params && params.keyword) {
+       this.keyword = params.keyword;
+     }
+@@ -72,7 +69,7 @@
+       this.events = db.getAllDayEvents()
+         .sort((first: DayEvent, second: DayEvent) => (second.updatedAt || second.createdAt) - (first.updatedAt || first.createdAt));
+     } catch (error) {
+-      logger.error('SearchPage load error', error as Object);
++      console.error('SearchPage load error:', JSON.stringify(error));
+       this.goals = [];
+       this.tasks = [];
+       this.events = [];
+@@ -233,15 +230,15 @@
+   }
+ 
+   private openGoal(goal: Goal): void {
+-    this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalDetailPage', params: { goalId: goal.id } });
++    router.pushUrl({ url: 'pages/GoalDetailPage', params: { goalId: goal.id } });
+   }
+ 
+   private openTask(task: Task): void {
+-    this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId: task.id } });
++    router.pushUrl({ url: 'pages/TaskDetailPage', params: { taskId: task.id } });
+   }
+ 
+   private openEvent(event: DayEvent): void {
+-    this.getUIContext().getRouter().pushUrl({
++    router.pushUrl({
+       url: 'pages/DayEventListPage',
+       params: { eventId: event.id, keyword: event.title }
+     });
+@@ -251,16 +248,22 @@
+   private SearchHeader() {
+     Column({ space: SPACE_SM }) {
+       Row({ space: SPACE_SM }) {
+-        AppButton({
+-          text: '',
+-          iconName: 'chevron-left',
+-          variant: 'secondary',
+-          buttonSize: 'sm',
+-          tapAction: () => {
+-            this.getUIContext().getRouter().back();
+-          }
++        Button() {
++          AppIcon({
++            name: 'chevron-left',
++            iconSize: 18,
++            framed: false,
++            color: this.themeColors.textPrimary
++          })
++        }
++        .width(38)
++        .height(38)
++        .backgroundColor(this.themeColors.surfaceSoft)
++        .borderRadius(RADIUS_PILL)
++        .border({ width: 1, color: this.themeColors.borderColor })
++        .onClick(() => {
++          router.back();
+         })
+-          .width(38)
+ 
+         Text('搜索')
+           .fontSize(TYPE_PAGE_TITLE)
+@@ -347,7 +350,7 @@
+       .width('100%')
+ 
+       Text(goal.title)
+-        .fontSize(TYPE_BODY)
++        .fontSize(15)
+         .fontWeight(FontWeight.Bold)
+         .fontColor(this.themeColors.textPrimary)
+         .width('100%')
+@@ -384,7 +387,7 @@
+           .width('100%')
+ 
+           Text(event.title)
+-            .fontSize(TYPE_BODY)
++            .fontSize(15)
+             .fontWeight(FontWeight.Bold)
+             .fontColor(this.themeColors.textPrimary)
+             .width('100%')

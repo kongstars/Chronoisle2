@@ -1,0 +1,157 @@
+--- current/entry\src\main\ets\services\CloudSyncService.ets
++++ backup/entry\src\main\ets\services\CloudSyncService.ets
+@@ -8,9 +8,6 @@
+ import { TelemetryProperties } from '../services/TelemetryService';
+ import { TelemetryService } from './TelemetryService';
+ import { TelemetryErrorCode } from '../models/TelemetryErrorCode';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('CloudSyncService');
+ interface ApiResponse<T> {
+   success: boolean;
+   message: string;
+@@ -47,11 +44,11 @@
+   async fetchCloudData(): Promise<SyncDataSet> {
+     try {
+       const token = await authService.getToken();
+-      if (!token) throw new Error('AUTH_REQUIRED');
++      if (!token) throw new Error('未授权');
+ 
+       const baseUrl = AppConfig.getBaseUrl();
+       let httpRequest = http.createHttp();
+-
++      
+       const response = await httpRequest.request(`${baseUrl}/api/sync/data`, {
+         method: http.RequestMethod.GET,
+         header: {
+@@ -62,54 +59,37 @@
+         readTimeout: 10000
+       });
+ 
+-      if (response.responseCode === 401 || response.responseCode === 403) {
+-        throw new Error('AUTH_FAILED');
+-      }
+-
+-      if (response.responseCode !== 200) {
+-        throw new Error(`SERVER_ERROR:${response.responseCode}`);
+-      }
+-
+-      const result: ApiResponse<SyncDataResponse> = JSON.parse(response.result as string);
+-      if (result.success && result.data) {
+-        const rawGoals: GoalData[] = result.data?.goals || [];
+-        const rawTasks: TaskData[] = result.data?.tasks || [];
+-        const rawDayEvents: DayEventData[] = result.data?.dayEvents || [];
+-        const rawPomodoros: PomodoroData[] = result.data?.pomodoros || [];
+-        return {
+-          goals: rawGoals.map((g: GoalData) => Goal.fromJSON(g)),
+-          tasks: rawTasks.map((t: TaskData) => Task.fromJSON(t)),
+-          dayEvents: rawDayEvents.map((d: DayEventData) => DayEvent.fromJSON(d)),
+-          pomodoros: rawPomodoros.map((p: PomodoroData) => Pomodoro.fromJSON(p))
+-        };
+-      }
+-
++      if (response.responseCode === 200) {
++        const result: ApiResponse<SyncDataResponse> = JSON.parse(response.result as string);
++        if (result.success && result.data) {
++          const rawGoals: GoalData[] = result.data?.goals || [];
++          const rawTasks: TaskData[] = result.data?.tasks || [];
++          const rawDayEvents: DayEventData[] = result.data?.dayEvents || [];
++          const rawPomodoros: PomodoroData[] = result.data?.pomodoros || [];
++          return {
++            goals: rawGoals.map((g: GoalData) => Goal.fromJSON(g)),
++            tasks: rawTasks.map((t: TaskData) => Task.fromJSON(t)),
++            dayEvents: rawDayEvents.map((d: DayEventData) => DayEvent.fromJSON(d)),
++            pomodoros: rawPomodoros.map((p: PomodoroData) => Pomodoro.fromJSON(p))
++          };
++        }
++      }
+       return { goals: [], tasks: [], dayEvents: [], pomodoros: [] };
+     } catch (error) {
+-      const message = error instanceof Error ? error.message : String(error);
+-      logger.error('CloudSyncService fetchCloudData error:', message as Object);
+-      (() => { let _p: TelemetryProperties = {
+-        "code": TelemetryErrorCode.ERR_SYNC_DOWNLOAD_FAIL,
+-        "msg": message.substring(0, 50),
++      console.error('CloudSyncService fetchCloudData error:', error);
++      (() => { let _p: TelemetryProperties = { 
++        "code": TelemetryErrorCode.ERR_SYNC_DOWNLOAD_FAIL, 
++        "msg": String(error).substring(0, 50),
+         "path": 'sync/data'
+       }; TelemetryService.track('api_error', _p, 'other'); })();
+-      throw new Error(message);
++      return { goals: [], tasks: [], dayEvents: [], pomodoros: [] };
+     }
+   }
+ 
+   // 检查云端是否曾经有过记录
+   async hasCloudHistory(): Promise<boolean> {
+-    try {
+-      const data = await this.fetchCloudData();
+-      return data.goals.length > 0 || data.tasks.length > 0 || data.dayEvents.length > 0 || data.pomodoros.length > 0;
+-    } catch (error) {
+-      const message = error instanceof Error ? error.message : String(error);
+-      if (message.startsWith('AUTH_')) {
+-        return false;
+-      }
+-      logger.error('CloudSyncService hasCloudHistory error:', message as Object);
+-      return false;
+-    }
++    const data = await this.fetchCloudData();
++    return data.goals.length > 0 || data.tasks.length > 0 || data.dayEvents.length > 0 || data.pomodoros.length > 0;
+   }
+ 
+   // 合并本地和云端数据
+@@ -163,35 +143,19 @@
+   // 执行双向同步
+   async sync(db: DatabaseAdapter): Promise<void> {
+     const localData = db.exportData();
+-    try {
+-      const cloudData = await this.fetchCloudData();
+-      const mergedData = this.mergeData(localData, cloudData);
+-
+-      await db.replaceAllData(mergedData.goals, mergedData.tasks, mergedData.dayEvents, mergedData.pomodoros);
+-      await this.uploadData(mergedData);
+-    } catch (error) {
+-      const message = error instanceof Error ? error.message : String(error);
+-      if (message.startsWith('AUTH_')) {
+-        logger.error('CloudSyncService sync: auth failed, keeping local data intact');
+-        return;
+-      }
+-      logger.error('CloudSyncService sync error:', message as Object);
+-    }
++    const cloudData = await this.fetchCloudData();
++    const mergedData = this.mergeData(localData, cloudData);
++    
++    // 覆盖本地
++    await db.replaceAllData(mergedData.goals, mergedData.tasks, mergedData.dayEvents, mergedData.pomodoros);
++    // 覆盖远端
++    await this.uploadData(mergedData);
+   }
+ 
+   // 完全从云端下载强制覆盖本地
+   async downloadAndReplace(db: DatabaseAdapter): Promise<void> {
+-    try {
+-      const cloudData = await this.fetchCloudData();
+-      await db.replaceAllData(cloudData.goals, cloudData.tasks, cloudData.dayEvents, cloudData.pomodoros);
+-    } catch (error) {
+-      const message = error instanceof Error ? error.message : String(error);
+-      if (message.startsWith('AUTH_')) {
+-        logger.error('CloudSyncService downloadAndReplace: auth failed, keeping local data intact');
+-        return;
+-      }
+-      logger.error('CloudSyncService downloadAndReplace error:', message as Object);
+-    }
++    const cloudData = await this.fetchCloudData();
++    await db.replaceAllData(cloudData.goals, cloudData.tasks, cloudData.dayEvents, cloudData.pomodoros);
+   }
+ 
+   // 推送数据覆盖云端
+@@ -223,7 +187,7 @@
+         readTimeout: 10000
+       });
+     } catch (error) {
+-      logger.error('CloudSyncService uploadData error:', error as Object);
++      console.error('CloudSyncService uploadData error:', error);
+       (() => { let _p: TelemetryProperties = { 
+         "code": TelemetryErrorCode.ERR_SYNC_UPLOAD_FAIL, 
+         "msg": String(error).substring(0, 50),

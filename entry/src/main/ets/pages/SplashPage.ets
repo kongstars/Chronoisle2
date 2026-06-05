@@ -81,19 +81,23 @@ struct SplashPage {
   }
 
   private navigateToPage(url: string, params?: Record<string, Object>): void {
-    if (params) {
-      this.getUIContext().getRouter().replaceUrl({ url, params });
-    } else {
-      this.getUIContext().getRouter().replaceUrl({ url });
-    }
+    try {
+      if (params) {
+        this.getUIContext().getRouter().replaceUrl({ url, params });
+      } else {
+        this.getUIContext().getRouter().replaceUrl({ url });
+      }
+    } catch (_) {}
   }
 
   private pushToPage(url: string, params?: Record<string, Object>): void {
-    if (params) {
-      this.getUIContext().getRouter().pushUrl({ url, params });
-    } else {
-      this.getUIContext().getRouter().pushUrl({ url });
-    }
+    try {
+      if (params) {
+        this.getUIContext().getRouter().pushUrl({ url, params });
+      } else {
+        this.getUIContext().getRouter().pushUrl({ url });
+      }
+    } catch (_) {}
   }
 
   private formatError(error: Object): string {

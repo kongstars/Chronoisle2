@@ -17,7 +17,8 @@ import { ICON_SIZE_LG, ICON_SIZE_SM, ICON_SIZE_XL, ICON_SIZE_XS } from '../found
 import { HERO_PANEL_HEIGHT_COMPACT } from '../foundation/tokens/PageDensityTokens';
 import { PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMFORTABLE_PAGE_PADDING, COMFORTABLE_SECTION_GAP } from '../foundation/tokens/PageTierTokens';
-import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { RADIUS_LG, RADIUS_MD, RADIUS_SM } from '../foundation/tokens/RadiusTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_MICRO, TYPE_NUMERIC_MD, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 
 @Entry
 @Component
@@ -327,17 +328,18 @@ struct CreatePomodoroPage {
 
   build() {
     Stack() {
-      Column({ space: SPACE_SM }) {
+      Column({ space: 0 }) {
         AppPageHeader({
           title: '创建番茄',
           subtitle: '设置时长、关联任务和连续专注参数',
+          insetHorizontal: COMFORTABLE_PAGE_PADDING,
           onBack: () => {
             this.getUIContext().getRouter().back();
           }
         })
 
         Scroll() {
-          Column({ space: SPACE_MD }) {
+          Column({ space: COMFORTABLE_SECTION_GAP }) {
             AppHeroPanel({
               eyebrow: '专注准备',
               title: '先确定这次番茄专注',
@@ -360,7 +362,7 @@ struct CreatePomodoroPage {
                   })
 
                   Text(`${this.duration} 分钟`)
-                    .fontSize(28)
+                    .fontSize(TYPE_NUMERIC_MD)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
                     .margin({ left: SPACE_CARD, right: SPACE_CARD })
@@ -483,7 +485,7 @@ struct CreatePomodoroPage {
             .width('100%')
             .padding(PANEL_GAP)
             .backgroundColor(this.themeColors.cardBackground)
-            .borderRadius(16)
+            .borderRadius(RADIUS_MD)
             .margin({ bottom: SPACE_MD })
 
             // 白噪音设置
@@ -539,7 +541,7 @@ struct CreatePomodoroPage {
               .width('100%')
               .padding({ left: SPACE_MD, right: SPACE_MD, top: SPACE_MD, bottom: SPACE_MD })
               .backgroundColor(this.themeColors.cardBackground)
-              .borderRadius(16)
+              .borderRadius(RADIUS_MD)
               .onClick(() => {
                 this.openNoiseSelector();
               })
@@ -588,7 +590,7 @@ struct CreatePomodoroPage {
               .height(BUTTON_HEIGHT_LG)
               .padding({ left: SPACE_CARD, right: SPACE_CARD })
               .backgroundColor(this.themeColors.surfaceLight)
-              .borderRadius(12)
+              .borderRadius(RADIUS_MD)
               .justifyContent(FlexAlign.Center)
               .enabled(!this.autoSelect)
               .onClick(() => {
@@ -599,41 +601,47 @@ struct CreatePomodoroPage {
             }
             .width('100%')
             .margin({ bottom: SPACE_CARD })
-
-            Row() {
-              AppButton({
-                text: this.continuousMode ? `开始连续番茄 · ${this.totalRounds}轮` : '立即开始',
-                variant: 'primary',
-                buttonSize: 'lg',
-                fullWidth: true,
-                iconName: 'tomato',
-                disabled: !(this.taskId || this.taskTitle),
-                tapAction: () => {
-                  if (this.taskId || this.taskTitle) {
-                    this.getUIContext().getRouter().pushUrl({
-                      url: 'pages/PomodoroPage',
-                      params: {
-                        duration: this.duration,
-                        taskId: this.taskId || '',
-                        taskTitle: this.taskTitle,
-                        continuousMode: this.continuousMode,
-                        totalRounds: this.totalRounds,
-                        breakDuration: this.breakDuration,
-                        longBreakDuration: this.longBreakDuration,
-                        noiseKey: this.isPremium ? this.selectedNoiseKey : ''
-                      }
-                    });
-                  }
-                }
-              })
-            }
-            .width('100%')
           }
           .width('100%')
-          .padding({ left: SPACE_CARD, right: SPACE_CARD, top: SPACE_SM, bottom: SPACE_MD })
+          .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 8, bottom: COMFORTABLE_PAGE_PADDING + 68 })
         }
+        .align(Alignment.Top)
         .width('100%')
         .layoutWeight(1)
+        .scrollBar(BarState.Off)
+
+        // 固定底部：开始按钮
+        Column() {
+          AppButton({
+            text: this.continuousMode ? `开始连续番茄 · ${this.totalRounds}轮` : '立即开始',
+            variant: 'primary',
+            buttonSize: 'lg',
+            fullWidth: true,
+            iconName: 'tomato',
+            disabled: !(this.taskId || this.taskTitle),
+            tapAction: () => {
+              if (this.taskId || this.taskTitle) {
+                this.getUIContext().getRouter().pushUrl({
+                  url: 'pages/PomodoroPage',
+                  params: {
+                    duration: this.duration,
+                    taskId: this.taskId || '',
+                    taskTitle: this.taskTitle,
+                    continuousMode: this.continuousMode,
+                    totalRounds: this.totalRounds,
+                    breakDuration: this.breakDuration,
+                    longBreakDuration: this.longBreakDuration,
+                    noiseKey: this.isPremium ? this.selectedNoiseKey : ''
+                  }
+                });
+              }
+            }
+          })
+        }
+        .width('100%')
+        .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 12, bottom: 24 })
+        .backgroundColor(this.themeColors.navBackground)
+        .border({ width: { top: 1 }, color: this.themeColors.borderColor })
       }
       .width('100%')
       .height('100%')
@@ -727,6 +735,7 @@ struct CreatePomodoroPage {
             }
             .width('100%')
           }
+          .align(Alignment.Top)
           .width('100%')
           .layoutWeight(1)
           .scrollable(ScrollDirection.Vertical)
@@ -760,7 +769,7 @@ struct CreatePomodoroPage {
       .width(BUTTON_HEIGHT_LG)
       .height(BUTTON_HEIGHT_LG)
       .backgroundColor(this.selectedNoiseKey === option.key ? this.themeColors.primary + '18' : this.themeColors.surfaceLight)
-      .borderRadius(20)
+      .borderRadius(RADIUS_LG)
       .border({
         width: this.selectedNoiseKey === option.key ? 2 : 0,
         color: this.themeColors.primary
@@ -768,7 +777,7 @@ struct CreatePomodoroPage {
       .alignContent(Alignment.Center)
 
       Text(option.label)
-        .fontSize(10)
+        .fontSize(TYPE_MICRO)
         .fontColor(this.themeColors.textMuted)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -818,7 +827,7 @@ struct CreatePomodoroPage {
             .fontColor(this.themeColors.textPrimary)
             .placeholderColor(this.themeColors.textMuted)
             .backgroundColor(this.themeColors.inputBackground)
-            .borderRadius(8)
+            .borderRadius(RADIUS_SM)
             .padding(SPACE_SM)
             .margin({ bottom: SPACE_CARD })
             .onChange((value: string) => {
@@ -848,6 +857,7 @@ struct CreatePomodoroPage {
             }
             .width('100%')
           }
+          .align(Alignment.Top)
           .width('100%')
           .layoutWeight(1)
           .scrollable(ScrollDirection.Vertical)
@@ -910,7 +920,7 @@ struct CreatePomodoroPage {
     }
     .width('100%')
     .backgroundColor(this.taskId === task.id ? this.themeColors.primary + '15' : this.themeColors.surfaceLight)
-    .borderRadius(12)
+    .borderRadius(RADIUS_MD)
     .margin({ bottom: SPACE_SM })
     .onClick(() => {
       this.selectTask(task);

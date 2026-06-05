@@ -4,12 +4,16 @@ import { DayEvent } from '../models/DayEvent';
 import { db } from '../storage/Database';
 import { authService, UserAccount } from '../services/AuthService';
 import type { SavedTodayPlan } from '../models/TodayPlan';
-import { TodayTab } from '../components/TodayTab';
-import { TaskListTab } from '../components/TaskListTab';
-import { CalendarTab } from '../components/CalendarTab';
+import { injectTodayReminders } from '../models/TodayPlan';
+import { TodayTabV2 } from '../components/TodayTabV2';
+import { ActionTab } from '../components/ActionTab';
+import { GoalsTab } from '../components/GoalsTab';
 import { MeTab } from '../components/MeTab';
 import { VoiceCreateOverlay, VoiceCreateOutput } from '../components/VoiceCreateOverlay';
-import { VoiceCreateParsed } from '../services/VoiceCreateService';
+import { VoiceCreateParsed, VoiceCreateService, VoiceCreateResult } from '../services/VoiceCreateService';
+import { VoiceRecognitionService } from '../services/VoiceRecognitionService';
+import { QuotaService, SpendResult } from '../services/QuotaService';
+import { hasMicrophonePermission, requestMicrophonePermission } from '../Utils/UserPerm';
 import { TodayPlanService } from '../services/TodayPlanService';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { AppButton } from '../ui/base/AppButton';
@@ -18,10 +22,10 @@ import { AppIcon } from '../ui/base/AppIcon';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 import { BOTTOM_BAR_HEIGHT, FAB_SIZE, NAV_ICON_SIZE } from '../foundation/tokens/PageDensityTokens';
-import { RADIUS_LG } from '../foundation/tokens/RadiusTokens';
-import { CONTENT_GAP, PANEL_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
+import { CONTENT_GAP, PANEL_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM } from '../foundation/tokens/SpacingTokens';
 import { ICON_SIZE_XL } from '../foundation/tokens/IconTokens';
-import { TYPE_CAPTION } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { TOUCH_TARGET_LG } from '../foundation/tokens/VisualTokens';
 import { Logger } from '../Utils/Logger';
 
@@ -52,6 +56,11 @@ interface ReminderVoiceRouteParams {
   voiceOffsetUnit?: string;
 }
 
+interface MainPageEntryRouteParams {
+  openGoalCreate?: string;
+  onboardingCategory?: string;
+}
+
 @Component
 struct MainFabButton {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
@@ -78,15 +87,17 @@ struct MainFabButton {
 struct MainPage {
   @State currentTabIndex: number = 0;
   @State showAddSheet: boolean = false;
+  @State showVoiceOnly: boolean = false;
   @State voiceCloseBlocked: boolean = false;
+  @State voiceInlinePhase: string = 'idle'; // idle | checking | recording | analyzing | error
+  @State voiceInlineText: string = '';
+  @State voiceInlineError: string = '';
   @State goals: Goal[] = [];
   @State tasks: Task[] = [];
   @State dayEvents: DayEvent[] = [];
   @State user: UserAccount | null = null;
   @State savedPlan: SavedTodayPlan | null = null;
   @State hasPlanQuota: boolean = true;
-  @State navFocusedIndex: number = -1;
-  @State navHoveredIndex: number = -1;
   @State fabFocused: boolean = false;
   @State fabHovered: boolean = false;
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
@@ -95,7 +106,10 @@ struct MainPage {
   private hasHandledEntryParams: boolean = false;
   private hasRegisteredDbListener: boolean = false;
   private hasScheduledPageReload: boolean = false;
-  private isPageDataLoading: boolean = false;
+  private readonly voiceRecognition: VoiceRecognitionService = VoiceRecognitionService.getInstance();
+  private voicePressActive: boolean = false;
+  private voiceHoldStartTimer: number = -1;
+  @State isPageDataLoading: boolean = false;
   private pendingPageDataReload: boolean = false;
   private dataChangeListener: () => void = () => {
     this.schedulePageDataReload();
@@ -121,16 +135,23 @@ struct MainPage {
     this.handleEntryParams();
   }
   private async refreshOnPageShow(): Promise<void> {
+    // 先快速加载本地数据（同步路径，不卡 UI）
+    await this.loadPageData();
+
+    // 然后在后台异步刷新云端数据，不阻塞页面显示
+    void this.refreshFromCloudInBackground();
+  }
+
+  private async refreshFromCloudInBackground(): Promise<void> {
     try {
-      // 从服务端拉取最新用户信息（会员状态可能被后台或购买页修改）
       const refreshedUser = await authService.refreshUserFromServer();
       if (refreshedUser) {
         this.user = refreshedUser;
       }
+      await this.refreshTodayPlanFromCloud(this.getHostContext());
     } catch (_e) {
-      // 网络异常时静默降级
+      // 后台刷新失败静默忽略
     }
-    await this.loadPageData();
   }
 
   private getHostContext(): Context {
@@ -172,6 +193,7 @@ struct MainPage {
       do {
         this.pendingPageDataReload = false;
         const context = this.getHostContext();
+        // 仅读取本地数据，不做网络请求；保证切页面不会卡住
         this.goals = db.getActiveGoals();
         this.tasks = db.getAllTasks();
         this.dayEvents = db.getAllDayEvents();
@@ -180,10 +202,7 @@ struct MainPage {
       } while (this.pendingPageDataReload);
     } catch (error) {
       logger.error('MainPage loadPageData failed', error as Object);
-      this.goals = [];
-      this.tasks = [];
-      this.dayEvents = [];
-      this.savedPlan = null;
+      // 不重置已有数据，避免 loading 死循环
     } finally {
       this.isPageDataLoading = false;
     }
@@ -191,11 +210,30 @@ struct MainPage {
 
   private async loadTodayPlan(context: Context): Promise<void> {
     try {
-      const result = await TodayPlanService.loadPlan(context);
-      this.savedPlan = result.plan;
+      // 仅读取本地缓存计划，不做网络请求（loadPlan 会触发 HTTP 调用导致页面卡住）
+      const localPlan = await TodayPlanService.loadLocalPlan(context);
+      if (localPlan) {
+        this.savedPlan = injectTodayReminders(localPlan, this.dayEvents, this.tasks);
+      } else {
+        // 即使没有本地计划，也构建一个仅含提醒的计划
+        const emptyPlan: SavedTodayPlan = { focusTasks: [], deferTasks: [], summary: '今日计划' };
+        const withReminders = injectTodayReminders(emptyPlan, this.dayEvents, this.tasks);
+        this.savedPlan = withReminders.focusTasks.length > 0 ? withReminders : null;
+      }
     } catch (error) {
       logger.error('MainPage loadTodayPlan failed', error as Object);
-      this.savedPlan = null;
+      // 出错也不重置 savedPlan，保留之前显示的内容
+    }
+  }
+
+  private async refreshTodayPlanFromCloud(context: Context): Promise<void> {
+    try {
+      const result = await TodayPlanService.loadPlan(context);
+      if (result.plan) {
+        this.savedPlan = injectTodayReminders(result.plan, this.dayEvents, this.tasks);
+      }
+    } catch (error) {
+      logger.error('MainPage refreshTodayPlanFromCloud failed', error as Object);
     }
   }
 
@@ -205,13 +243,13 @@ struct MainPage {
     }
 
     this.hasHandledEntryParams = true;
-    const params = this.getUIContext().getRouter().getParams() as Record<string, Object>;
-    if (!params || params['openGoalCreate'] !== 'true') {
+    const params = this.getUIContext().getRouter().getParams() as MainPageEntryRouteParams;
+    if (!params || params.openGoalCreate !== 'true') {
       return;
     }
 
-    const category = params['onboardingCategory'] as string;
-        this.getUIContext().getPromptAction().showToast({ message: '已进入首页，继续创建目标' });
+    const category = params.onboardingCategory || '';
+    this.getUIContext().getPromptAction().showToast({ message: '已进入首页，继续创建目标' });
     setTimeout(() => {
       if (category && category.length > 0) {
         const routeParams: GoalInfoRouteParams = { category: category };
@@ -322,6 +360,12 @@ struct MainPage {
   }
 
   onBackPress(): boolean {
+    if (this.showVoiceOnly) {
+      if (!this.voiceCloseBlocked) {
+        this.showVoiceOnly = false;
+      }
+      return true;
+    }
     if (this.showAddSheet) {
       this.closeAddSheet();
       return true;
@@ -359,26 +403,64 @@ struct MainPage {
   @Builder
   private PageContent() {
     if (this.currentTabIndex === 0) {
-      TodayTab({
+      TodayTabV2({
         goals: this.goals,
         tasks: this.tasks,
         savedPlan: this.savedPlan,
         user: this.user,
         dayEvents: this.dayEvents,
-        onShowTodayPlanDialog: () => { this.openTodayPlanPage(); },
-        onOpenManualTaskSelect: () => { this.openManualTaskSelect(); },
-        onCheckGoalQuotaAndNavigate: () => { this.openGoalCreatePage(); },
-        onOpenSearch: () => { this.openSearchPage(); }
+        onCreateTask: () => { this.openTaskCreatePage(); },
+        onCreateGoal: () => { this.openGoalCreatePage(); },
+        onCreateReminder: () => { this.openReminderCreatePage(); },
+        onStartFocus: () => { this.openPomodoroCreatePage(); },
+        onOpenSearch: () => { this.openSearchPage(); },
+        onOpenTodayPlan: () => { this.openTodayPlanPage(); },
+        onOpenGoalDetail: (goalId: string) => {
+          this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalDetailPage', params: { goalId } });
+        },
+        onOpenReschedule: () => {
+          this.getUIContext().getRouter().pushUrl({ url: 'pages/ReschedulePage' });
+        },
+        onOpenReminderCenter: () => {
+          this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+        },
+        onOpenTaskDetail: (taskId: string) => {
+          this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId } });
+        },
+        onToggleTaskComplete: (task: Task) => {
+          void db.setTaskCompletion(task.id, task.status !== 'completed');
+          void this.loadPageData();
+        },
+        onCompleteReminder: (eventId: string) => {
+          void db.completeDayEventOccurrence(eventId).then(() => {
+            void this.loadPageData();
+          });
+        }
       })
     } else if (this.currentTabIndex === 1) {
-      TaskListTab({
+      ActionTab({
         tasks: this.tasks,
-        goals: this.goals
+        goals: this.goals,
+        dayEvents: this.dayEvents,
+        onCreate: () => {
+          this.showAddSheet = true;
+          this.voiceCloseBlocked = false;
+        },
+        onOpenReminderCenter: () => {
+          this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+        },
+        onOpenSearch: () => { this.openSearchPage(); }
       })
     } else if (this.currentTabIndex === 2) {
-      CalendarTab({
-        dayEvents: this.dayEvents,
-        tasks: this.tasks
+      GoalsTab({
+        goals: this.goals,
+        tasks: this.tasks,
+        onCreate: () => {
+          this.openGoalCreatePage();
+        },
+        onOpenGoalDetail: (goalId: string) => {
+          this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalDetailPage', params: { goalId } });
+        }
       })
     } else {
       MeTab({ user: this.user })
@@ -393,51 +475,32 @@ struct MainPage {
     return this.isTabActive(index) ? this.themeColors.primary : this.themeColors.textSecondary;
   }
 
-  private getNavItemBackgroundColor(index: number): string {
-    if (this.isTabActive(index)) {
-      return this.themeColors.primarySubtle;
-    }
-    if (this.navFocusedIndex === index || this.navHoveredIndex === index) {
-      return this.themeColors.surfaceSoft;
-    }
-    return this.themeColors.transparent;
-  }
-
-  private getNavItemBorderColor(index: number): string {
-    if (this.navFocusedIndex === index) {
-      return this.themeColors.primary;
-    }
-    if (this.navHoveredIndex === index) {
-      return this.themeColors.primaryLight;
-    }
-    return this.themeColors.transparent;
-  }
-
   private getFabBorderColor(): string {
     return this.fabFocused || this.fabHovered ? this.themeColors.primaryLight : this.themeColors.transparent;
   }
 
-  private getTabIconName(index: number): string {
+  // ========== 底部 Tab 图标（系统符号，选中 filled / 未选中 outline） ==========
+
+  private getTabSymbol(index: number): Resource {
     if (index === 0) {
-      return 'today';
+      return this.isTabActive(0) ? $r('sys.symbol.calendar_fill') : $r('sys.symbol.calendar');
     }
     if (index === 1) {
-      return 'task';
+      return this.isTabActive(1) ? $r('sys.symbol.list_checkmask') : $r('sys.symbol.list_bullet');
     }
     if (index === 2) {
-      return 'calendar';
+      return this.isTabActive(2) ? $r('sys.symbol.flag_fill') : $r('sys.symbol.flag');
     }
-    return 'profile';
+    return this.isTabActive(3) ? $r('sys.symbol.person_fill') : $r('sys.symbol.person');
   }
 
   @Builder
   private TabIcon(index: number) {
-    AppIcon({
-      name: this.getTabIconName(index),
-      iconSize: NAV_ICON_SIZE,
-      framed: false,
-      color: this.tabLabelColor(index)
-    })
+    SymbolGlyph(this.getTabSymbol(index))
+      .fontSize(NAV_ICON_SIZE)
+      .fontColor([this.tabLabelColor(index)])
+      .fontWeight(this.isTabActive(index) ? FontWeight.Medium : FontWeight.Regular)
+      .renderingStrategy(SymbolRenderingStrategy.SINGLE)
   }
 
   @Builder
@@ -450,44 +513,383 @@ struct MainPage {
         .fontColor(this.tabLabelColor(index))
     }
     .layoutWeight(1)
-    .padding({ left: SPACE_XS, right: SPACE_XS, top: SPACE_XS, bottom: SPACE_2XS })
     .justifyContent(FlexAlign.Center)
     .constraintSize({ minHeight: TOUCH_TARGET_LG })
-    .backgroundColor(this.getNavItemBackgroundColor(index))
-    .borderRadius(RADIUS_LG)
-    .border({ width: BORDER_DEFAULT, color: this.getNavItemBorderColor(index) })
-    .focusable(true)
-    .onFocus(() => {
-      this.navFocusedIndex = index;
-    })
-    .onBlur(() => {
-      if (this.navFocusedIndex === index) {
-        this.navFocusedIndex = -1;
-      }
-    })
-    .onHover((isHover: boolean) => {
-      this.navHoveredIndex = isHover ? index : -1;
-    })
     .onClick(() => {
-      this.currentTabIndex = index;
-      this.showAddSheet = false;
+      this.getUIContext().animateTo({ duration: 450, curve: Curve.FastOutSlowIn }, () => {
+        this.currentTabIndex = index;
+        this.showAddSheet = false;
+        this.showVoiceOnly = false;
+      });
+      this.resetInlineVoiceState();
+    })
+  }
+
+  // 收缩态：当前 tab 的 icon（无背景，由外层容器提供）
+  @Builder
+  private CollapsedNavIcon() {
+    Stack({ alignContent: Alignment.Center }) {
+      this.TabIcon(this.currentTabIndex)
+    }
+    .width('100%')
+    .height('100%')
+    .onClick(() => {
+      this.getUIContext().animateTo({ duration: 450, curve: Curve.FastOutSlowIn }, () => {
+        this.showVoiceOnly = false;
+      });
+      this.resetInlineVoiceState();
+    })
+  }
+
+  // 语音按钮（实心圆形，无边框，无独立阴影 - 由外层容器提供）
+  @Builder
+  private VoiceMicButton() {
+    Stack({ alignContent: Alignment.Center }) {
+      Row()
+        .width('100%')
+        .height('100%')
+        .backgroundColor(this.themeColors.primary)
+        .borderRadius(RADIUS_PILL)
+      SymbolGlyph($r('sys.symbol.mic'))
+        .fontSize(22)
+        .fontColor([this.themeColors.textOnPrimary])
+        .fontWeight(FontWeight.Medium)
+        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+    }
+    .width('100%')
+    .height('100%')
+    .onClick(() => {
+      this.getUIContext().animateTo({ duration: 450, curve: Curve.FastOutSlowIn }, () => {
+        this.showVoiceOnly = true;
+      });
     })
   }
 
   @Builder
   private BottomBar() {
-    Row() {
-      this.NavItem(0, '今日')
-      this.NavItem(1, '任务')
-      Blank().layoutWeight(1)
-      this.NavItem(2, '打卡')
-      this.NavItem(3, '我的')
+    Column() {
+      Row({ space: SPACE_SM }) {
+        // 左侧容器：固定 navBackground + 阴影，宽度动画
+        Stack({ alignContent: Alignment.Start }) {
+          // 4 tab 视图（默认态）
+          Row() {
+            this.NavItem(0, '今日')
+            this.NavItem(1, '行动')
+            this.NavItem(2, '目标')
+            this.NavItem(3, '我的')
+          }
+          .width('100%')
+          .height('100%')
+          .padding({ left: SPACE_MD, right: SPACE_MD })
+          .visibility(this.showVoiceOnly ? Visibility.None : Visibility.Visible)
+
+          // 收缩 icon（语音态）
+          Stack() {
+            this.CollapsedNavIcon()
+          }
+          .width('100%')
+          .height('100%')
+          .visibility(this.showVoiceOnly ? Visibility.Visible : Visibility.None)
+        }
+        .width(this.showVoiceOnly ? this.bottomBarHeight - 8 : undefined)
+        .height(this.bottomBarHeight - 8)
+        .layoutWeight(this.showVoiceOnly ? 0 : 1)
+        .clip(true)
+        .backgroundColor(this.themeColors.navBackground)
+        .borderRadius(RADIUS_PILL)
+        .shadow({ radius: 16, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 4 })
+
+        // 右侧容器：固定 navBackground + 阴影，宽度动画
+        Stack({ alignContent: Alignment.End }) {
+          // 语音按钮（默认态）- 蓝色实心圆覆盖白色容器
+          Stack() {
+            this.VoiceMicButton()
+          }
+          .width('100%')
+          .height('100%')
+          .visibility(this.showVoiceOnly ? Visibility.None : Visibility.Visible)
+
+          // 语音输入面板（语音态）
+          Row() {
+            this.InlineVoicePanel()
+          }
+          .width('100%')
+          .height('100%')
+          .padding({ left: SPACE_SM, right: SPACE_SM })
+          .visibility(this.showVoiceOnly ? Visibility.Visible : Visibility.None)
+        }
+        .width(this.showVoiceOnly ? undefined : this.bottomBarHeight - 8)
+        .height(this.bottomBarHeight - 8)
+        .layoutWeight(this.showVoiceOnly ? 1 : 0)
+        .clip(true)
+        .backgroundColor(this.themeColors.navBackground)
+        .borderRadius(RADIUS_PILL)
+        .shadow({ radius: 16, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 4 })
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(this.bottomBarHeight)
-    .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_SM, bottom: SPACE_2XS })
-    .backgroundColor(this.themeColors.surface)
-    .border({ width: { top: 1 }, color: this.themeColors.borderColor })
+    .padding({ left: SPACE_CARD, right: SPACE_CARD, top: SPACE_2XS, bottom: SPACE_SM })
+  }
+
+  // ========== 内联语音面板（专为底部胶囊设计） ==========
+
+  private resetInlineVoiceState(): void {
+    this.voiceInlinePhase = 'idle';
+    this.voiceInlineText = '';
+    this.voiceInlineError = '';
+    this.voiceCloseBlocked = false;
+    this.voicePressActive = false;
+    if (this.voiceHoldStartTimer !== -1) {
+      clearTimeout(this.voiceHoldStartTimer);
+      this.voiceHoldStartTimer = -1;
+    }
+  }
+
+  private async startInlineVoice(): Promise<void> {
+    if (this.voiceInlinePhase !== 'idle' && this.voiceInlinePhase !== 'error') {
+      return;
+    }
+
+    this.voicePressActive = true;
+    this.voiceInlinePhase = 'checking';
+    this.voiceInlineText = '';
+    this.voiceInlineError = '';
+    this.voiceCloseBlocked = true;
+
+    // 用户登录检查
+    const currentUser = await authService.getCurrentUser();
+    if (!currentUser) {
+      this.voiceInlineError = '请先登录后再使用语音创建';
+      this.voiceInlinePhase = 'error';
+      this.voiceCloseBlocked = false;
+      this.voicePressActive = false;
+      return;
+    }
+
+    // 配额检查
+    const accessResult = await QuotaService.checkVoiceCreateAccess();
+    if (!accessResult.allowed) {
+      this.voiceInlineError = accessResult.message || '当前暂时无法使用语音创建';
+      this.voiceInlinePhase = 'error';
+      this.voiceCloseBlocked = false;
+      this.voicePressActive = false;
+      return;
+    }
+
+    // 麦克风权限检查
+    if (!(await hasMicrophonePermission())) {
+      const granted = await requestMicrophonePermission(this.getHostContext());
+      if (!granted) {
+        this.voiceInlineError = '请先允许麦克风权限后再使用语音输入';
+        this.voiceInlinePhase = 'error';
+        this.voiceCloseBlocked = false;
+        this.voicePressActive = false;
+        return;
+      }
+      // 权限刚授予，本次不继续录音，恢复 idle 让用户重新按住
+      this.resetInlineVoiceState();
+      return;
+    }
+
+    // 用户在权限检查期间已松手
+    if (!this.voicePressActive) {
+      this.resetInlineVoiceState();
+      return;
+    }
+
+    // 启动录音
+    this.voiceInlinePhase = 'recording';
+    const status = await this.voiceRecognition.startRecognition(
+      this.getHostContext(),
+      (text: string) => {
+        this.voiceInlineText = text;
+      },
+      (text: string) => {
+        if (text.trim()) {
+          this.voiceInlineText = text;
+        }
+      }
+    );
+
+    if (!this.voiceRecognition.isRecordingInProgress()) {
+      this.voiceInlineError = status || '语音服务暂不可用';
+      this.voiceInlinePhase = 'error';
+      this.voiceCloseBlocked = false;
+      this.voicePressActive = false;
+    }
+  }
+
+  private async stopInlineVoice(): Promise<void> {
+    this.voicePressActive = false;
+    if (this.voiceHoldStartTimer !== -1) {
+      clearTimeout(this.voiceHoldStartTimer);
+      this.voiceHoldStartTimer = -1;
+    }
+
+    // 还在权限检查阶段，直接退出
+    if (this.voiceInlinePhase === 'checking') {
+      this.resetInlineVoiceState();
+      return;
+    }
+
+    if (this.voiceInlinePhase !== 'recording') {
+      return;
+    }
+
+    const text = (await this.voiceRecognition.stopRecognition()).trim();
+    this.voiceRecognition.reset();
+    this.voiceInlineText = text;
+
+    // 没有内容，直接退出
+    if (!text) {
+      this.resetInlineVoiceState();
+      return;
+    }
+
+    // 有内容，进入识别阶段
+    this.voiceInlinePhase = 'analyzing';
+
+    // 扣配额
+    const spendResult: SpendResult = await QuotaService.spendCredit('voice_task');
+    if (!spendResult.success) {
+      this.voiceInlineError = spendResult.message || '当前暂时无法使用语音创建';
+      this.voiceInlinePhase = 'error';
+      this.voiceCloseBlocked = false;
+      return;
+    }
+
+    // 调用后端识别意图
+    const result: VoiceCreateResult = await VoiceCreateService.analyze(text);
+    this.voiceCloseBlocked = false;
+
+    if (result.success && result.intent && result.parsed) {
+      // 成功，路由到对应创建页
+      this.showVoiceOnly = false;
+      this.resetInlineVoiceState();
+      this.handleVoiceResult({
+        intent: result.intent,
+        parsed: result.parsed
+      });
+      return;
+    }
+
+    // 失败
+    this.voiceInlineError = result.message || '没听清你说的内容，再试一次';
+    this.voiceInlinePhase = 'error';
+  }
+
+  @Builder
+  private InlineVoicePanel() {
+    Row({ space: SPACE_SM }) {
+      // 麦克风指示
+      Stack({ alignContent: Alignment.Center }) {
+        Row()
+          .width(32)
+          .height(32)
+          .backgroundColor(this.voiceInlinePhase === 'recording' ? this.themeColors.danger + '22' :
+                          this.voiceInlinePhase === 'error' ? this.themeColors.danger + '15' :
+                          this.themeColors.primary + '15')
+          .borderRadius(16)
+        SymbolGlyph($r('sys.symbol.mic'))
+          .fontSize(16)
+          .fontColor([this.voiceInlinePhase === 'recording' ? this.themeColors.danger :
+                     this.voiceInlinePhase === 'error' ? this.themeColors.danger :
+                     this.themeColors.primary])
+          .fontWeight(FontWeight.Medium)
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      }
+      .width(32)
+      .height(32)
+
+      // 文字区域：实时转写或状态文字
+      Column({ space: 2 }) {
+        Text(this.getInlineVoiceTitle())
+          .fontSize(TYPE_BODY)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.voiceInlinePhase === 'error' ? this.themeColors.danger : this.themeColors.textPrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(this.getInlineVoiceHint())
+          .fontSize(TYPE_CAPTION)
+          .fontColor(this.themeColors.textSecondary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      // 右侧操作提示
+      Text(this.getInlineVoiceAction())
+        .fontSize(TYPE_META)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.themeColors.primary)
+        .padding({ left: SPACE_SM, right: SPACE_2XS })
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center)
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        // 错误态点击重置为 idle
+        if (this.voiceInlinePhase === 'error') {
+          this.resetInlineVoiceState();
+          return;
+        }
+        void this.startInlineVoice();
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        void this.stopInlineVoice();
+      }
+    })
+  }
+
+  private getInlineVoiceTitle(): string {
+    if (this.voiceInlinePhase === 'recording') {
+      // 优先显示实时转写
+      return this.voiceInlineText.length > 0 ? this.voiceInlineText : '正在听...';
+    }
+    if (this.voiceInlinePhase === 'analyzing') {
+      return this.voiceInlineText.length > 0 ? this.voiceInlineText : '识别中...';
+    }
+    if (this.voiceInlinePhase === 'checking') {
+      return '准备中...';
+    }
+    if (this.voiceInlinePhase === 'error') {
+      return this.voiceInlineError || '出错了';
+    }
+    return '语音创建';
+  }
+
+  private getInlineVoiceHint(): string {
+    if (this.voiceInlinePhase === 'recording') {
+      return '松开完成录入';
+    }
+    if (this.voiceInlinePhase === 'analyzing') {
+      return 'AI 正在理解你的意图';
+    }
+    if (this.voiceInlinePhase === 'checking') {
+      return '正在准备语音输入';
+    }
+    if (this.voiceInlinePhase === 'error') {
+      return '点击重试';
+    }
+    return '按住说话，松开完成';
+  }
+
+  private getInlineVoiceAction(): string {
+    if (this.voiceInlinePhase === 'recording') {
+      return '松开';
+    }
+    if (this.voiceInlinePhase === 'analyzing') {
+      return '...';
+    }
+    if (this.voiceInlinePhase === 'checking') {
+      return '...';
+    }
+    if (this.voiceInlinePhase === 'error') {
+      return '重试';
+    }
+    return '按住';
   }
 
   @Builder
@@ -507,7 +909,7 @@ struct MainPage {
         AppIcon({ name: icon, iconSize: ICON_SIZE_XL })
         Column({ space: SPACE_2XS }) {
           Text(title)
-            .fontSize(16)
+            .fontSize(TYPE_BODY)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -544,7 +946,7 @@ struct MainPage {
       Column() {
         AppCard({ variant: 'raised', spacing: PANEL_GAP, paddingLevel: 'lg' }) {
           Text('新建内容')
-            .fontSize(16)
+            .fontSize(TYPE_SECTION_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -622,14 +1024,11 @@ struct MainPage {
 
   @Builder
   private BottomNavigationArea() {
-    Stack({ alignContent: Alignment.Bottom }) {
+    Column() {
       this.BottomBar()
-      this.FloatingButton()
     }
     .width('100%')
-    .height(this.bottomBarHeight)
-    .backgroundColor(this.themeColors.surface)
-    .clip(false)
+    .backgroundColor(this.themeColors.transparent)
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
   }
 
@@ -663,10 +1062,70 @@ struct MainPage {
         .translate({ y: -(this.bottomBarHeight / 2) })
         .zIndex(30)
       }
+
+      // AI 识别中浮层（仅在 analyzing 阶段显示）
+      if (this.voiceInlinePhase === 'analyzing') {
+        this.VoiceAnalyzingOverlay()
+      }
     }
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)
+  }
+
+  @Builder
+  private VoiceAnalyzingOverlay() {
+    Column() {
+      Column() {
+        // 遮罩点击不关闭，避免用户误操作
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(this.themeColors.surfaceOverlay)
+
+      // 居中卡片
+      Column({ space: SPACE_CARD }) {
+        // 旋转加载动画
+        LoadingProgress()
+          .width(48)
+          .height(48)
+          .color(this.themeColors.primary)
+
+        Text('AI 正在理解')
+          .fontSize(TYPE_SECTION_TITLE)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
+
+        if (this.voiceInlineText.length > 0) {
+          Text(this.voiceInlineText)
+            .fontSize(TYPE_BODY)
+            .fontColor(this.themeColors.textSecondary)
+            .textAlign(TextAlign.Center)
+            .maxLines(3)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .padding({ left: SPACE_CARD, right: SPACE_CARD })
+        } else {
+          Text('正在分析你说的内容...')
+            .fontSize(TYPE_BODY)
+            .fontColor(this.themeColors.textSecondary)
+        }
+
+        Text('稍候片刻，即将进入创建页')
+          .fontSize(TYPE_CAPTION)
+          .fontColor(this.themeColors.textMuted)
+      }
+      .padding(SPACE_CARD * 2)
+      .width('80%')
+      .backgroundColor(this.themeColors.surface)
+      .borderRadius(20)
+      .shadow({ radius: 24, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 8 })
+      .position({ x: '10%', y: '36%' })
+      .alignItems(HorizontalAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 })
+    .zIndex(40)
   }
 
   private handleVoiceResult(output: VoiceCreateOutput): void {

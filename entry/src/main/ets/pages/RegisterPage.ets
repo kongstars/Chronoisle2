@@ -9,6 +9,7 @@ import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { RADIUS_MD } from '../foundation/tokens/RadiusTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('RegisterPage');
@@ -72,11 +73,11 @@ struct RegisterPage {
               })
                 .width('100%')
                 .height(52)
-                .fontSize(15)
+                .fontSize(TYPE_BODY)
                 .fontColor(this.themeColors.textPrimary)
                 .padding({ left: 16, right: 16 })
                 .backgroundColor(this.themeColors.inputBackground)
-                .borderRadius(16)
+                .borderRadius(RADIUS_MD)
                 .type(InputType.PhoneNumber)
                 .onChange((value: string) => {
                   this.phone = value;
@@ -93,11 +94,11 @@ struct RegisterPage {
                 })
                   .layoutWeight(1)
                   .height(52)
-                  .fontSize(15)
+                  .fontSize(TYPE_BODY)
                   .fontColor(this.themeColors.textPrimary)
                   .padding({ left: 16, right: 16 })
                   .backgroundColor(this.themeColors.inputBackground)
-                  .borderRadius(16)
+                  .borderRadius(RADIUS_MD)
                   .type(InputType.Number)
                   .onChange((value: string) => {
                     this.code = value;
@@ -165,6 +166,7 @@ struct RegisterPage {
         }
         .width('100%')
       }
+      .align(Alignment.Top)
       .backgroundColor(this.themeColors.background)
       .scrollBar(BarState.Off)
     }

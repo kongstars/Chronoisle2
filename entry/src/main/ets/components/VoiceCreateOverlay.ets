@@ -710,6 +710,7 @@ export struct VoiceCreateOverlay {
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
         }
+        .align(Alignment.Top)
         .width('100%')
         .height(this.transcriptViewportHeight)
         .scrollable(ScrollDirection.Vertical)

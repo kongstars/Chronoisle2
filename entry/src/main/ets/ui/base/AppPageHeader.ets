@@ -2,7 +2,7 @@ import { ThemeColors, LightTheme } from '../../theme/AppTheme';
 import { BORDER_DEFAULT } from '../../foundation/tokens/BorderTokens';
 import { ICON_SIZE_SM, ICON_SIZE_XS } from '../../foundation/tokens/IconTokens';
 import { RADIUS_PILL, RADIUS_XL } from '../../foundation/tokens/RadiusTokens';
-import { PAGE_PADDING, SPACE_2XS, SPACE_SM, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
+import { PAGE_PADDING, SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
 import { LINE_HEIGHT_TIGHT, TOUCH_TARGET_SM } from '../../foundation/tokens/VisualTokens';
 import { TYPE_CAPTION, TYPE_META, TYPE_PAGE_TITLE } from '../../foundation/tokens/TypographyTokens';
 import { AppIcon } from './AppIcon';
@@ -15,6 +15,7 @@ export struct AppPageHeader {
   @Prop showBack: boolean = true;
   @Prop actionText: string = '';
   @Prop actionIconName: string = '';
+  @Prop insetHorizontal: number = PAGE_PADDING;
   @State backFocused: boolean = false;
   @State backHovered: boolean = false;
   @State actionFocused: boolean = false;
@@ -60,7 +61,7 @@ export struct AppPageHeader {
     Row({ space: SPACE_SM }) {
       if (this.showBack) {
         Button() {
-          Row() {
+          Stack({ alignContent: Alignment.Center }) {
             AppIcon({
               name: 'chevron-left',
               iconSize: ICON_SIZE_SM,
@@ -70,8 +71,6 @@ export struct AppPageHeader {
           }
           .width('100%')
           .height('100%')
-          .alignItems(VerticalAlign.Center)
-          .justifyContent(FlexAlign.Center)
         }
         .width(TOUCH_TARGET_SM)
         .height(TOUCH_TARGET_SM)
@@ -124,13 +123,13 @@ export struct AppPageHeader {
             if (this.actionIconName.length > 0) {
               AppIcon({
                 name: this.actionIconName,
-                iconSize: ICON_SIZE_XS,
+                iconSize: ICON_SIZE_SM,
                 framed: false,
                 color: this.themeColors.primary
               })
             }
             Text(this.actionText)
-              .fontSize(TYPE_CAPTION)
+              .fontSize(TYPE_META)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.themeColors.primary)
               .lineHeight(TOUCH_TARGET_SM)
@@ -142,7 +141,7 @@ export struct AppPageHeader {
           .justifyContent(FlexAlign.Center)
         }
           .height(TOUCH_TARGET_SM)
-          .padding({ left: SPACE_SM, right: SPACE_SM, top: 0, bottom: 0 })
+          .padding({ left: SPACE_MD, right: SPACE_MD, top: 0, bottom: 0 })
           .backgroundColor(this.getActionBackgroundColor())
           .borderRadius(RADIUS_PILL)
           .border({ width: BORDER_DEFAULT, color: this.getActionBorderColor() })
@@ -163,10 +162,33 @@ export struct AppPageHeader {
               this.onAction();
             }
           })
+      } else if (this.actionIconName.length > 0) {
+        // 圆形图标按钮（与 Tab 页右上角一致）
+        Stack({ alignContent: Alignment.Center }) {
+          Row()
+            .width(40)
+            .height(40)
+            .backgroundColor(this.themeColors.surfaceSoft)
+            .borderRadius(20)
+
+          AppIcon({
+            name: this.actionIconName,
+            iconSize: 22,
+            framed: false,
+            color: this.themeColors.textSecondary
+          })
+        }
+        .width(40)
+        .height(40)
+        .onClick(() => {
+          if (this.onAction) {
+            this.onAction();
+          }
+        })
       }
     }
     .width('100%')
     .alignItems(VerticalAlign.Center)
-    .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: SPACE_SM, bottom: SPACE_XS })
+    .padding({ left: this.insetHorizontal, right: this.insetHorizontal, top: SPACE_SM, bottom: SPACE_2XS })
   }
 }

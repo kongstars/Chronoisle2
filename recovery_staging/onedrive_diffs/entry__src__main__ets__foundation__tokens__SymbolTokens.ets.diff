@@ -1,0 +1,88 @@
+--- current/entry\src\main\ets\foundation\tokens\SymbolTokens.ets
++++ backup/entry\src\main\ets\foundation\tokens\SymbolTokens.ets
+@@ -145,85 +145,5 @@
+     status: 'ready',
+     fallback: 'app-vector',
+     note: 'verified from HarmonyOS Symbol runtime resources; used by expandable filters'
+-  },
+-  {
+-    name: 'progress',
+-    semantic: 'chart/bar/progress',
+-    symbol: 'sys.symbol.chart_bar',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; fallback is geometric BarMark'
+-  },
+-  {
+-    name: 'stats',
+-    semantic: 'chart/pie/analytics',
+-    symbol: 'sys.symbol.chart_pie',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; fallback is geometric BoxMark variant'
+-  },
+-  {
+-    name: 'wallet',
+-    semantic: 'creditcard/payment',
+-    symbol: 'sys.symbol.creditcard',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in membership/credit pages'
+-  },
+-  {
+-    name: 'archive',
+-    semantic: 'archive/box',
+-    symbol: 'sys.symbol.archivebox',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in archived goals page'
+-  },
+-  {
+-    name: 'plan',
+-    semantic: 'clipboard/list/plan',
+-    symbol: 'sys.symbol.list_clipboard',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in planning and task selection'
+-  },
+-  {
+-    name: 'note',
+-    semantic: 'document/text/note',
+-    symbol: 'sys.symbol.doc_text',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; fallback is geometric TargetMark variant'
+-  },
+-  {
+-    name: 'gear',
+-    semantic: 'settings/gear',
+-    symbol: 'sys.symbol.gearshape',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in settings and configuration'
+-  },
+-  {
+-    name: 'sync',
+-    semantic: 'sync/refresh/cloud',
+-    symbol: 'sys.symbol.arrow_triangle_2_circlepath',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in cloud sync status indicators'
+-  },
+-  {
+-    name: 'plus',
+-    semantic: 'plus/add/create',
+-    symbol: 'sys.symbol.plus',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in create/add actions'
+-  },
+-  {
+-    name: 'close',
+-    semantic: 'close/x/delete',
+-    symbol: 'sys.symbol.xmark',
+-    status: 'candidate',
+-    fallback: 'app-vector',
+-    note: 'candidate; verify on device; used in clear and dismiss actions'
+   }
+ ];

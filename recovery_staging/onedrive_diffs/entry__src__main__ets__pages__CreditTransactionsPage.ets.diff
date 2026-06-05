@@ -1,0 +1,53 @@
+--- current/entry\src\main\ets\pages\CreditTransactionsPage.ets
++++ backup/entry\src\main\ets\pages\CreditTransactionsPage.ets
+@@ -1,3 +1,4 @@
++import promptAction from '@ohos.promptAction';
+ import { ThemeColors, LightTheme } from '../theme/AppTheme';
+ import { authService } from '../services/AuthService';
+ import {
+@@ -15,9 +16,6 @@
+ import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+ import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
+ import { AppErrorService } from '../services/AppErrorService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('CreditTransactionsPage');
+ 
+ @Entry
+ @Component
+@@ -52,7 +50,7 @@
+       await authService.initialize(context);
+       await this.loadTransactions(true, 'initial');
+     } catch (error) {
+-      logger.error('CreditTransactionsPage initialize failed', error as Object);
++      console.error('CreditTransactionsPage initialize failed:', JSON.stringify(error));
+       this.errorText = '\u79ef\u5206\u6d41\u6c34\u9875\u521d\u59cb\u5316\u5931\u8d25';
+       this.isLoading = false;
+     }
+@@ -83,7 +81,7 @@
+         };
+         this.trackCreditEvent('credit_transactions_load_failed', failedProps);
+         if (!reset) {
+-          this.getUIContext().getPromptAction().showToast({ message: this.errorText });
++          promptAction.showToast({ message: this.errorText });
+         }
+         return;
+       }
+@@ -105,7 +103,7 @@
+       };
+       this.trackCreditEvent('credit_transactions_loaded', loadedProps);
+     } catch (error) {
+-      logger.error('CreditTransactionsPage load failed', error as Object);
++      console.error('CreditTransactionsPage load failed:', JSON.stringify(error));
+       this.errorText = AppErrorService.fromUnknown(error, '获取积分流水失败');
+       const failedProps: TelemetryProperties = {
+         "trigger": trigger,
+@@ -114,7 +112,7 @@
+       };
+       this.trackCreditEvent('credit_transactions_load_failed', failedProps);
+       if (!reset) {
+-        this.getUIContext().getPromptAction().showToast({ message: this.errorText });
++        promptAction.showToast({ message: this.errorText });
+       }
+     } finally {
+       this.isLoading = false;

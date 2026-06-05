@@ -14,10 +14,14 @@ async function getAccessTokenId(): Promise<number> {
 }
 
 async function hasPermission(permission: Permissions): Promise<boolean> {
-  const atManager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
-  const tokenId = await getAccessTokenId();
-  const grantStatus = await atManager.checkAccessToken(tokenId, permission);
-  return grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED;
+  try {
+    const atManager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
+    const tokenId = await getAccessTokenId();
+    const grantStatus = await atManager.checkAccessToken(tokenId, permission);
+    return grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED;
+  } catch (_) {
+    return false;
+  }
 }
 
 export async function hasMicrophonePermission(): Promise<boolean> {

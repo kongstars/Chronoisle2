@@ -1,9 +1,12 @@
-import { formatDayEventDate, formatDayEventTime, startOfDay } from '../common/DayEventUtils';
+import { formatDayEventDate, formatDayEventTime, getDayEventOccurrenceTimeOnDate, isDayEventEnded, startOfDay } from '../common/DayEventUtils';
 import { DayEvent, DayEventType, ReminderType } from '../models/DayEvent';
+import { Goal, GoalCategory } from '../models/Goal';
 import { Task, TaskStatus } from '../models/Task';
+import { CATEGORIES, CategoryInfo } from '../common/Constants';
 import {
   getNextReminderOccurrenceTime,
   getReminderCompletionCandidate,
+  getReminderCompletionCount,
   getReminderPeriodProgress
 } from '../services/ReminderTaskService';
 import { db } from '../storage/Database';
@@ -11,19 +14,20 @@ import { LightTheme, ThemeColors } from '../theme/AppTheme';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
-import { AppHeroPanel } from '../ui/base/AppHeroPanel';
+import { AppIcon } from '../ui/base/AppIcon';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
-import { AppPanelSection } from '../ui/base/AppPanelSection';
-import { AppSearchBar } from '../ui/base/AppSearchBar';
 import { AppSegmentTabs } from '../ui/base/AppSegmentTabs';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
+import { ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { RADIUS_LG, RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
-import { SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
+import { PAGE_PADDING, SECTION_GAP, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_NUMERIC_LG } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('ReminderListPage');
+
+type ReminderFilter = 'today' | 'all' | 'paused' | 'ended';
 
 interface ReminderDisplayItem {
   event: DayEvent;
@@ -31,6 +35,8 @@ interface ReminderDisplayItem {
   isToday: boolean;
   completedToday: boolean;
   canCompleteNow: boolean;
+  isEnded: boolean;
+  isSkipped: boolean;
   typeText: string;
   summaryText: string;
   progressText: string;
@@ -39,6 +45,11 @@ interface ReminderDisplayItem {
   goalTag: string;
   pauseStateText: string;
   accentColor: string;
+  categoryInfo: CategoryInfo | null;
+  totalCompletedCount: number;
+  periodCompletedCount: number;
+  periodTargetCount: number;
+  periodLabel: string;
 }
 
 @Entry
@@ -49,8 +60,10 @@ struct ReminderListPage {
   @State loadError: string = '';
   @State activeItems: ReminderDisplayItem[] = [];
   @State pausedItems: ReminderDisplayItem[] = [];
-  @State keyword: string = '';
-  @State displayMode: string = 'focus';
+  @State endedItems: ReminderDisplayItem[] = [];
+  @State filter: ReminderFilter = 'today';
+  @State refreshTick: number = 0;
+  private goals: Goal[] = [];
 
   aboutToAppear(): void {
     void this.loadItems();
@@ -183,6 +196,9 @@ struct ReminderListPage {
   }
 
   private buildPauseStateText(event: DayEvent): string {
+    if (event.isCompleted) {
+      return '已结束，不再继续提醒';
+    }
     if (!event.isEnabled) {
       return '当前处于长期暂停状态';
     }
@@ -203,7 +219,10 @@ struct ReminderListPage {
     return this.getTypeText(event);
   }
 
-  private buildStatusText(event: DayEvent, nextOccurrence: number | undefined, completedToday: boolean): string {
+  private buildStatusText(event: DayEvent, nextOccurrence: number | undefined, completedToday: boolean, isEnded: boolean): string {
+    if (isEnded) {
+      return '已结束';
+    }
     if (!event.isEnabled) {
       return '当前已暂停';
     }
@@ -221,24 +240,59 @@ struct ReminderListPage {
     return '等待下一次提醒';
   }
 
+  private isItemEnded(event: DayEvent): boolean {
+    return event.isCompleted || isDayEventEnded(event);
+  }
+
+  private getCategoryInfoForEvent(event: DayEvent): CategoryInfo | null {
+    if (!event.goalId) {
+      return null;
+    }
+    const goal = this.goals.find((g: Goal) => g.id === event.goalId);
+    if (!goal) {
+      return null;
+    }
+    const category = goal.category as GoalCategory;
+    return CATEGORIES.find((c: CategoryInfo) => c.value === category) || null;
+  }
+
   private buildItem(event: DayEvent, tasks: Task[]): ReminderDisplayItem {
-    const nextOccurrence = getNextReminderOccurrenceTime(event, tasks, Date.now());
-    const todayStart = startOfDay(Date.now());
+    const now = Date.now();
+    const todayStart = startOfDay(now);
+    const nextOccurrence = getNextReminderOccurrenceTime(event, tasks, now);
     const completedToday = this.hasCompletedToday(tasks, event.id);
+    const isEnded = this.isItemEnded(event);
+
+    const todayOccurrence = getDayEventOccurrenceTimeOnDate(event, now);
+    const isToday = (todayOccurrence !== undefined) ||
+      (nextOccurrence !== undefined && startOfDay(nextOccurrence) === todayStart) ||
+      completedToday;
+
+    const isSkipped = event.skipOnceUntil !== undefined && event.skipOnceUntil >= now;
+    const totalCompletedCount = getReminderCompletionCount(tasks, event.id);
+    const periodProgress = getReminderPeriodProgress(event, tasks, now);
+
     return {
       event,
       nextOccurrence,
-      isToday: nextOccurrence !== undefined && startOfDay(nextOccurrence) === todayStart,
+      isToday,
       completedToday,
-      canCompleteNow: getReminderCompletionCandidate(event, tasks, Date.now()) !== null,
+      canCompleteNow: getReminderCompletionCandidate(event, tasks, now) !== null,
+      isEnded,
+      isSkipped,
       typeText: this.getTypeText(event),
       summaryText: this.buildRuleSummary(event),
       progressText: this.buildProgressText(event, tasks),
-      statusText: this.buildStatusText(event, nextOccurrence, completedToday),
+      statusText: this.buildStatusText(event, nextOccurrence, completedToday, isEnded),
       recentText: this.buildRecentText(tasks, event),
       goalTag: event.goalTitle || '',
       pauseStateText: this.buildPauseStateText(event),
-      accentColor: this.buildAccentColor(event)
+      accentColor: this.buildAccentColor(event),
+      categoryInfo: this.getCategoryInfoForEvent(event),
+      totalCompletedCount,
+      periodCompletedCount: periodProgress?.completed ?? 0,
+      periodTargetCount: periodProgress?.target ?? 0,
+      periodLabel: periodProgress?.label ?? ''
     };
   }
 
@@ -261,20 +315,27 @@ struct ReminderListPage {
   }
 
   private rebuildItems(events: DayEvent[], tasks: Task[]): void {
-    this.activeItems = events
-      .filter((event: DayEvent) => event.isEnabled)
-      .map((event: DayEvent) => this.buildItem(event, tasks))
+    const built = events.map((event: DayEvent) => this.buildItem(event, tasks));
+    this.endedItems = built
+      .filter((item: ReminderDisplayItem) => item.isEnded)
+      .sort((first: ReminderDisplayItem, second: ReminderDisplayItem) => {
+        return (second.event.updatedAt || second.event.createdAt) - (first.event.updatedAt || first.event.createdAt);
+      });
+    const notEnded = built.filter((item: ReminderDisplayItem) => !item.isEnded);
+    this.activeItems = notEnded
+      .filter((item: ReminderDisplayItem) => item.event.isEnabled)
       .sort((first: ReminderDisplayItem, second: ReminderDisplayItem) => this.compareActiveItems(first, second));
-    this.pausedItems = events
-      .filter((event: DayEvent) => !event.isEnabled)
-      .map((event: DayEvent) => this.buildItem(event, tasks))
+    this.pausedItems = notEnded
+      .filter((item: ReminderDisplayItem) => !item.event.isEnabled)
       .sort((first: ReminderDisplayItem, second: ReminderDisplayItem) => {
         return (second.event.updatedAt || second.event.createdAt) - (first.event.updatedAt || first.event.createdAt);
       });
   }
 
   private refreshItemsFromDb(): void {
+    this.goals = db.getAllGoals();
     this.rebuildItems(db.getAllDayEvents(), db.getAllTasks());
+    this.refreshTick++;
   }
 
   private async loadItems(): Promise<void> {
@@ -288,6 +349,7 @@ struct ReminderListPage {
       logger.error('ReminderListPage load error', error as Object);
       this.activeItems = [];
       this.pausedItems = [];
+      this.endedItems = [];
       this.loadError = '提醒加载失败，请稍后重试。';
     } finally {
       this.isLoading = false;
@@ -322,10 +384,16 @@ struct ReminderListPage {
     this.showToast('已恢复提醒');
   }
 
+  private async endReminder(item: ReminderDisplayItem): Promise<void> {
+    await db.endDayEvent(item.event.id);
+    this.refreshItemsFromDb();
+    this.showToast('已结束这条提醒');
+  }
+
   private openPauseDialog(item: ReminderDisplayItem): void {
     this.getUIContext().showAlertDialog({
       title: '暂停提醒',
-      message: `你想如何暂停“${item.event.title}”？`,
+      message: `你想如何暂停"${item.event.title}"？`,
       buttons: [
         {
           value: '跳过一次',
@@ -347,8 +415,31 @@ struct ReminderListPage {
     });
   }
 
+  private openEndDialog(item: ReminderDisplayItem): void {
+    this.getUIContext().showAlertDialog({
+      title: '结束提醒',
+      message: `结束后将不再提醒"${item.event.title}"，可以稍后从已结束列表中恢复。`,
+      buttons: [
+        {
+          value: '取消',
+          action: () => {}
+        },
+        {
+          value: '结束',
+          action: () => {
+            void this.endReminder(item);
+          }
+        }
+      ]
+    });
+  }
+
   private openReminderCreate(): void {
     this.getUIContext().getRouter().pushUrl({ url: 'pages/DayEventCreatePage' });
+  }
+
+  private openSearchPage(): void {
+    this.getUIContext().getRouter().pushUrl({ url: 'pages/SearchPage', params: { scope: 'reminder' } });
   }
 
   private openReminderDetail(item: ReminderDisplayItem): void {
@@ -364,112 +455,60 @@ struct ReminderListPage {
     return !item.event.isEnabled || (item.event.skipOnceUntil !== undefined && item.event.skipOnceUntil >= Date.now());
   }
 
-  private matchesKeyword(item: ReminderDisplayItem): boolean {
-    const query = this.keyword.trim().toLowerCase();
-    if (query.length === 0) {
-      return true;
-    }
-    return item.event.title.toLowerCase().includes(query) ||
-      item.goalTag.toLowerCase().includes(query) ||
-      item.typeText.toLowerCase().includes(query) ||
-      item.summaryText.toLowerCase().includes(query);
-  }
-
-  private getFilteredItems(items: ReminderDisplayItem[]): ReminderDisplayItem[] {
-    return items.filter((item: ReminderDisplayItem) => this.matchesKeyword(item));
-  }
-
-  private getFocusItems(): ReminderDisplayItem[] {
-    const filtered = this.getFilteredItems(this.activeItems);
-    const focusItems = filtered.filter((item: ReminderDisplayItem) => item.isToday || item.completedToday);
-    return focusItems.length > 0 ? focusItems : filtered.slice(0, 4);
+  private getTodayItems(): ReminderDisplayItem[] {
+    return this.activeItems.filter((item: ReminderDisplayItem) => item.isToday || item.completedToday);
   }
 
   private getDisplayedItems(): ReminderDisplayItem[] {
-    if (this.displayMode === 'paused') {
-      return this.getFilteredItems(this.pausedItems);
+    if (this.filter === 'paused') {
+      return this.pausedItems;
     }
-    if (this.displayMode === 'all') {
-      return this.getFilteredItems(this.activeItems);
+    if (this.filter === 'ended') {
+      return this.endedItems;
     }
-    return this.getFocusItems();
-  }
-
-  private getDisplayedTitle(): string {
-    if (this.displayMode === 'paused') {
-      return '已暂停的提醒';
+    if (this.filter === 'all') {
+      return this.activeItems;
     }
-    if (this.displayMode === 'all') {
-      return '全部进行中的提醒';
-    }
-    return '今天优先处理';
-  }
-
-  private getDisplayedSubtitle(): string {
-    if (this.displayMode === 'paused') {
-      return '恢复后会继续自动生成对应的打卡任务和提醒。';
-    }
-    if (this.displayMode === 'all') {
-      return '按下一次触发时间排序，方便你逐条查看和调整。';
-    }
-    return '优先显示今天要完成和今天刚完成的提醒，适合快速处理。';
+    return this.getTodayItems();
   }
 
   private getTodayPendingCount(): number {
     return this.activeItems.filter((item: ReminderDisplayItem) => item.isToday && !item.completedToday).length;
   }
 
-  private getTodayCompletedCount(): number {
-    return this.activeItems.filter((item: ReminderDisplayItem) => item.completedToday).length;
-  }
-
-  private getDueNowCount(): number {
-    return this.activeItems.filter((item: ReminderDisplayItem) => item.canCompleteNow && !item.completedToday).length;
-  }
-
-  private getHeroTitle(): string {
-    if (this.displayMode === 'paused') {
-      return '暂停中的提醒，也应该有清晰的恢复入口';
-    }
-    return '把今天的打卡、习惯和关键日期放到同一处处理';
-  }
-
-  private getHeroDescription(): string {
-    if (this.displayMode === 'paused') {
-      return '这里会集中列出你主动暂停或临时跳过的提醒，方便你随时恢复，不会丢掉节奏。';
-    }
-    return '系统会先把今天要处理的提醒排在前面。你可以直接打卡、跳过一次、长期暂停或查看详情。';
-  }
-
-  private getHeroSummary(): string {
-    return `待处理 ${this.getTodayPendingCount()} · 可立即处理 ${this.getDueNowCount()} · 已暂停 ${this.pausedItems.length}`;
-  }
-
-  private getDisplayModeIndex(): number {
-    switch (this.displayMode) {
+  private getFilterIndex(): number {
+    switch (this.filter) {
       case 'all':
         return 1;
       case 'paused':
         return 2;
+      case 'ended':
+        return 3;
       default:
         return 0;
     }
   }
 
-  private setDisplayMode(index: number): void {
+  private setFilterByIndex(index: number): void {
     switch (index) {
       case 1:
-        this.displayMode = 'all';
+        this.filter = 'all';
         return;
       case 2:
-        this.displayMode = 'paused';
+        this.filter = 'paused';
+        return;
+      case 3:
+        this.filter = 'ended';
         return;
       default:
-        this.displayMode = 'focus';
+        this.filter = 'today';
     }
   }
 
   private getStatusTone(item: ReminderDisplayItem): 'neutral' | 'primary' | 'success' | 'warning' {
+    if (item.isEnded) {
+      return 'neutral';
+    }
     if (item.completedToday) {
       return 'success';
     }
@@ -483,6 +522,9 @@ struct ReminderListPage {
   }
 
   private getStatusBadgeText(item: ReminderDisplayItem): string {
+    if (item.isEnded) {
+      return '已结束';
+    }
     if (item.completedToday) {
       return '今日已完成';
     }
@@ -496,6 +538,9 @@ struct ReminderListPage {
   }
 
   private getStatusIconName(item: ReminderDisplayItem): string {
+    if (item.isEnded) {
+      return 'archive';
+    }
     if (item.completedToday) {
       return 'success';
     }
@@ -509,55 +554,19 @@ struct ReminderListPage {
   }
 
   @Builder
-  private StatCard(label: string, value: string, hint: string) {
-    Column({ space: 4 }) {
-      Text(label)
-        .fontSize(TYPE_CAPTION)
-        .fontColor(this.themeColors.textMuted)
-        .width('100%')
-
-      Text(value)
-        .fontSize(22)
+  private SummaryCard() {
+    AppCard({ variant: 'soft', spacing: SPACE_XS, paddingLevel: 'md' }) {
+      Text('你的所有重要提醒都在这里')
+        .fontSize(TYPE_HERO_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
 
-      Text(hint)
-        .fontSize(TYPE_CAPTION)
-        .fontColor(this.themeColors.textMuted)
+      Text('系统会根据优先级自动排序，你可以根据你的实际情况完成、暂停或跳过每个提醒。')
+        .fontSize(TYPE_META)
+        .lineHeight(20)
+        .fontColor(this.themeColors.textSecondary)
         .width('100%')
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-    }
-    .layoutWeight(1)
-    .alignItems(HorizontalAlign.Start)
-    .padding(SPACE_MD)
-    .backgroundColor(this.themeColors.surfaceRaised)
-    .borderRadius(RADIUS_LG)
-  }
-
-  @Builder
-  private HeroCard() {
-    AppHeroPanel({
-      eyebrow: '提醒中心',
-      title: this.getHeroTitle(),
-      description: this.getHeroDescription(),
-      tone: 'info'
-    }) {
-      Column({ space: SPACE_SM }) {
-        Text(this.getHeroSummary())
-          .fontSize(TYPE_CAPTION)
-          .fontColor(this.themeColors.textSecondary)
-          .width('100%')
-
-        Row({ space: SPACE_SM }) {
-          this.StatCard('待处理', `${this.getTodayPendingCount()}`, '今天还需要完成')
-          this.StatCard('已完成', `${this.getTodayCompletedCount()}`, '今天已经处理')
-          this.StatCard('已暂停', `${this.pausedItems.length}`, '跳过或长期暂停')
-        }
-        .width('100%')
-      }
-      .width('100%')
     }
   }
 
@@ -586,38 +595,6 @@ struct ReminderListPage {
         })
       }
     }
-  }
-
-  @Builder
-  private SearchBar() {
-    Column({ space: SPACE_SM }) {
-      AppSearchBar({
-        placeholder: '搜索提醒、习惯或关联目标',
-        badgeText: 'AI',
-        value: this.keyword,
-        editable: true,
-        clearable: true,
-        insetHorizontal: 0,
-        onChange: (value: string) => {
-          this.keyword = value;
-        }
-      })
-
-      Row() {
-        AppButton({
-          text: '新建提醒',
-          variant: 'primary',
-          buttonSize: 'sm',
-          iconName: 'reminder',
-          tapAction: () => {
-            this.openReminderCreate();
-          }
-        })
-      }
-      .width('100%')
-      .justifyContent(FlexAlign.End)
-    }
-    .width('100%')
   }
 
   @Builder
@@ -652,42 +629,65 @@ struct ReminderListPage {
   }
 
   @Builder
+  private EndButton(item: ReminderDisplayItem) {
+    AppButton({
+      text: '结束',
+      variant: 'ghost',
+      buttonSize: 'sm',
+      iconName: 'archive',
+      tapAction: () => {
+        this.openEndDialog(item);
+      }
+    })
+  }
+
+  @Builder
+  private RestoreButton(item: ReminderDisplayItem) {
+    AppButton({
+      text: '恢复',
+      variant: 'secondary',
+      buttonSize: 'sm',
+      iconName: 'success',
+      tapAction: () => {
+        void this.resumeReminder(item);
+      }
+    })
+  }
+
+  @Builder
+  private CategoryTag(item: ReminderDisplayItem) {
+    if (item.categoryInfo !== null) {
+      Text(item.categoryInfo.label)
+        .fontSize(11)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(item.categoryInfo.color)
+        .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+        .backgroundColor(item.categoryInfo.color + '1A')
+        .borderRadius(4)
+    }
+  }
+
+  @Builder
   private ItemRow(item: ReminderDisplayItem) {
     AppCard({
-      spacing: SPACE_SM,
+      spacing: SPACE_XS,
       paddingLevel: 'md',
       interactive: true,
       tapAction: () => {
         this.openReminderDetail(item);
       }
     }) {
-      Row({ space: SPACE_SM }) {
-        Text(this.getTypeBadgeText(item.event))
+      // 标题行：分类标签 + 标题 + 状态徽章
+      Row({ space: SPACE_XS }) {
+        this.CategoryTag(item)
+
+        Text(item.event.title)
           .fontSize(TYPE_BODY)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(item.accentColor)
-          .width(28)
-          .height(28)
-          .textAlign(TextAlign.Center)
-          .backgroundColor(this.themeColors.surfaceSoft)
-          .borderRadius(RADIUS_PILL)
-
-        Column({ space: 4 }) {
-          Text(item.event.title)
-            .fontSize(TYPE_BODY)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.themeColors.textPrimary)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .width('100%')
-
-          Text(item.typeText)
-            .fontSize(TYPE_META)
-            .fontColor(this.themeColors.textSecondary)
-            .width('100%')
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Start)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.themeColors.textPrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
 
         AppStatusBadge({
           text: this.getStatusBadgeText(item),
@@ -696,97 +696,127 @@ struct ReminderListPage {
         })
       }
       .width('100%')
+      .alignItems(VerticalAlign.Center)
 
+      // 子信息行：类型 · 规则
+      Text(`${item.typeText} · ${item.summaryText}`)
+        .fontSize(TYPE_META)
+        .fontColor(this.themeColors.textSecondary)
+        .width('100%')
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+      // 状态文字（下次触发 / 现在可打卡 / 已暂停 等）
       Text(item.statusText)
         .fontSize(TYPE_META)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
 
-      Text(item.summaryText)
-        .fontSize(TYPE_BODY)
-        .fontColor(this.themeColors.textPrimary)
-        .width('100%')
-        .maxLines(2)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        if (item.goalTag.length > 0) {
-          AppStatusBadge({ text: item.goalTag, tone: 'info', iconName: 'goal' })
-        }
-        AppStatusBadge({ text: item.progressText, tone: 'neutral', iconName: 'progress' })
-      }
-      .width('100%')
-
-      Text(item.recentText)
-        .fontSize(TYPE_META)
-        .fontColor(this.themeColors.textSecondary)
-        .width('100%')
-
-      if (item.pauseStateText.length > 0) {
-        Text(item.pauseStateText)
-          .fontSize(TYPE_META)
-          .fontColor(this.themeColors.warning)
-          .width('100%')
-      }
-
+      // 进度统计行：完成 N · 当前周期 X/Y · 已跳过
       Row({ space: SPACE_SM }) {
-        this.CompleteButton(item)
-        this.ActionButton(item)
+        Text(`完成 ${item.totalCompletedCount}`)
+          .fontSize(11)
+          .fontColor(this.themeColors.textSecondary)
+
+        if (item.periodTargetCount > 0) {
+          Text('·')
+            .fontSize(11)
+            .fontColor(this.themeColors.textMuted)
+          Text(`${item.periodLabel} ${item.periodCompletedCount}/${item.periodTargetCount}`)
+            .fontSize(11)
+            .fontColor(item.periodCompletedCount >= item.periodTargetCount ? this.themeColors.success : this.themeColors.primary)
+            .fontWeight(FontWeight.Medium)
+        }
+
+        if (item.isSkipped) {
+          Text('·')
+            .fontSize(11)
+            .fontColor(this.themeColors.textMuted)
+          Text('已跳过 1 次')
+            .fontSize(11)
+            .fontColor(this.themeColors.warning)
+        }
       }
       .width('100%')
+
+      // 操作按钮区
+      if (item.isEnded) {
+        Row({ space: SPACE_SM }) {
+          this.RestoreButton(item)
+        }
+        .width('100%')
+      } else {
+        Row({ space: SPACE_SM }) {
+          this.CompleteButton(item)
+          this.ActionButton(item)
+          this.EndButton(item)
+        }
+        .width('100%')
+      }
     }
   }
 
   @Builder
   private EmptyStateCard() {
-    AppEmptyState({
-      title: this.displayMode === 'paused' ? '还没有暂停中的提醒' : '这里还没有提醒',
-      description: this.displayMode === 'paused'
+    AppCard({ variant: 'soft', spacing: SPACE_XS, paddingLevel: 'sm' }) {
+      AppIcon({
+        name: this.filter === 'paused' ? 'warning' : (this.filter === 'ended' ? 'archive' : 'reminder'),
+        iconSize: 32,
+        tone: this.filter === 'paused' ? 'warning' : (this.filter === 'ended' ? 'neutral' : 'primary')
+      })
+      Text(this.filter === 'paused'
+        ? '还没有暂停中的提醒'
+        : (this.filter === 'ended' ? '还没有已结束的提醒' : '这里还没有提醒'))
+        .fontSize(TYPE_BODY)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.themeColors.textPrimary)
+        .width('100%')
+      Text(this.filter === 'paused'
         ? '恢复后的提醒会重新回到执行列表，之后你可以继续按节奏处理。'
-        : '先创建一个新的提醒、习惯或关键日期，系统会自动整理到这里。',
-      actionText: this.displayMode === 'paused' ? '' : '立即创建提醒',
-      actionIconName: 'reminder',
-      iconName: this.displayMode === 'paused' ? 'warning' : 'reminder',
-      iconTone: this.displayMode === 'paused' ? 'warning' : 'primary',
-      onAction: () => {
-        this.openReminderCreate();
-      }
-    })
+        : (this.filter === 'ended'
+          ? '完成的关键日子或主动结束的提醒会归档到这里，方便回看。'
+          : '点击右下角"新建提醒"按钮，开始记录你的第一条提醒。'))
+        .fontSize(TYPE_META)
+        .fontColor(this.themeColors.textSecondary)
+        .width('100%')
+    }
   }
 
   build() {
-    Column({ space: SPACE_MD }) {
+    Column() {
       AppPageHeader({
         title: '提醒中心',
-        subtitle: '统一查看今天要处理、已完成和已暂停的提醒',
+        subtitle: '统一查看今天要处理、已完成、暂停和已结束的提醒',
+        actionIconName: 'search',
         onBack: () => {
           this.getUIContext().getRouter().back();
+        },
+        onAction: () => {
+          this.openSearchPage();
         }
       })
 
       if (this.isLoading) {
         Column({ space: SPACE_MD }) {
-          this.HeroCard()
           AppLoadingState({ label: '正在整理提醒状态...' })
         }
         .width('100%')
-        .padding({ left: SPACE_LG, right: SPACE_LG })
+        .layoutWeight(1)
+        .padding({ left: PAGE_PADDING, right: PAGE_PADDING })
       } else {
         Scroll() {
-          Column({ space: SPACE_LG }) {
-            this.HeroCard()
-            this.SearchBar()
-
+          Column({ space: SECTION_GAP }) {
             AppSegmentTabs({
               tabs: [
-                `今日重点 ${this.getFocusItems().length}`,
-                `全部进行中 ${this.getFilteredItems(this.activeItems).length}`,
-                `已暂停 ${this.getFilteredItems(this.pausedItems).length}`
+                `今日 ${this.getTodayItems().length}`,
+                `全部 ${this.activeItems.length}`,
+                `暂停 ${this.pausedItems.length}`,
+                `已结束 ${this.endedItems.length}`
               ],
-              selectedIndex: this.getDisplayModeIndex(),
+              selectedIndex: this.getFilterIndex(),
               onSelect: (index: number) => {
-                this.setDisplayMode(index);
+                this.setFilterByIndex(index);
               }
             })
 
@@ -794,30 +824,41 @@ struct ReminderListPage {
               this.ErrorBanner()
             }
 
-            AppPanelSection({
-              title: this.getDisplayedTitle(),
-              subtitle: this.getDisplayedSubtitle()
-            }) {
-              if (this.getDisplayedItems().length === 0) {
-                this.EmptyStateCard()
-              } else {
-                Column({ space: SPACE_SM }) {
-                  ForEach(this.getDisplayedItems(), (item: ReminderDisplayItem) => {
-                    this.ItemRow(item)
-                  }, (item: ReminderDisplayItem) => `${this.displayMode}_${item.event.id}`)
-                }
-                .width('100%')
+            if (this.getDisplayedItems().length === 0) {
+              this.EmptyStateCard()
+            } else {
+              Column({ space: SPACE_SM }) {
+                ForEach(this.getDisplayedItems(), (item: ReminderDisplayItem) => {
+                  this.ItemRow(item)
+                }, (item: ReminderDisplayItem) => `${this.refreshTick}_${this.filter}_${item.event.id}`)
               }
+              .width('100%')
             }
-
-            Blank().height(12)
           }
           .width('100%')
-          .padding({ left: SPACE_LG, right: SPACE_LG, bottom: SPACE_LG })
+          .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: SPACE_SM, bottom: PAGE_PADDING + 80 })
         }
         .layoutWeight(1)
         .width('100%')
+        .align(Alignment.Top)
         .scrollBar(BarState.Off)
+
+        // 固定底部按钮
+        Column() {
+          AppButton({
+            text: '新建提醒',
+            variant: 'primary',
+            fullWidth: true,
+            iconName: 'reminder',
+            tapAction: () => {
+              this.openReminderCreate();
+            }
+          })
+        }
+        .width('100%')
+        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: SPACE_SM, bottom: SPACE_LG })
+        .backgroundColor(this.themeColors.surface)
+        .border({ width: { top: 1 }, color: this.themeColors.borderColor })
       }
     }
     .width('100%')

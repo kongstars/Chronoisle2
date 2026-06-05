@@ -1,22 +1,18 @@
 import { formatDayEventDate, startOfDay } from '../common/DayEventUtils';
 import { Task, TaskPriority, TaskStatus } from '../models/Task';
 import { Goal } from '../models/Goal';
+import { db } from '../storage/Database';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
-import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppChip } from '../ui/base/AppChip';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
-import { AppIcon } from '../ui/base/AppIcon';
-import { AppPageHeader } from '../ui/base/AppPageHeader';
-import { AppSearchBar } from '../ui/base/AppSearchBar';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
-import { PAGE_PADDING, SPACE_2XS, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { SPACE_2XS, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
-import { ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
-import { BUTTON_HEIGHT_LG, BUTTON_HEIGHT_SM, TASK_LIST_CONTENT_MAX_WIDTH, TASK_LIST_FILTER_PANEL_WIDTH, TASK_LIST_TWO_COLUMN_MIN_WIDTH } from '../foundation/tokens/PageDensityTokens';
+import { BUTTON_HEIGHT_LG, TASK_LIST_CONTENT_MAX_WIDTH, TASK_LIST_FILTER_PANEL_WIDTH, TASK_LIST_TWO_COLUMN_MIN_WIDTH } from '../foundation/tokens/PageDensityTokens';
 import { BOTTOM_CONTENT_SPACER, CHECKBOX_SIZE_SM, ICON_BUTTON_SIZE_SM, TASK_DUE_LABEL_WIDTH, TASK_RAIL_WIDTH_LG, TASK_RAIL_WIDTH_SM } from '../foundation/tokens/ComponentSizeTokens';
-import { RADIUS_LG, RADIUS_PILL, RADIUS_XL } from '../foundation/tokens/RadiusTokens';
+import { RADIUS_LG, RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
 import { getCardShadow } from '../foundation/tokens/ElevationTokens';
 
 @Component
@@ -134,11 +130,97 @@ export struct TaskListTab {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
   @Prop tasks: Task[] = [];
   @Prop goals: Goal[] = [];
+  // embedded=true 时，由外层 Tab（如 ActionTab）统一提供 Header，本组件不再渲染自己的标题区。
+  @Prop embedded: boolean = false;
   @State keyword: string = '';
   @State activeFilter: string = 'all';
-  @State selectedGoalId: string = '';
-  @State goalFilterExpanded: boolean = false;
   @State contentWidth: number = 0;
+  // 快照模式：记录用户在当前视图中刚完成的任务 ID，这些任务在排序/过滤中保持原位
+  @State recentlyCompletedIds: string[] = [];
+  // 记录刚取消完成的任务 ID，确保在刷新前也立即显示为未完成
+  @State recentlyUncompletedIds: string[] = [];
+  // 快照排序：记录用户完成任务前的列表顺序，确保完成后位置不变
+  private snapshotOrder: string[] = [];
+
+  private isTaskRecentlyCompleted(taskId: string): boolean {
+    return this.recentlyCompletedIds.indexOf(taskId) >= 0;
+  }
+
+  private isTaskRecentlyUncompleted(taskId: string): boolean {
+    return this.recentlyUncompletedIds.indexOf(taskId) >= 0;
+  }
+
+  private getTaskDisplayStatus(task: Task): TaskStatus {
+    if (this.isTaskRecentlyUncompleted(task.id)) {
+      return TaskStatus.PENDING;
+    }
+    if (this.isTaskRecentlyCompleted(task.id)) {
+      return TaskStatus.COMPLETED;
+    }
+    return task.status;
+  }
+
+  private isTaskDisplayCompleted(task: Task): boolean {
+    return this.getTaskDisplayStatus(task) === TaskStatus.COMPLETED;
+  }
+
+  private isTaskDisplayOverdue(task: Task): boolean {
+    const effectiveDueTimestamp = task.getEffectiveDueTimestamp();
+    return effectiveDueTimestamp !== undefined && effectiveDueTimestamp < Date.now() && !this.isTaskDisplayCompleted(task);
+  }
+
+  private invalidateDerivedCaches(): void {
+    this.filteredTasksCacheSource = null;
+    this.taskCountCacheSource = null;
+  }
+
+  private addRecentlyCompletedTask(taskId: string): void {
+    if (this.snapshotOrder.length === 0) {
+      this.snapshotOrder = this.getFilteredTasks().map((task: Task) => task.id);
+    }
+    if (this.isTaskRecentlyCompleted(taskId)) {
+      return;
+    }
+    const newIds = this.recentlyCompletedIds.slice();
+    newIds.push(taskId);
+    this.recentlyCompletedIds = newIds;
+    this.invalidateDerivedCaches();
+  }
+
+  private removeRecentlyCompletedTask(taskId: string): void {
+    const index = this.recentlyCompletedIds.indexOf(taskId);
+    if (index < 0) {
+      return;
+    }
+    const newIds = this.recentlyCompletedIds.slice();
+    newIds.splice(index, 1);
+    this.recentlyCompletedIds = newIds;
+    if (newIds.length === 0) {
+      this.snapshotOrder = [];
+    }
+    this.invalidateDerivedCaches();
+  }
+
+  private addRecentlyUncompletedTask(taskId: string): void {
+    if (this.isTaskRecentlyUncompleted(taskId)) {
+      return;
+    }
+    const newIds = this.recentlyUncompletedIds.slice();
+    newIds.push(taskId);
+    this.recentlyUncompletedIds = newIds;
+    this.invalidateDerivedCaches();
+  }
+
+  private removeRecentlyUncompletedTask(taskId: string): void {
+    const index = this.recentlyUncompletedIds.indexOf(taskId);
+    if (index < 0) {
+      return;
+    }
+    const newIds = this.recentlyUncompletedIds.slice();
+    newIds.splice(index, 1);
+    this.recentlyUncompletedIds = newIds;
+    this.invalidateDerivedCaches();
+  }
 
   private isWideLayout(): boolean {
     return this.contentWidth >= TASK_LIST_TWO_COLUMN_MIN_WIDTH;
@@ -154,22 +236,25 @@ export struct TaskListTab {
   private filteredTasksCacheSource: Task[] | null = null;
   private filteredTasksCacheKeyword: string = '';
   private filteredTasksCacheFilter: string = '';
-  private filteredTasksCacheGoalId: string = '';
   private filteredTasksCache: Task[] = [];
   private taskCountCacheSource: Task[] | null = null;
   private pendingCountCache: number = 0;
   private importantCountCache: number = 0;
   private overdueCountCache: number = 0;
   private completedCountCache: number = 0;
-  private goalFilterOptionsCacheSource: Goal[] | null = null;
-  private goalFilterOptionsCache: Goal[] = [];
 
   private openReschedulePage(): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/ReschedulePage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ReschedulePage' });
+    } catch (_) {}
   }
 
   private clearKeyword(): void {
     this.keyword = '';
+    this.recentlyCompletedIds = [];
+    this.recentlyUncompletedIds = [];
+    this.snapshotOrder = [];
+    this.invalidateDerivedCaches();
   }
 
   private ensureTaskCountCache(): void {
@@ -204,29 +289,32 @@ export struct TaskListTab {
 
   private getFilteredTasks(): Task[] {
     const query = this.keyword.trim().toLowerCase();
+    const recentCount = this.recentlyCompletedIds.length;
     if (this.filteredTasksCacheSource === this.tasks &&
       this.filteredTasksCacheKeyword === query &&
       this.filteredTasksCacheFilter === this.activeFilter &&
-      this.filteredTasksCacheGoalId === this.selectedGoalId) {
+      this.filteredTasksCacheRecentCount === recentCount) {
       return this.filteredTasksCache;
     }
 
+    const recentIds = this.recentlyCompletedIds;
+
     this.filteredTasksCache = this.tasks
       .filter((task: Task) => {
-        if (this.selectedGoalId.length > 0 && task.goalId !== this.selectedGoalId) {
-          return false;
-        }
+        // 刚完成的任务始终保留在列表中，不被过滤掉
+        const isRecentlyCompleted = recentIds.indexOf(task.id) >= 0;
+
         if (this.activeFilter === 'important' && task.priority !== TaskPriority.HIGH) {
-          return false;
+          return isRecentlyCompleted;
         }
         if (this.activeFilter === 'overdue' && !task.isOverdue) {
-          return false;
+          return isRecentlyCompleted;
         }
         if (this.activeFilter === 'completed' && task.status !== TaskStatus.COMPLETED) {
           return false;
         }
         if (this.activeFilter !== 'all' && this.activeFilter !== 'completed' && task.status === TaskStatus.COMPLETED) {
-          return false;
+          return isRecentlyCompleted;
         }
         if (query.length === 0) {
           return true;
@@ -239,8 +327,28 @@ export struct TaskListTab {
           reminderText.includes(query);
       })
       .sort((first: Task, second: Task) => {
-        if (first.status !== second.status) {
-          return first.status === TaskStatus.PENDING ? -1 : 1;
+        // 如果有快照顺序，按快照顺序排列
+        if (this.snapshotOrder.length > 0) {
+          const firstIdx = this.snapshotOrder.indexOf(first.id);
+          const secondIdx = this.snapshotOrder.indexOf(second.id);
+          if (firstIdx >= 0 && secondIdx >= 0) {
+            return firstIdx - secondIdx;
+          }
+          // 快照中存在的排前面
+          if (firstIdx >= 0) {
+            return -1;
+          }
+          if (secondIdx >= 0) {
+            return 1;
+          }
+        }
+
+        // 刚完成的任务在排序中视为 PENDING，保持原位
+        const firstStatus = recentIds.indexOf(first.id) >= 0 ? TaskStatus.PENDING : first.status;
+        const secondStatus = recentIds.indexOf(second.id) >= 0 ? TaskStatus.PENDING : second.status;
+
+        if (firstStatus !== secondStatus) {
+          return firstStatus === TaskStatus.PENDING ? -1 : 1;
         }
         if (first.isOverdue !== second.isOverdue) {
           return first.isOverdue ? -1 : 1;
@@ -253,7 +361,7 @@ export struct TaskListTab {
     this.filteredTasksCacheSource = this.tasks;
     this.filteredTasksCacheKeyword = query;
     this.filteredTasksCacheFilter = this.activeFilter;
-    this.filteredTasksCacheGoalId = this.selectedGoalId;
+    this.filteredTasksCacheRecentCount = recentCount;
     return this.filteredTasksCache;
   }
 
@@ -281,21 +389,8 @@ export struct TaskListTab {
     return this.completedCountCache;
   }
 
-  private getGoalFilterOptions(): Goal[] {
-    if (this.goalFilterOptionsCacheSource === this.goals) {
-      return this.goalFilterOptionsCache;
-    }
-    this.goalFilterOptionsCacheSource = this.goals;
-    this.goalFilterOptionsCache = this.goals.slice(0, 6);
-    return this.goalFilterOptionsCache;
-  }
-
   private isActiveFilter(key: string): boolean {
     return this.activeFilter === key;
-  }
-
-  private isGoalSelected(goalId: string): boolean {
-    return this.selectedGoalId === goalId;
   }
 
   private getAIFeatureLabel(): string {
@@ -331,21 +426,8 @@ export struct TaskListTab {
     return timeText ? `${dateText} ${timeText}` : dateText;
   }
 
-  private getTaskSourceText(task: Task): string {
-    if (task.reminderTitle && task.reminderTitle.trim().length > 0) {
-      return `来自提醒 · ${task.reminderTitle.trim()}`;
-    }
-    if (task.description.trim().length > 0) {
-      return task.description.trim();
-    }
-    if (task.goalTitle.trim().length > 0) {
-      return `关联目标 · ${task.goalTitle.trim()}`;
-    }
-    return '未设置补充信息';
-  }
-
   private getTaskDueText(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       if (task.completedAt !== undefined) {
         const completedDay = startOfDay(task.completedAt);
         const today = startOfDay(Date.now());
@@ -363,10 +445,10 @@ export struct TaskListTab {
   }
 
   private getTaskStatusLabel(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return '已完成';
     }
-    if (task.isOverdue) {
+    if (this.isTaskDisplayOverdue(task)) {
       return '逾期';
     }
     if (task.priority === TaskPriority.HIGH) {
@@ -376,10 +458,10 @@ export struct TaskListTab {
   }
 
   private getTaskStatusTone(task: Task): 'success' | 'danger' | 'warning' | 'neutral' {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return 'success';
     }
-    if (task.isOverdue) {
+    if (this.isTaskDisplayOverdue(task)) {
       return 'danger';
     }
     if (task.priority === TaskPriority.HIGH) {
@@ -389,57 +471,57 @@ export struct TaskListTab {
   }
 
   private getTaskStatusIconName(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return 'success';
     }
-    if (task.isOverdue || task.priority === TaskPriority.HIGH) {
+    if (this.isTaskDisplayOverdue(task) || task.priority === TaskPriority.HIGH) {
       return 'warning';
     }
     return '';
   }
 
   private getTaskAccentColor(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return this.themeColors.success;
     }
-    if (task.isOverdue) {
+    if (this.isTaskDisplayOverdue(task)) {
       return this.themeColors.danger;
     }
     return this.themeColors.warning;
   }
 
   private getTaskAccentSurfaceColor(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return this.themeColors.successSubtle;
     }
-    if (task.isOverdue) {
+    if (this.isTaskDisplayOverdue(task)) {
       return this.themeColors.dangerSubtle;
     }
     return this.themeColors.warningSubtle;
   }
 
   private getTaskCardBackground(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return this.themeColors.surfaceSoft;
     }
     return this.themeColors.cardBackground;
   }
 
   private getTaskCardBorder(task: Task): string {
-    if (task.isOverdue) {
+    if (this.isTaskDisplayOverdue(task)) {
       return this.themeColors.dangerSubtle;
     }
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return this.themeColors.successSubtle;
     }
     return this.themeColors.borderColor;
   }
 
   private getTaskDueTextColor(task: Task): string {
-    if (task.status === TaskStatus.COMPLETED) {
+    if (this.isTaskDisplayCompleted(task)) {
       return this.themeColors.success;
     }
-    if (task.isOverdue) {
+    if (this.isTaskDisplayOverdue(task)) {
       return this.themeColors.danger;
     }
     if (task.dueDate === undefined) {
@@ -450,18 +532,6 @@ export struct TaskListTab {
 
   private getGoalBadgeText(task: Task): string {
     return this.truncateText(task.goalTitle, 10);
-  }
-
-  private getGoalFilterSummary(): string {
-    if (this.selectedGoalId.length === 0) {
-      return '按目标标签筛选';
-    }
-    for (let i = 0; i < this.goals.length; i++) {
-      if (this.goals[i].id === this.selectedGoalId) {
-        return `目标 · ${this.truncateText(this.goals[i].title, 10)}`;
-      }
-    }
-    return '按目标标签筛选';
   }
 
   private chipBackground(active: boolean): string {
@@ -478,11 +548,18 @@ export struct TaskListTab {
 
   @Builder
   private PageHeader() {
-    AppPageHeader({
-      title: '行动清单',
-      subtitle: this.getHeaderSubtitle(),
-      showBack: false
-    })
+    Column({ space: 2 }) {
+      Text('行动')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.themeColors.textPrimary)
+      Text(this.getHeaderSubtitle())
+        .fontSize(14)
+        .fontColor(this.themeColors.textSecondary)
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: COMPACT_PAGE_PADDING, right: COMPACT_PAGE_PADDING, top: 8, bottom: 4 })
   }
 
   @Builder
@@ -494,6 +571,9 @@ export struct TaskListTab {
       iconName: this.getFilterIconName(key),
       tapAction: () => {
         this.activeFilter = key;
+        // 切换筛选时清除快照，让新视图按正常排序显示
+        this.recentlyCompletedIds = [];
+        this.snapshotOrder = [];
       }
     })
   }
@@ -512,77 +592,8 @@ export struct TaskListTab {
   }
 
   @Builder
-  private AllGoalsChip() {
-    AppChip({
-      label: '全部目标',
-      tone: this.selectedGoalId.length === 0 ? 'primary' : 'neutral',
-      active: this.selectedGoalId.length === 0,
-      iconName: 'goal',
-      tapAction: () => {
-        this.selectedGoalId = '';
-      }
-    })
-  }
-
-  @Builder
-  private GoalFilterRow() {
-    Row({ space: SPACE_SM }) {
-      Text(this.getGoalFilterSummary())
-        .layoutWeight(1)
-        .fontSize(TYPE_META)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.selectedGoalId.length > 0 ? this.themeColors.primary : this.themeColors.textSecondary)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      AppIcon({
-        name: this.goalFilterExpanded ? 'chevron-up' : 'chevron-down',
-        iconSize: ICON_SIZE_XS,
-        framed: false,
-        color: this.themeColors.textMuted
-      })
-    }
-    .width('100%')
-    .height(BUTTON_HEIGHT_SM)
-    .padding({ left: SPACE_SM, right: SPACE_SM })
-    .backgroundColor(this.themeColors.surfaceRaised)
-    .borderRadius(RADIUS_XL)
-    .border({ width: 1, color: this.selectedGoalId.length > 0 ? this.themeColors.primaryLight : this.themeColors.borderColor })
-    .onClick(() => {
-      this.goalFilterExpanded = !this.goalFilterExpanded;
-    })
-  }
-
-  @Builder
-  private GoalFilterChip(goal: Goal) {
-    AppChip({
-      label: this.truncateText(goal.title, 8),
-      tone: this.isGoalSelected(goal.id) ? 'primary' : 'neutral',
-      active: this.isGoalSelected(goal.id),
-      iconName: 'goal',
-      tapAction: () => {
-        this.selectedGoalId = this.isGoalSelected(goal.id) ? '' : goal.id;
-      }
-    })
-  }
-
-  @Builder
   private SearchAndFilters() {
     Column({ space: SPACE_SM }) {
-      AppSearchBar({
-        placeholder: '搜索任务、描述或目标',
-        value: this.keyword,
-        editable: true,
-        clearable: true,
-        insetHorizontal: 0,
-        onChange: (value: string) => {
-          this.keyword = value;
-        },
-        onClear: () => {
-          this.clearKeyword();
-        }
-      })
-
       Scroll() {
         Row({ space: SPACE_SM }) {
           this.FilterChip('全部', 'all', this.getAllCount())
@@ -591,70 +602,17 @@ export struct TaskListTab {
           this.FilterChip('已完成', 'completed', this.getCompletedCount())
         }
       }
+      .align(Alignment.Top)
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width('100%')
-
-      if (this.getGoalFilterOptions().length > 0) {
-        this.GoalFilterRow()
-
-        if (this.goalFilterExpanded) {
-          Scroll() {
-            Row({ space: SPACE_SM }) {
-              this.AllGoalsChip()
-              ForEach(this.getGoalFilterOptions(), (goal: Goal) => {
-                this.GoalFilterChip(goal)
-              }, (goal: Goal) => goal.id)
-            }
-          }
-          .scrollable(ScrollDirection.Horizontal)
-          .scrollBar(BarState.Off)
-          .width('100%')
-        }
-      }
     }
     .width('100%')
   }
 
   @Builder
-  private RescheduleBanner() {
-    AppCard({
-      variant: 'danger',
-      paddingLevel: 'sm',
-      spacing: SPACE_SM,
-      interactive: true,
-      tapAction: () => {
-        this.openReschedulePage();
-      }
-    }) {
-      Row({ space: SPACE_SM }) {
-        Text(`${this.getOverdueCount()} 个逾期任务待处理`)
-          .layoutWeight(1)
-          .fontSize(TYPE_META)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textPrimary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-        AppButton({
-          text: '去 AI 重排',
-          variant: 'secondary',
-          buttonSize: 'sm',
-          fullWidth: true,
-          iconName: 'ai',
-          tapAction: () => {
-            this.openReschedulePage();
-          }
-        })
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-    }
-  }
-
-  @Builder
   private TaskCheckMark(task: Task) {
-    Text(task.status === TaskStatus.COMPLETED ? '\u2713' : '')
+    Text(this.isTaskDisplayCompleted(task) ? '\u2713' : '')
       .fontSize(TYPE_META)
       .fontWeight(FontWeight.Bold)
       .fontColor(this.themeColors.success)
@@ -663,16 +621,38 @@ export struct TaskListTab {
       .height(ICON_BUTTON_SIZE_SM)
       .border({
         width: 1.5,
-        color: task.status === TaskStatus.COMPLETED ? this.themeColors.success : this.themeColors.borderColor
+        color: this.isTaskDisplayCompleted(task) ? this.themeColors.success : this.themeColors.borderColor
       })
       .borderRadius(RADIUS_PILL)
       .backgroundColor(this.themeColors.surface)
+      .onClick(() => {
+        const isCompleting = !this.isTaskDisplayCompleted(task);
+        if (isCompleting) {
+          this.addRecentlyCompletedTask(task.id);
+        } else {
+          this.removeRecentlyCompletedTask(task.id);
+        }
+        // 清除缓存以强制重新计算
+        this.filteredTasksCacheSource = null;
+        void (async () => {
+          try {
+            await db.setTaskCompletion(task.id, isCompleting);
+          } catch (_error) {
+            if (isCompleting) {
+              this.removeRecentlyCompletedTask(task.id);
+            } else {
+              this.addRecentlyCompletedTask(task.id);
+            }
+            this.filteredTasksCacheSource = null;
+          }
+        })();
+      })
   }
 
   @Builder
   private TaskCard(task: Task) {
     AppCard({
-      variant: task.isOverdue ? 'danger' : (task.status === TaskStatus.COMPLETED ? 'soft' : 'base'),
+      variant: this.isTaskDisplayOverdue(task) ? 'danger' : (this.isTaskDisplayCompleted(task) ? 'soft' : 'base'),
       paddingLevel: 'sm',
       spacing: SPACE_SM,
       interactive: true,
@@ -689,7 +669,8 @@ export struct TaskListTab {
               .layoutWeight(1)
               .fontSize(TYPE_BODY)
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeColors.textPrimary)
+              .fontColor(this.isTaskDisplayCompleted(task) ? this.themeColors.textSecondary : this.themeColors.textPrimary)
+              .decoration({ type: this.isTaskDisplayCompleted(task) ? TextDecorationType.LineThrough : TextDecorationType.None, color: this.themeColors.textMuted })
               .maxLines(2)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
 
@@ -704,27 +685,22 @@ export struct TaskListTab {
           .width('100%')
           .alignItems(VerticalAlign.Center)
 
-          Text(this.getTaskSourceText(task))
-            .fontSize(TYPE_META)
-            .fontColor(this.themeColors.textSecondary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          if (task.goalTitle.trim().length > 0 || this.getTaskStatusLabel(task).length > 0) {
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+              if (task.goalTitle.trim().length > 0) {
+                AppStatusBadge({ text: this.getGoalBadgeText(task), tone: 'primary', iconName: 'goal' })
+              }
+
+              if (this.getTaskStatusLabel(task).length > 0) {
+                AppStatusBadge({
+                  text: this.getTaskStatusLabel(task),
+                  tone: this.getTaskStatusTone(task),
+                  iconName: this.getTaskStatusIconName(task)
+                })
+              }
+            }
             .width('100%')
-
-          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-            if (task.goalTitle.trim().length > 0) {
-              AppStatusBadge({ text: this.getGoalBadgeText(task), tone: 'primary', iconName: 'goal' })
-            }
-
-            if (this.getTaskStatusLabel(task).length > 0) {
-              AppStatusBadge({
-                text: this.getTaskStatusLabel(task),
-                tone: this.getTaskStatusTone(task),
-                iconName: this.getTaskStatusIconName(task)
-              })
-            }
           }
-          .width('100%')
         }
         .layoutWeight(1)
         .alignItems(HorizontalAlign.Start)
@@ -748,20 +724,6 @@ export struct TaskListTab {
         this.FilterChip('逾期', 'overdue', this.getOverdueCount())
         this.FilterChip('已完成', 'completed', this.getCompletedCount())
       }
-
-      if (this.getGoalFilterOptions().length > 0) {
-        Column({ space: SPACE_XS }) {
-          Text('目标筛选')
-            .fontSize(TYPE_CAPTION)
-            .fontColor(this.themeColors.textMuted)
-            .padding({ left: SPACE_XS, bottom: SPACE_2XS })
-
-          this.AllGoalsChip()
-          ForEach(this.getGoalFilterOptions(), (goal: Goal) => {
-            this.GoalFilterChip(goal)
-          }, (goal: Goal) => goal.id)
-        }
-      }
     }
     .width(TASK_LIST_FILTER_PANEL_WIDTH)
     .padding({ top: SPACE_SM, left: SPACE_MD, right: SPACE_MD, bottom: SPACE_MD })
@@ -772,37 +734,22 @@ export struct TaskListTab {
   build() {
     Scroll() {
       Column({ space: SPACE_SM }) {
-        this.PageHeader()
+        if (!this.embedded) {
+          this.PageHeader()
+        }
 
         if (this.isWideLayout()) {
-          AppSearchBar({
-            placeholder: '搜索任务、描述或目标',
-            value: this.keyword,
-            editable: true,
-            clearable: true,
-            insetHorizontal: 0,
-            onChange: (value: string) => {
-              this.keyword = value;
-            },
-            onClear: () => {
-              this.clearKeyword();
-            }
-          })
 
           Row({ space: SPACE_LG }) {
             Column({ space: SPACE_SM }) {
-              if (this.getOverdueCount() > 0 && this.activeFilter !== 'completed') {
-                this.RescheduleBanner()
-              }
-
               if (this.getFilteredTasks().length > 0) {
                 ForEach(this.getVisibleTasks(), (task: Task) => {
                   this.TaskCard(task)
-                }, (task: Task) => task.id)
+                }, (task: Task) => `${task.id}_${task.status}_${task.updatedAt}`)
               } else {
                 AppEmptyState({
                   title: '当前条件下没有可显示的行动',
-                  description: '可以切换筛选条件、清空关键词，或继续创建新的任务。',
+                  description: '可以切换筛选条件，或继续创建新的任务。',
                   actionText: `去 ${this.getAIFeatureLabel()}`,
                   actionIconName: 'ai',
                   iconName: 'task',
@@ -824,18 +771,14 @@ export struct TaskListTab {
           Column({ space: SPACE_SM }) {
             this.SearchAndFilters()
 
-            if (this.getOverdueCount() > 0 && this.activeFilter !== 'completed') {
-              this.RescheduleBanner()
-            }
-
             if (this.getFilteredTasks().length > 0) {
               ForEach(this.getVisibleTasks(), (task: Task) => {
                 this.TaskCard(task)
-              }, (task: Task) => task.id)
+              }, (task: Task) => `${task.id}_${task.status}_${task.updatedAt}`)
             } else {
               AppEmptyState({
                 title: '当前条件下没有可显示的行动',
-                description: '可以切换筛选条件、清空关键词，或继续创建新的任务。',
+                description: '可以切换筛选条件，或继续创建新的任务。',
                 actionText: `去 ${this.getAIFeatureLabel()}`,
                 actionIconName: 'ai',
                 iconName: 'task',
@@ -856,6 +799,7 @@ export struct TaskListTab {
       .alignSelf(ItemAlign.Center)
       .padding({ left: COMPACT_PAGE_PADDING, right: COMPACT_PAGE_PADDING })
     }
+    .align(Alignment.Top)
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)

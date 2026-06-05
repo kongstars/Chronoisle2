@@ -340,6 +340,7 @@ struct FocusStatsPage {
           .width('100%')
           .padding({ left: SPACE_LG, right: SPACE_LG, bottom: SPACE_LG })
         }
+        .align(Alignment.Top)
         .layoutWeight(1)
         .width('100%')
         .scrollBar(BarState.Off)

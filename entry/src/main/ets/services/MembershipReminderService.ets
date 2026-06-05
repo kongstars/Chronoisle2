@@ -34,7 +34,10 @@ export class MembershipReminderService {
     await MembershipReminderService.cancelAllReminders(context);
 
     const now = Date.now();
-    const prefs = await dataPreferences.getPreferences(context, REMINDER_PREFS_KEY);
+    let prefs: dataPreferences.Preferences;
+    try {
+      prefs = await dataPreferences.getPreferences(context, REMINDER_PREFS_KEY);
+    } catch (_) { return; }
     // 提前 7天、3天、1天 提醒
     interface ReminderOffset {
       days: number;
@@ -85,7 +88,9 @@ export class MembershipReminderService {
       }
     }
 
-    await prefs.flush();
+    try {
+      await prefs.flush();
+    } catch (_) {}
   }
 
   /**
@@ -142,17 +147,20 @@ export class MembershipReminderService {
 
     // 7天内到期
     if (daysLeft <= 7) {
-      // 每天最多提醒 1 次
-      const prefs = await dataPreferences.getPreferences(context, REMINDER_PREFS_KEY);
-      const lastShown = await prefs.get(REMINDER_LAST_SHOWN_KEY, '') as string;
-      const todayStr = new Date().toISOString().split('T')[0];
+      try {
+        const prefs = await dataPreferences.getPreferences(context, REMINDER_PREFS_KEY);
+        const lastShown = await prefs.get(REMINDER_LAST_SHOWN_KEY, '') as string;
+        const todayStr = new Date().toISOString().split('T')[0];
 
-      if (lastShown === todayStr) {
-        return null; // 今天已经提醒过了
+        if (lastShown === todayStr) {
+          return null;
+        }
+
+        await prefs.put(REMINDER_LAST_SHOWN_KEY, todayStr);
+        await prefs.flush();
+      } catch (_) {
+        return null;
       }
-
-      await prefs.put(REMINDER_LAST_SHOWN_KEY, todayStr);
-      await prefs.flush();
 
       if (daysLeft === 1) {
         return '您的高级会员将于明天到期，续费可继续畅享全部功能';

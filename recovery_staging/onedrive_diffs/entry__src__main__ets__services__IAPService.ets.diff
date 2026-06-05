@@ -1,0 +1,162 @@
+--- current/entry\src\main\ets\services\IAPService.ets
++++ backup/entry\src\main\ets\services\IAPService.ets
+@@ -5,14 +5,10 @@
+ import util from '@ohos.util';
+ import { authService, ApiResponse } from './AuthService';
+ import { TelemetryProperties } from '../services/TelemetryService';
++import promptAction from '@ohos.promptAction';
+ import AppConfig from '../Utils/AppConfig';
+ import { TelemetryService } from './TelemetryService';
+ import { TelemetryErrorCode } from '../models/TelemetryErrorCode';
+-import { iapRetryQueue } from './IAPRetryQueue';
+-import { MembershipReminderService } from './MembershipReminderService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('IAPService');
+ 
+ export interface IAPProduct {
+   productId: string;
+@@ -116,7 +112,7 @@
+       await iap.queryEnvironmentStatus(context);
+       return true;
+     } catch (err) {
+-      logger.error('环境检查失败', err as Object);
++      console.error('环境检查失败:', JSON.stringify(err));
+       (() => { let _p: TelemetryProperties = { 
+         "code": TelemetryErrorCode.ERR_IAP_ENV_INIT_FAIL, 
+         "msg": String(err).substring(0, 50),
+@@ -162,13 +158,13 @@
+             });
+           }
+         } catch (e) {
+-          logger.warn('查询自动续期商品失败', e as Object);
++          console.warn('查询自动续期商品失败:', JSON.stringify(e));
+         }
+       }
+ 
+       return res;
+     } catch (err) {
+-      logger.error('获取商品列表失败', err as Object);
++      console.error('获取商品列表失败:', JSON.stringify(err));
+       return [];
+     }
+   }
+@@ -196,9 +192,7 @@
+         return { success: false, message: '支付完成但未返回签名订单，请稍后刷新会员状态' } as PurchaseResult;
+       }
+ 
+-      // 注意：原 service 层在此处使用全局 promptAction.showToast 反馈「支付完成，正在验证订单...」，
+-      // 在 ArkTS NEXT 中已废弃。改由 caller（MembershipPage）通过 UIContext 显示反馈，
+-      // service 层只负责返回结果。
++      promptAction.showToast({ message: '支付完成，正在验证订单...' });
+ 
+       // 2. 将 token 上报至阿里云后端进行最终核销发货
+       const token = await authService.getToken();
+@@ -215,32 +209,11 @@
+       const verifyResult = await this.sendVerifyRequest(checkUrl, jwsStr, token, productId, purchaseData);
+       if (verifyResult.success) {
+         await this.finishPurchaseIfPossible(context, purchaseData);
+-        if (verifyResult.membershipExpireAt) {
+-          const isAutoRenew = AppConfig.getMembershipProductIds().includes(productId);
+-          void MembershipReminderService.scheduleExpiryReminders(
+-            context,
+-            verifyResult.membershipExpireAt,
+-            isAutoRenew
+-          );
+-        }
+-        return verifyResult;
+-      }
+-
+-      iapRetryQueue.addToQueue({
+-        orderId: jwsStr.substring(0, 50),
+-        jwsPurchaseOrder: jwsStr,
+-        productId: productId,
+-        purchaseData: purchaseData,
+-        createdAt: Date.now(),
+-        retryCount: 0,
+-        nextRetryAt: Date.now() + 5 * 60 * 1000,
+-        lastError: verifyResult.message
+-      });
+-
++      }
+       return verifyResult;
+ 
+     } catch (err) {
+-      logger.error('购买失败', err as Object);
++      console.error('购买失败:', JSON.stringify(err));
+       (() => { let _p: TelemetryProperties = { 
+         "code": TelemetryErrorCode.ERR_IAP_PURCHASE_FAIL, 
+         "msg": String(err).substring(0, 50),
+@@ -293,13 +266,6 @@
+         const verifyResult = await this.sendVerifyRequest(checkUrl, jwsStr, token, undefined, purchaseData);
+         if (verifyResult.success) {
+           await this.finishPurchaseIfPossible(context, purchaseData);
+-          if (verifyResult.membershipExpireAt) {
+-            void MembershipReminderService.scheduleExpiryReminders(
+-              context,
+-              verifyResult.membershipExpireAt,
+-              true // 当前所有商品均为自动续费
+-            );
+-          }
+           return {
+             success: true,
+             message: successMessage,
+@@ -313,21 +279,12 @@
+             pendingMembershipEffectiveAt: verifyResult.pendingMembershipEffectiveAt
+           } as PurchaseResult;
+         }
+-        iapRetryQueue.addToQueue({
+-          orderId: jwsStr.substring(0, 50),
+-          jwsPurchaseOrder: jwsStr,
+-          purchaseData: purchaseData,
+-          createdAt: Date.now(),
+-          retryCount: 0,
+-          nextRetryAt: Date.now() + 5 * 60 * 1000,
+-          lastError: verifyResult.message
+-        });
+         lastMessage = verifyResult.message || lastMessage;
+       }
+ 
+       return { success: false, message: lastMessage } as PurchaseResult;
+     } catch (error) {
+-      logger.error('同步华为订阅失败', error as Object);
++      console.error('同步华为订阅失败:', JSON.stringify(error));
+       return { success: false, message: '同步华为订阅失败，请稍后重试' } as PurchaseResult;
+     }
+   }
+@@ -344,7 +301,7 @@
+       const queryMap = JSON.parse(JSON.stringify(queryResult)) as HwQueryPurchaseResult;
+       return queryMap.purchaseDataList || [];
+     } catch (error) {
+-      logger.warn('查询华为订阅列表失败', error as Object);
++      console.warn('查询华为订阅列表失败:', JSON.stringify(error));
+       return [];
+     }
+   }
+@@ -426,7 +383,7 @@
+       const textDecoder = new util.TextDecoder('utf-8');
+       return JSON.parse(textDecoder.decodeToString(payloadBytes)) as HuaweiPurchasePayload;
+     } catch (error) {
+-      logger.warn('解析华为购买凭证失败', error as Object);
++      console.warn('解析华为购买凭证失败:', JSON.stringify(error));
+       return null;
+     }
+   }
+@@ -451,7 +408,7 @@
+     } catch (error) {
+       const bizError = error as BusinessError;
+       if (bizError.code !== 1001860053) {
+-        logger.warn('确认华为订单发货失败', error as Object);
++        console.warn('确认华为订单发货失败:', JSON.stringify(error));
+       }
+     }
+   }
+@@ -543,7 +500,7 @@
+          }
+        }
+      } catch (e) {
+-       logger.error('请求后端验证失败', e as Object);
++       console.error('请求后端验证失败', e);
+        req.destroy();
+        (() => { let _p: TelemetryProperties = { 
+          "code": TelemetryErrorCode.ERR_IAP_VERIFY_FAIL, 

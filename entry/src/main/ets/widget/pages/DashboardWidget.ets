@@ -55,11 +55,11 @@ struct DashboardWidget {
         }
         .width('33%')
         .padding(8)
-        .backgroundColor('#F0F9FF')
+        .backgroundColor(WIDGET_COLOR_PRIMARY_SOFT)
         .borderRadius(8)
 
         Column({ space: 4 }) {
-          WidgetGlyph({ name: 'streak', glyphSize: 18, color: WIDGET_COLOR_ORANGE, surfaceColor: '#FFF3DA' })
+          WidgetGlyph({ name: 'streak', glyphSize: 18, color: WIDGET_COLOR_ORANGE, surfaceColor: WIDGET_COLOR_WARNING_SOFT })
           Text(`${this.stats.currentStreak}`)
             .fontSize(18)
             .fontWeight(FontWeight.Bold)

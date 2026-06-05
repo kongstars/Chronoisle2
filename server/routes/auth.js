@@ -5,10 +5,56 @@ const IapOrder = require('../models/IapOrder');
 const CreditAccount = require('../models/CreditAccount');
 const CreditTransaction = require('../models/CreditTransaction');
 const OAuthService = require('../services/OAuthService');
+const SyncData = require('../models/SyncData');
+const UsageRecord = require('../models/UsageRecord');
+const UsageSummary = require('../models/UsageSummary');
+const PlanningSession = require('../models/PlanningSession');
+const PreGeneratedPlan = require('../models/PreGeneratedPlan');
+const TelemetryEvent = require('../models/TelemetryEvent');
+const IapEvent = require('../models/IapEvent');
+const GoalPlanningTrace = require('../models/GoalPlanningTrace');
+const { sendSuccess, sendError, logRequestError } = require('../utils/apiResponse');
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || (function() { throw new Error('JWT_SECRET must be set'); })();
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set');
+  }
+  console.warn('WARNING: JWT_SECRET not set, using insecure default for development only');
+}
+const _JWT_SECRET = JWT_SECRET || 'chronoisle-dev-insecure-key-do-not-use-in-production';
+const ACCOUNT_DELETION_CONFIRMATION = 'CONFIRM_DELETE_ACCOUNT';
+
+function extractBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return '';
+  }
+  return authHeader.substring(7);
+}
+
+async function getAuthenticatedUser(req) {
+  const token = extractBearerToken(req);
+  if (!token) {
+    return { error: '请先登录', status: 401, errorCode: 'AUTH_REQUIRED' };
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, _JWT_SECRET);
+  } catch (error) {
+    return { error: 'Token无效或已过期', status: 401, errorCode: 'AUTH_TOKEN_INVALID' };
+  }
+
+  const user = await User.findOne({ userId: decoded.userId });
+  if (!user) {
+    return { error: '用户不存在', status: 404, errorCode: 'AUTH_USER_NOT_FOUND' };
+  }
+
+  return { user, decoded };
+}
 
 function buildUserPayload(user) {
   return {
@@ -117,7 +163,7 @@ router.post('/send-code', (req, res) => {
   const { accountType, account } = req.body;
   
   if (!account) {
-    return res.status(400).json({ success: false, message: '账号不可为空' });
+    return sendError(res, 400, 'AUTH_ACCOUNT_REQUIRED', '账号不可为空');
   }
 
   // 始终固定验证码为 123456 用于跑测试流程
@@ -126,8 +172,7 @@ router.post('/send-code', (req, res) => {
   
   verificationCodes.set(`${accountType}:${account}`, { code, expiresAt });
   
-  res.json({
-    success: true,
+  return sendSuccess(res, {
     message: '验证码已发送'
   });
 });
@@ -137,13 +182,13 @@ router.post('/register', async (req, res) => {
   
   const record = verificationCodes.get(`${accountType}:${account}`);
   if (!record || record.code !== code || record.expiresAt < Date.now()) {
-    return res.status(400).json({ success: false, message: '验证码无效或已过期' });
+    return sendError(res, 400, 'AUTH_CODE_INVALID', '验证码无效或已过期');
   }
 
   try {
     const existingUser = await User.findOne({ accountType, account });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: '账号已被注册' });
+      return sendError(res, 400, 'AUTH_ACCOUNT_EXISTS', '账号已被注册');
     }
 
     const userId = `user_${accountType}_${account.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -162,15 +207,61 @@ router.post('/register', async (req, res) => {
 
     const token = jwt.sign({ userId, accountType, account }, _JWT_SECRET, { expiresIn: '30d' });
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       message: '注册成功',
       token,
       user: buildUserPayload(newUser)
     });
   } catch (error) {
-    console.error('注册错误:', error);
-    res.status(500).json({ success: false, message: '服务器内部错误' });
+    logRequestError('auth.register', req, error, '注册错误');
+    return sendError(res, 500, 'AUTH_REGISTER_FAILED', '服务器内部错误');
+  }
+});
+
+router.post('/account/delete', async (req, res) => {
+  const { confirmation, reason } = req.body || {};
+
+  if (confirmation !== ACCOUNT_DELETION_CONFIRMATION) {
+    return sendError(res, 400, 'ACCOUNT_DELETE_CONFIRM_INVALID', '注销确认信息无效');
+  }
+
+  try {
+    const authResult = await getAuthenticatedUser(req);
+    if (authResult.error) {
+      return sendError(res, authResult.status || 401, authResult.errorCode || 'AUTH_FAILED', authResult.error);
+    }
+
+    const user = authResult.user;
+    const userId = user.userId;
+    const requestTime = Date.now();
+
+    await Promise.all([
+      SyncData.deleteOne({ userId }),
+      CreditAccount.deleteOne({ userId }),
+      CreditTransaction.deleteMany({ userId }),
+      UsageRecord.deleteMany({ userId }),
+      UsageSummary.deleteMany({ userId }),
+      PlanningSession.deleteMany({ userId }),
+      PreGeneratedPlan.deleteMany({ userId }),
+      TelemetryEvent.deleteMany({ userId }),
+      IapOrder.deleteMany({ userId }),
+      IapEvent.deleteMany({ userId }),
+      GoalPlanningTrace.deleteMany({ userId })
+    ]);
+
+    await User.deleteOne({ userId });
+
+    console.log(`[账号注销] userId=${userId} accountType=${user.accountType} reason=${String(reason || '').trim()}`);
+
+    return sendSuccess(res, {
+      message: '账号已注销并清理完成',
+      data: {
+        scheduledFinalizeAt: new Date(requestTime).toISOString()
+      }
+    });
+  } catch (error) {
+    logRequestError('auth.account.delete', req, error, '账号注销失败');
+    return sendError(res, 500, 'ACCOUNT_DELETE_FAILED', '服务器内部错误');
   }
 });
 
@@ -179,13 +270,13 @@ router.post('/login', async (req, res) => {
 
   const record = verificationCodes.get(`${accountType}:${account}`);
   if (!record || record.code !== code || record.expiresAt < Date.now()) {
-    return res.status(400).json({ success: false, message: '验证码无效或已过期' });
+    return sendError(res, 400, 'AUTH_CODE_INVALID', '验证码无效或已过期');
   }
 
   try {
     const user = await User.findOne({ accountType, account });
     if (!user) {
-      return res.status(404).json({ success: false, message: '账号尚未注册' });
+      return sendError(res, 404, 'AUTH_ACCOUNT_NOT_FOUND', '账号尚未注册');
     }
 
     if (!user.displayId) {
@@ -197,8 +288,7 @@ router.post('/login', async (req, res) => {
     
     const token = jwt.sign({ userId: user.userId, accountType: user.accountType, account: user.account }, _JWT_SECRET, { expiresIn: '30d' });
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       message: '登录成功',
       data: {
         token,
@@ -206,15 +296,15 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-     console.error('登录错误:', error);
-     res.status(500).json({ success: false, message: '服务器内部错误' });
+     logRequestError('auth.login', req, error, '登录错误');
+     return sendError(res, 500, 'AUTH_LOGIN_FAILED', '服务器内部错误');
   }
 });
 
 router.post('/huawei-login', async (req, res) => {
   const { huaweiId, authCode, idToken, nickName, avatarUri } = req.body;
   if (!huaweiId && !authCode) {
-    return res.status(400).json({ success: false, message: '缺少必要参数：huaweiId 或 authCode' });
+    return sendError(res, 400, 'AUTH_HUAWEI_PARAMS_REQUIRED', '缺少必要参数：huaweiId 或 authCode');
   }
 
   try {
@@ -256,7 +346,7 @@ router.post('/huawei-login', async (req, res) => {
     }
 
     if (!openId) {
-      return res.status(400).json({ success: false, message: '无法获取用户标识符' });
+      return sendError(res, 400, 'AUTH_HUAWEI_OPENID_MISSING', '无法获取用户标识符');
     }
 
     // 使用 openId 作为主要查找条件，因为这是复合唯一索引的一部分
@@ -309,8 +399,7 @@ router.post('/huawei-login', async (req, res) => {
     
     const token = jwt.sign({ userId: user.userId, accountType: user.accountType, account: user.account, openId: user.openId }, _JWT_SECRET, { expiresIn: '30d' });
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       message: '登录成功',
       data: {
         token,
@@ -318,8 +407,8 @@ router.post('/huawei-login', async (req, res) => {
       }
     });
   } catch (error) {
-     console.error('华为登录错误:', error);
-     res.status(500).json({ success: false, message: '服务器内部错误' });
+     logRequestError('auth.huawei-login', req, error, '华为登录错误');
+     return sendError(res, 500, 'AUTH_HUAWEI_LOGIN_FAILED', '服务器内部错误');
   }
 });
 
@@ -331,7 +420,7 @@ router.post('/huawei-login', async (req, res) => {
 router.get('/me', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: '请先登录' });
+    return sendError(res, 401, 'AUTH_REQUIRED', '请先登录');
   }
 
   try {
@@ -341,24 +430,23 @@ router.get('/me', async (req, res) => {
 
     const user = await User.findOne({ userId });
     if (!user) {
-      return res.status(404).json({ success: false, message: '用户不存在' });
+      return sendError(res, 404, 'AUTH_USER_NOT_FOUND', '用户不存在');
     }
     await backfillMembershipSubscriptionFields(user);
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       data: buildUserPayload(user)
     });
   } catch (error) {
-    console.error('获取用户信息失败:', error.message);
-    res.status(401).json({ success: false, message: 'Token无效或已过期' });
+    logRequestError('auth.me', req, error, '获取用户信息失败');
+    return sendError(res, 401, 'AUTH_TOKEN_INVALID', 'Token无效或已过期');
   }
 });
 
 router.post('/profile', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'Please sign in first' });
+    return sendError(res, 401, 'AUTH_REQUIRED', 'Please sign in first');
   }
 
   try {
@@ -366,7 +454,7 @@ router.post('/profile', async (req, res) => {
     const decoded = jwt.verify(token, _JWT_SECRET);
     const user = await User.findOne({ userId: decoded.userId });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return sendError(res, 404, 'AUTH_USER_NOT_FOUND', 'User not found');
     }
 
     const { nickname, avatar } = req.body || {};
@@ -375,10 +463,10 @@ router.post('/profile', async (req, res) => {
     if (typeof nickname === 'string') {
       const trimmedNickname = nickname.trim();
       if (!trimmedNickname) {
-        return res.status(400).json({ success: false, message: 'Nickname cannot be empty' });
+        return sendError(res, 400, 'PROFILE_NICKNAME_EMPTY', 'Nickname cannot be empty');
       }
       if (trimmedNickname.length > 24) {
-        return res.status(400).json({ success: false, message: 'Nickname must be 24 characters or fewer' });
+        return sendError(res, 400, 'PROFILE_NICKNAME_TOO_LONG', 'Nickname must be 24 characters or fewer');
       }
       user.nickname = trimmedNickname;
       hasUpdate = true;
@@ -387,27 +475,26 @@ router.post('/profile', async (req, res) => {
     if (typeof avatar === 'string') {
       const trimmedAvatar = avatar.trim();
       if (trimmedAvatar.length > 1024) {
-        return res.status(400).json({ success: false, message: 'Avatar URL is too long' });
+        return sendError(res, 400, 'PROFILE_AVATAR_TOO_LONG', 'Avatar URL is too long');
       }
       user.avatar = trimmedAvatar;
       hasUpdate = true;
     }
 
     if (!hasUpdate) {
-      return res.status(400).json({ success: false, message: 'No profile fields to update' });
+      return sendError(res, 400, 'PROFILE_NO_FIELDS', 'No profile fields to update');
     }
 
     user.lastActiveAt = Date.now();
     await user.save();
 
-    res.json({
-      success: true,
+    return sendSuccess(res, {
       message: 'Profile updated',
       data: buildUserPayload(user)
     });
   } catch (error) {
-    console.error('Profile update failed:', error.message);
-    res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    logRequestError('auth.profile', req, error, 'Profile update failed');
+    return sendError(res, 401, 'AUTH_TOKEN_INVALID', 'Token invalid or expired');
   }
 });
 

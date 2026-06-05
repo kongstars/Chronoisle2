@@ -12,7 +12,7 @@ import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
 import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE, TYPE_NUMERIC_MD } from '../foundation/tokens/TypographyTokens';
-import { BOTTOM_CONTENT_SPACER, BUTTON_HEIGHT_MD, DATE_CELL_CONTROL_SIZE, REMINDER_ACTION_HEIGHT, REMINDER_ACTION_WIDTH, STATUS_STRIP_HEIGHT, STATUS_STRIP_WIDTH_MD, STATUS_STRIP_WIDTH_SM } from '../foundation/tokens/ComponentSizeTokens';
+import { BOTTOM_CONTENT_SPACER, BUTTON_HEIGHT_MD, DATE_CELL_CONTROL_SIZE, REMINDER_ACTION_HEIGHT, REMINDER_ACTION_WIDTH, STATUS_STRIP_HEIGHT, STATUS_STRIP_WIDTH_SM } from '../foundation/tokens/ComponentSizeTokens';
 import { ICON_SIZE_LG } from '../foundation/tokens/IconTokens';
 import { BUTTON_HEIGHT_LG, TODAY_SIDE_PANEL_WIDTH, TODAY_TWO_COLUMN_MIN_WIDTH } from '../foundation/tokens/PageDensityTokens';
 import { RADIUS_MD, RADIUS_SM, RADIUS_XL } from '../foundation/tokens/RadiusTokens';
@@ -24,6 +24,8 @@ export struct CalendarTab {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
   @Prop dayEvents: DayEvent[] = [];
   @Prop tasks: Task[] = [];
+  // embedded=true 时，外层（如 ActionTab）统一提供 Header，本组件不再渲染自己的标题/提醒中心按钮。
+  @Prop embedded: boolean = false;
   @State selectedDate: number = startOfDay(Date.now());
   @State isMonthExpanded: boolean = false;
   @State contentWidth: number = 0;
@@ -194,36 +196,6 @@ export struct CalendarTab {
 
   private getSelectedStatus(): string {
     return this.getSummaryStatus(this.getSelectedDaySummary());
-  }
-
-  private getStatusLabel(status: string): string {
-    if (status === 'busy') {
-      return '忙';
-    }
-    if (status === 'moderate') {
-      return '适中';
-    }
-    return '闲';
-  }
-
-  private getStatusTone(status: string): AppTone {
-    if (status === 'busy') {
-      return 'danger';
-    }
-    if (status === 'moderate') {
-      return 'primary';
-    }
-    return 'success';
-  }
-
-  private getStatusIconName(status: string): string {
-    if (status === 'busy') {
-      return 'warning';
-    }
-    if (status === 'moderate') {
-      return 'calendar';
-    }
-    return 'success';
   }
 
   private getStatusAccentColor(status: string): string {
@@ -463,14 +435,18 @@ export struct CalendarTab {
       this.onOpenReminderCenter();
       return;
     }
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+    try {
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+    } catch (_) {}
   }
 
   private openReminderDetail(eventId: string): void {
-    this.getUIContext().getRouter().pushUrl({
-      url: 'pages/DayEventDetailPage',
-      params: { eventId }
-    });
+    try {
+      this.getUIContext().getRouter().pushUrl({
+        url: 'pages/DayEventDetailPage',
+        params: { eventId }
+      });
+    } catch (_) {}
   }
 
   @Builder
@@ -548,43 +524,6 @@ export struct CalendarTab {
     .onClick(() => {
       this.selectedDate = startOfDay(date.getTime());
     })
-  }
-
-  @Builder
-  private WorkloadStatusCard() {
-    AppCard({ variant: 'soft', spacing: SPACE_XS, paddingLevel: 'md' }) {
-      Row({ space: SPACE_SM }) {
-        Column() {
-        }
-        .width(STATUS_STRIP_WIDTH_MD)
-        .height(STATUS_STRIP_HEIGHT)
-        .backgroundColor(this.getStatusAccentColor(this.getSelectedStatus()))
-        .borderRadius(RADIUS_SM)
-
-        Column({ space: SPACE_2XS }) {
-          Text('忙闲程度')
-            .fontSize(TYPE_META)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.themeColors.textSecondary)
-
-          Text(`${this.formatSelectedDate()} · ${this.getSelectedSummaryText()}`)
-            .fontSize(TYPE_BODY)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.themeColors.textPrimary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .layoutWeight(1)
-
-        AppStatusBadge({
-          text: this.getStatusLabel(this.getSelectedStatus()),
-          tone: this.getStatusTone(this.getSelectedStatus()),
-          iconName: this.getStatusIconName(this.getSelectedStatus())
-        })
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-    }
   }
 
   @Builder
@@ -762,44 +701,28 @@ export struct CalendarTab {
       })
     } else {
       Column({ space: SPACE_SM }) {
-        if (this.getSelectedReminderItems().length > 0) {
-          Column({ space: SPACE_XS }) {
-            Row() {
-              Text(`提醒(${this.getSelectedReminderItems().length})`)
-                .fontSize(TYPE_SECTION_TITLE)
-                .fontWeight(FontWeight.Bold)
-                .fontColor(this.themeColors.textPrimary)
-              Blank()
-            }
-            .width('100%')
+        // 当日摘要
+        Text(`${this.formatSelectedDate()} · ${this.getSelectedSummaryText()}`)
+          .fontSize(TYPE_META)
+          .fontColor(this.themeColors.textSecondary)
+          .width('100%')
 
-            Column({ space: SPACE_SM }) {
-              ForEach(this.getSelectedReminderItems(), (item: CalendarReminderItem) => {
-                this.ReminderRow(item)
-              }, (item: CalendarReminderItem) => `${item.event.id}_${item.occurrenceTime}_${item.state}`)
-            }
-            .width('100%')
+        if (this.getSelectedReminderItems().length > 0) {
+          Column({ space: SPACE_SM }) {
+            ForEach(this.getSelectedReminderItems(), (item: CalendarReminderItem) => {
+              this.ReminderRow(item)
+            }, (item: CalendarReminderItem) => `${item.event.id}_${item.occurrenceTime}_${item.state}`)
           }
+          .width('100%')
         }
 
         if (this.getSelectedTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            Row() {
-              Text(`任务(${this.getSelectedTasks().length})`)
-                .fontSize(TYPE_SECTION_TITLE)
-                .fontWeight(FontWeight.Bold)
-                .fontColor(this.themeColors.textPrimary)
-              Blank()
-            }
-            .width('100%')
-
-            Column({ space: SPACE_SM }) {
-              ForEach(this.getSelectedTasks(), (task: Task) => {
-                this.TaskRow(task)
-              }, (task: Task) => task.id)
-            }
-            .width('100%')
+            ForEach(this.getSelectedTasks(), (task: Task) => {
+              this.TaskRow(task)
+            }, (task: Task) => task.id)
           }
+          .width('100%')
         }
       }
       .width('100%')
@@ -808,20 +731,37 @@ export struct CalendarTab {
 
   build() {
     Column({ space: SPACE_MD }) {
-      AppPageHeader({
-        title: '打卡',
-        subtitle: this.getCalendarHeaderSubtitle(),
-        showBack: false,
-        actionText: '提醒中心',
-        actionIconName: 'reminder',
-        onAction: () => { this.openReminderCenter(); }
-      })
+      // Tab 页标题区（与今日页风格一致）
+      if (!this.embedded) {
+        Row() {
+          Column({ space: 2 }) {
+            Text('目标')
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeColors.textPrimary)
+            Text(this.getCalendarHeaderSubtitle())
+              .fontSize(14)
+              .fontColor(this.themeColors.textSecondary)
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start)
+
+          AppButton({
+            text: '提醒中心',
+            variant: 'secondary',
+            buttonSize: 'sm',
+            iconName: 'reminder',
+            tapAction: () => { this.openReminderCenter(); }
+          })
+        }
+        .width('100%')
+        .padding({ left: COMPACT_PAGE_PADDING, right: COMPACT_PAGE_PADDING, top: 8, bottom: 4 })
+      }
 
       if (this.isWideLayout()) {
         Row({ space: SPACE_MD }) {
           Column({ space: SPACE_MD }) {
             this.CalendarPanel()
-            this.WorkloadStatusCard()
           }
           .width(TODAY_SIDE_PANEL_WIDTH)
 
@@ -843,13 +783,13 @@ export struct CalendarTab {
         Scroll() {
           Column({ space: SPACE_MD }) {
             this.CalendarPanel()
-            this.WorkloadStatusCard()
             this.DayContentList()
             Blank().height(BOTTOM_CONTENT_SPACER)
           }
           .width('100%')
           .padding({ left: COMPACT_PAGE_PADDING, right: COMPACT_PAGE_PADDING, bottom: 0 })
         }
+        .align(Alignment.Top)
         .scrollBar(BarState.Off)
         .layoutWeight(1)
       }

@@ -1,0 +1,102 @@
+--- current/entry\src\main\ets\services\AgentService.ets
++++ backup/entry\src\main\ets\services\AgentService.ets
+@@ -10,9 +10,6 @@
+ import { TelemetryService } from './TelemetryService';
+ import { TelemetryErrorCode } from '../models/TelemetryErrorCode';
+ import { AppErrorService } from './AppErrorService';
+-import { Logger } from '../Utils/Logger';
+-
+-const logger = Logger.create('AgentService');
+ 
+ export interface MatchedKrItem {
+   krId: string;
+@@ -216,7 +213,7 @@
+             const parsedIntent: AgentIntent = JSON.parse(contentStr);
+             return parsedIntent;
+           } catch (jsonErr) {
+-            logger.error('JSON Parse Error for Agent Response:', contentStr as Object);
++            console.error('JSON Parse Error for Agent Response:', contentStr);
+             (() => { let _p: TelemetryProperties = { 
+               "code": TelemetryErrorCode.ERR_AI_JSON_PARSE_FAIL, 
+               "msg": String(jsonErr).substring(0, 50),
+@@ -229,7 +226,7 @@
+             };
+           }
+         } else {
+-            logger.error('Agent API returned unexpected structure', result as Object);
++            console.error('Agent API returned unexpected structure:', JSON.stringify(result));
+             (() => { let _p: TelemetryProperties = { 'code': TelemetryErrorCode.ERR_AI_INVALID_STRUCTURE, 'msg': 'No content in output', 'path': 'analyzeInput'
+              }; TelemetryService.track('api_error', _p, 'ai'); })();
+             return {
+@@ -255,7 +252,7 @@
+           // 忽略解析错误
+         }
+         errMsg = AppErrorService.fromMessage(errMsg, 'AI 请求失败，请稍后重试');
+-        logger.error('Agent API Error:', errMsg as Object);
++        console.error('Agent API Error:', errMsg);
+         (() => { let _p: TelemetryProperties = { 
+           "code": TelemetryErrorCode.ERR_HTTP_EXCEPTION, 
+           "msg": errMsg.substring(0, 50),
+@@ -268,7 +265,7 @@
+         };
+       }
+     } catch (error) {
+-      logger.error('analyzeInput err', error as Object);
++      console.error('analyzeInput err:', JSON.stringify(error));
+       const errMsg = AppErrorService.fromUnknown(error, 'AI 请求失败，请稍后重试');
+       (() => { let _p: TelemetryProperties = { 
+         "code": TelemetryErrorCode.ERR_NET_TIMEOUT, 
+@@ -447,7 +444,7 @@
+           try {
+             filled = JSON.parse(contentStr) as TaskAutoFillIntent;
+           } catch (e) {
+-            logger.error('JSON Parse Error for autoFillTask:', contentStr as Object);
++            console.error('JSON Parse Error for autoFillTask:', contentStr);
+             (() => { let _p: TelemetryProperties = { 
+               "code": TelemetryErrorCode.ERR_AI_JSON_PARSE_FAIL, 
+               "msg": String(e).substring(0, 50),
+@@ -457,7 +454,7 @@
+         }
+       }
+     } catch (error) {
+-      logger.error('autoFillTask LLM err:', error as Object);
++      console.error('autoFillTask LLM err:', error);
+       (() => { let _p: TelemetryProperties = { 
+         "code": TelemetryErrorCode.ERR_NET_TIMEOUT, 
+         "msg": JSON.stringify(error).substring(0, 50),
+@@ -549,7 +546,7 @@
+           try {
+             return JSON.parse(contentStr) as T;
+           } catch (e) {
+-            logger.error('callAgentAPI JSON Parse Error:', contentStr as Object);
++            console.error('callAgentAPI JSON Parse Error:', contentStr);
+             (() => { let _p: TelemetryProperties = { 
+               "code": TelemetryErrorCode.ERR_AI_JSON_PARSE_FAIL, 
+               "msg": String(e).substring(0, 50),
+@@ -563,7 +560,7 @@
+             }
+           }
+         } else {
+-          logger.error('callAgentAPI No Content in Response', result as Object);
++          console.error('callAgentAPI No Content in Response:', JSON.stringify(result));
+           (() => { let _p: TelemetryProperties = { 'code': TelemetryErrorCode.ERR_AI_INVALID_STRUCTURE, 'msg': 'No content in response', 'path': 'callAgentAPI'
+            }; TelemetryService.track('api_error', _p, 'ai'); })();
+           if (typeof defaultVal === 'object' && defaultVal !== null) {
+@@ -574,7 +571,7 @@
+           }
+         }
+       } else {
+-        logger.error('callAgentAPI HTTP Error:', response.responseCode, response.result as Object);
++        console.error('callAgentAPI HTTP Error:', response.responseCode, response.result);
+         (() => { let _p: TelemetryProperties = { 'code': TelemetryErrorCode.ERR_HTTP_EXCEPTION, 'msg': `HTTP ${response.responseCode}`, 'path': 'callAgentAPI'
+          }; TelemetryService.track('api_error', _p, 'ai'); })();
+         if (typeof defaultVal === 'object' && defaultVal !== null) {
+@@ -585,7 +582,7 @@
+         }
+       }
+     } catch (err) {
+-      logger.error('callAgentAPI fetch error', err as Object);
++      console.error('callAgentAPI fetch error:', JSON.stringify(err));
+       (() => { let _p: TelemetryProperties = { 
+         "code": TelemetryErrorCode.ERR_NET_TIMEOUT, 
+         "msg": JSON.stringify(err).substring(0, 50),

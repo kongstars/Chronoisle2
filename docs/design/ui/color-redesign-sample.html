@@ -1,0 +1,888 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chronoisle 岛屿晨曦浅深模式样张 - 今日页</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "SF Pro Display", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  min-height: 100vh;
+  color: #241f2c;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255,255,255,0.82), transparent 20%),
+    linear-gradient(180deg, #e7dfd5 0%, #d9d1c7 100%);
+  padding: 28px;
+}
+.layout {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.sidebar {
+  position: sticky;
+  top: 28px;
+  border-radius: 28px;
+  padding: 24px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(255,255,255,0.58);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 42px rgba(54, 42, 28, 0.08);
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #857866;
+  margin-bottom: 10px;
+}
+.sidebar h1 {
+  font-size: 30px;
+  line-height: 1.04;
+  margin-bottom: 12px;
+}
+.sidebar p {
+  font-size: 13px;
+  line-height: 1.72;
+  color: #6c6474;
+}
+.note {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 18px;
+  background: #f5eee5;
+  border: 1px solid #e7ddcf;
+}
+.note strong {
+  display: block;
+  font-size: 12px;
+  color: #2c2534;
+  margin-bottom: 6px;
+}
+.note span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #6c6474;
+}
+.palette-grid {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+.palette-card {
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.55);
+}
+.palette-card h3 {
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: #2f2737;
+}
+.palette-row {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.palette-row + .palette-row { margin-top: 8px; }
+.palette-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.palette-copy strong {
+  display: block;
+  font-size: 12px;
+  color: #2c2534;
+}
+.palette-copy span {
+  display: block;
+  font-size: 11px;
+  color: #847987;
+  font-family: Consolas, monospace;
+  margin-top: 2px;
+}
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.top-panel,
+.state-board {
+  border-radius: 28px;
+  padding: 22px 24px;
+  background: rgba(255,255,255,0.66);
+  border: 1px solid rgba(255,255,255,0.56);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 40px rgba(54, 42, 28, 0.08);
+}
+.top-panel h2,
+.state-board h2 {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+.top-panel p,
+.state-board > p {
+  font-size: 13px;
+  line-height: 1.72;
+  color: #6c6474;
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(360px, 1fr));
+  gap: 24px;
+}
+.direction-card {
+  border-radius: 30px;
+  padding: 18px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.56);
+  box-shadow: 0 18px 40px rgba(54, 42, 28, 0.08);
+}
+.direction-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.direction-head h3 {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+.direction-head p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #6f6777;
+}
+.dir-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.phone-wrap {
+  position: relative;
+  padding-bottom: 34px;
+}
+.phone-label {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.phone {
+  width: 390px;
+  max-width: 100%;
+  height: 844px;
+  margin: 0 auto;
+  border-radius: 42px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 26px 62px rgba(36, 24, 18, 0.16),
+    inset 0 1px 0 rgba(255,255,255,0.4);
+}
+.phone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.status-bar {
+  height: 56px;
+  padding: 0 28px 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+.screen {
+  height: calc(100% - 56px);
+  overflow: auto;
+  padding: 12px 16px 92px;
+  position: relative;
+  z-index: 2;
+}
+.screen::-webkit-scrollbar { display: none; }
+
+.light-dawn {
+  --text: #2b2233;
+  --sub: #786c7d;
+  --muted: #b2a7b1;
+  --primary: #7679f5;
+  --primary-soft: rgba(118,121,245,0.12);
+  --accent: #ffb56f;
+  --accent-soft: rgba(255,181,111,0.18);
+  --success: #42a483;
+  --danger: #dd7a72;
+  --line: rgba(110, 96, 120, 0.12);
+  --panel: rgba(255,255,255,0.82);
+  --panel-soft: rgba(255,247,239,0.86);
+  --panel-hero: rgba(255,255,255,0.76);
+  --border: rgba(255,255,255,0.62);
+  --nav: rgba(255,255,255,0.82);
+  background: linear-gradient(180deg, #fbf4e9 0%, #f4ede4 58%, #ede5da 100%);
+}
+.light-dawn::before {
+  background:
+    radial-gradient(circle at 55% -6%, rgba(255,181,111,0.34), transparent 24%),
+    radial-gradient(circle at 86% 12%, rgba(118,121,245,0.18), transparent 22%);
+}
+.dark-dawn {
+  --text: #f5edf7;
+  --sub: #b8a8bf;
+  --muted: #8f7f97;
+  --primary: #9a96ff;
+  --primary-soft: rgba(154,150,255,0.16);
+  --accent: #f1a765;
+  --accent-soft: rgba(241,167,101,0.16);
+  --success: #59b294;
+  --danger: #d98c86;
+  --line: rgba(255,255,255,0.08);
+  --panel: rgba(42,32,49,0.84);
+  --panel-soft: rgba(34,26,40,0.88);
+  --panel-hero: rgba(51,39,58,0.82);
+  --border: rgba(255,255,255,0.08);
+  --nav: rgba(33,25,38,0.94);
+  background: linear-gradient(180deg, #17121d 0%, #211827 44%, #2a1f30 100%);
+}
+.dark-dawn::before {
+  background:
+    radial-gradient(circle at 52% -6%, rgba(241,167,101,0.16), transparent 24%),
+    radial-gradient(circle at 84% 12%, rgba(154,150,255,0.16), transparent 24%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), transparent 22%);
+}
+.mini-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.greeting {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.greeting h4 {
+  font-size: 31px;
+  line-height: 1.08;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.greeting p {
+  font-size: 14px;
+  color: var(--sub);
+}
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  color: var(--sub);
+  background: var(--panel);
+}
+.icon-btn svg,
+.circle-btn svg,
+.nav-icon svg,
+.task-arrow svg { width: 18px; height: 18px; }
+.hero {
+  border-radius: 26px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(255,255,255,0.12), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--accent) 20%, var(--panel-hero) 80%), color-mix(in srgb, var(--primary) 16%, var(--panel-hero) 84%));
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 34px rgba(78, 52, 42, 0.12);
+  margin-bottom: 14px;
+}
+.hero-head,
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hero-head { margin-bottom: 14px; }
+.hero-head strong {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.hero-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, rgba(255,255,255,0.88));
+}
+.dark-dawn .hero-pill {
+  background: rgba(154,150,255,0.16);
+  color: #beb6ff;
+}
+.main-bloc {
+  padding: 16px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--panel) 88%, rgba(255,255,255,0.12));
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+.main-bloc h5,
+.card-head h5 {
+  font-size: 18px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.main-bloc p,
+.card-head p {
+  font-size: 12px;
+  line-height: 1.62;
+  color: var(--sub);
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.metric {
+  padding: 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 92%, rgba(255,255,255,0.08));
+  border: 1px solid var(--border);
+}
+.metric strong {
+  display: block;
+  font-size: 22px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.metric span { font-size: 11px; color: var(--sub); }
+.circle-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.circle-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.circle-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 90%, white 10%), color-mix(in srgb, var(--primary) 84%, black 16%));
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+.circle-item span { font-size: 11px; color: var(--sub); }
+.soft-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--danger) 12%, var(--panel) 88%);
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, transparent);
+  margin-bottom: 14px;
+}
+.soft-alert .num {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--danger);
+}
+.soft-alert strong {
+  display: block;
+  font-size: 14px;
+  color: var(--danger);
+  margin-bottom: 2px;
+}
+.soft-alert span {
+  font-size: 12px;
+  color: var(--sub);
+}
+.card {
+  border-radius: 22px;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 26px rgba(42, 28, 34, 0.10);
+}
+.card.soft { background: var(--panel-soft); }
+.link {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+}
+.task + .task { border-top: 1px solid var(--line); }
+.check {
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1.5px solid var(--line);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.check.done {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  border-color: transparent;
+}
+.task-main { flex: 1; }
+.task-main strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text);
+}
+.task-main strong.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.task-main span {
+  display: block;
+  font-size: 11px;
+  color: var(--sub);
+  margin-top: 3px;
+}
+.time {
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 3px;
+}
+.badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.chip {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.chip.primary { color: var(--primary); background: var(--primary-soft); }
+.chip.success { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+.chip.warning { color: var(--accent); background: var(--accent-soft); }
+.nav {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--nav);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 28px rgba(42, 28, 34, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 56px;
+}
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.nav-icon.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.nav-item span {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.nav-item.active span { color: var(--primary); }
+.state-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+.state-col {
+  border-radius: 24px;
+  padding: 18px;
+}
+.state-col h3 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+.state-col p {
+  font-size: 12px;
+  line-height: 1.68;
+  opacity: 0.92;
+  margin-bottom: 14px;
+}
+.state-col.light {
+  color: #47384d;
+  background: linear-gradient(180deg, rgba(255,244,234,0.94), rgba(248,240,233,0.98));
+  border: 1px solid rgba(255,255,255,0.64);
+}
+.state-col.dark {
+  color: #f0e8f3;
+  background: linear-gradient(180deg, rgba(29,21,35,0.96), rgba(37,27,43,0.98));
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.state-samples { display: grid; gap: 12px; }
+.state-card {
+  border-radius: 18px;
+  padding: 14px;
+}
+.state-col.light .state-card {
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(255,255,255,0.68);
+}
+.state-col.dark .state-card {
+  background: rgba(45,33,52,0.94);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.state-chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.state-col.light .state-chip { background: rgba(118,121,245,0.12); color: #7679f5; }
+.state-col.dark .state-chip { background: rgba(154,150,255,0.16); color: #beb6ff; }
+.state-card strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.state-card span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.62;
+  opacity: 0.92;
+}
+@media (max-width: 1420px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; }
+}
+@media (max-width: 980px) {
+  .compare-grid, .state-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="eyebrow">Chronoisle Island Dawn Light/Dark</div>
+      <h1>岛屿晨曦浅深模式样张</h1>
+      <p>你说得对，上一版其实是两个完全不同的主题。这次我把 `A · 岛屿晨曦` 作为唯一母主题，再延展出一个同源深色模式，让浅色和深色共享同一套情绪与品牌语言。</p>
+
+      <div class="note">
+        <strong>浅色模式：岛屿晨曦</strong>
+        <span>清晨沙色底、柔和紫主色、晨光橙点缀。它的气质是松弛、温暖、鼓励开始，不强调压迫感。</span>
+      </div>
+
+      <div class="note">
+        <strong>深色模式：岛屿夜航</strong>
+        <span>不是冷科技蓝，也不是另一个工作台主题，而是把晨曦延续到夜色里。背景转成深紫褐夜空，主色变成月光紫，点缀保留暮光橙。</span>
+      </div>
+
+      <div class="palette-grid">
+        <div class="palette-card">
+          <h3>浅色核心色</h3>
+          <div class="palette-row"><div class="palette-dot" style="background:#7679F5;"></div><div class="palette-copy"><strong>Primary</strong><span>#7679F5</span></div></div>
+          <div class="palette-row"><div class="palette-dot" style="background:#FBF4E9;"></div><div class="palette-copy"><strong>Background</strong><span>#FBF4E9</span></div></div>
+          <div class="palette-row"><div class="palette-dot" style="background:#FFB56F;"></div><div class="palette-copy"><strong>Glow</strong><span>#FFB56F</span></div></div>
+        </div>
+        <div class="palette-card">
+          <h3>深色核心色</h3>
+          <div class="palette-row"><div class="palette-dot" style="background:#9A96FF;"></div><div class="palette-copy"><strong>Primary</strong><span>#9A96FF</span></div></div>
+          <div class="palette-row"><div class="palette-dot" style="background:#17121D;"></div><div class="palette-copy"><strong>Background</strong><span>#17121D</span></div></div>
+          <div class="palette-row"><div class="palette-dot" style="background:#F1A765;"></div><div class="palette-copy"><strong>Dusk Glow</strong><span>#F1A765</span></div></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="top-panel">
+        <h2>同一个主题的两种时段</h2>
+        <p>浅色像清晨上岛，深色像夜里返航。两边都保留了温柔、陪伴和生活化的气质，只是一个偏“开始今天”，一个偏“收束今天”。这样才是同一主题下合理的浅深模式关系。</p>
+      </section>
+
+      <section class="compare-grid">
+        <div class="direction-card">
+          <div class="direction-head">
+            <div>
+              <h3>浅色 · 岛屿晨曦</h3>
+              <p>更适合白天打开时的轻节奏感。卡片像被晨光照亮，提醒柔和但不失方向。</p>
+            </div>
+            <div class="dir-badge" style="background:#F3EDFF;color:#7679F5;">日间模式</div>
+          </div>
+
+          <div class="phone-wrap">
+            <div class="phone light-dawn">
+              <div class="status-bar"><span>9:41</span><span>5G 92%</span></div>
+              <div class="screen">
+                <div class="mini-caption">Island Dawn</div>
+                <div class="greeting">
+                  <div>
+                    <h4>早上好，天晨</h4>
+                    <p>6月5日 周五</p>
+                  </div>
+                  <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></div>
+                </div>
+
+                <div class="hero">
+                  <div class="hero-head">
+                    <strong>今日节奏</strong>
+                    <div class="hero-pill">温柔开始</div>
+                  </div>
+                  <div class="main-bloc">
+                    <h5>今天的重点很清晰</h5>
+                    <p>先完成一项高价值工作，再处理提醒与健康任务。节奏轻，但方向明确。</p>
+                  </div>
+                  <div class="metric-grid">
+                    <div class="metric"><strong>5</strong><span>今日事项</span></div>
+                    <div class="metric"><strong>2h</strong><span>专注预算</span></div>
+                    <div class="metric"><strong>35%</strong><span>推进节奏</span></div>
+                  </div>
+                </div>
+
+                <div class="circle-actions">
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect></svg></div><span>任务</span></div>
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V4l14 4-14 4"></path></svg></div><span>目标</span></div>
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg></div><span>提醒</span></div>
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2.5"></path></svg></div><span>专注</span></div>
+                </div>
+
+                <div class="soft-alert">
+                  <div class="num">3</div>
+                  <div>
+                    <strong>3 项任务需要重排</strong>
+                    <span>今天的压力存在，但页面不会先把你吓住</span>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-head">
+                    <div>
+                      <h5>今日计划</h5>
+                      <p>像一张被整理过的日程便签</p>
+                    </div>
+                    <div class="link">查看全部</div>
+                  </div>
+                  <div class="task">
+                    <div class="check done"></div>
+                    <div class="task-main"><strong class="done">完成产品需求文档</strong><span>已完成 · 情绪上是收掉一件事</span></div>
+                    <div class="time">2h</div>
+                  </div>
+                  <div class="task">
+                    <div class="check"></div>
+                    <div class="task-main"><strong>Code Review 新提交</strong><span>Q3 产品迭代 · 上午完成更顺手</span><div class="badges"><div class="chip primary">工作</div><div class="chip warning">高价值</div></div></div>
+                    <div class="time">1h</div>
+                  </div>
+                  <div class="task">
+                    <div class="check"></div>
+                    <div class="task-main"><strong>跑步 5 公里</strong><span>傍晚 18:30 · 更像生活节律的一部分</span><div class="badges"><div class="chip success">提醒</div></div></div>
+                    <div class="time">0.8h</div>
+                  </div>
+                </div>
+
+                <div class="card soft">
+                  <div class="card-head">
+                    <div>
+                      <h5>今日提醒</h5>
+                      <p>低压、轻提醒</p>
+                    </div>
+                    <div class="link">全部</div>
+                  </div>
+                  <div class="task"><div class="task-main"><strong>每日冥想</strong><span>08:00 · 给一天定调</span></div><div class="time">习惯</div></div>
+                  <div class="task"><div class="task-main"><strong>项目里程碑回顾</strong><span>今天 · 一次温和的提醒</span></div><div class="time">里程碑</div></div>
+                </div>
+              </div>
+              <div class="nav">
+                <div class="nav-item active"><div class="nav-icon active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10.5L12 4l8 6.5V20H4z"></path></svg></div><span>今日</span></div>
+                <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg></div><span>行动</span></div>
+                <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V4l14 4-14 4"></path></svg></div><span>目标</span></div>
+                <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c2-4 6-6 8-6s6 2 8 6"></path></svg></div><span>我的</span></div>
+              </div>
+            </div>
+            <div class="phone-label" style="color:#7679F5;">A-Light · 岛屿晨曦</div>
+          </div>
+        </div>
+
+        <div class="direction-card">
+          <div class="direction-head">
+            <div>
+              <h3>深色 · 岛屿夜航</h3>
+              <p>保留晨曦的温度与柔和，但把它压进夜色里。不是科技控制台，而是同一座岛在入夜后的状态。</p>
+            </div>
+            <div class="dir-badge" style="background:#2B2232;color:#BEB6FF;">夜间模式</div>
+          </div>
+
+          <div class="phone-wrap">
+            <div class="phone dark-dawn">
+              <div class="status-bar"><span>9:41</span><span>5G 92%</span></div>
+              <div class="screen">
+                <div class="mini-caption">Island Afterglow</div>
+                <div class="greeting">
+                  <div>
+                    <h4>晚上好，天晨</h4>
+                    <p>6月5日 周五</p>
+                  </div>
+                  <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></div>
+                </div>
+
+                <div class="hero">
+                  <div class="hero-head">
+                    <strong>今日收束</strong>
+                    <div class="hero-pill">平静返航</div>
+                  </div>
+                  <div class="main-bloc">
+                    <h5>今晚把节奏慢慢收拢</h5>
+                    <p>先完成剩余的关键事项，再把提醒与复盘收进夜晚。夜间依然温和，但更适合专注与回顾。</p>
+                  </div>
+                  <div class="metric-grid">
+                    <div class="metric"><strong>3</strong><span>剩余事项</span></div>
+                    <div class="metric"><strong>1.5h</strong><span>夜间专注</span></div>
+                    <div class="metric"><strong>68%</strong><span>今日完成度</span></div>
+                  </div>
+                </div>
+
+                <div class="circle-actions">
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect></svg></div><span>任务</span></div>
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V4l14 4-14 4"></path></svg></div><span>目标</span></div>
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg></div><span>提醒</span></div>
+                  <div class="circle-item"><div class="circle-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2.5"></path></svg></div><span>专注</span></div>
+                </div>
+
+                <div class="soft-alert">
+                  <div class="num">2</div>
+                  <div>
+                    <strong>2 项任务建议今晚收尾</strong>
+                    <span>夜间模式依然提示风险，但语气更沉静，不刺眼</span>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-head">
+                    <div>
+                      <h5>今晚计划</h5>
+                      <p>像夜色下被整理好的返航清单</p>
+                    </div>
+                    <div class="link">查看全部</div>
+                  </div>
+                  <div class="task">
+                    <div class="check done"></div>
+                    <div class="task-main"><strong class="done">完成产品需求文档</strong><span>已完成 · 今天最重要的一件事已经落下</span></div>
+                    <div class="time">2h</div>
+                  </div>
+                  <div class="task">
+                    <div class="check"></div>
+                    <div class="task-main"><strong>Code Review 新提交</strong><span>夜间保持一件主线，不让注意力继续分散</span><div class="badges"><div class="chip primary">工作</div><div class="chip warning">收尾</div></div></div>
+                    <div class="time">1h</div>
+                  </div>
+                  <div class="task">
+                    <div class="check"></div>
+                    <div class="task-main"><strong>写下今日复盘</strong><span>用 10 分钟把今天关掉，为明天留出空间</span><div class="badges"><div class="chip success">复盘</div></div></div>
+                    <div class="time">0.2h</div>
+                  </div>
+                </div>
+
+                <div class="card soft">
+                  <div class="card-head">
+                    <div>
+                      <h5>夜间提醒</h5>
+                      <p>减少刺激，保留必要信息</p>
+                    </div>
+                    <div class="link">全部</div>
+                  </div>
+                  <div class="task"><div class="task-main"><strong>拉伸放松</strong><span>22:00 · 从工作状态切回身体状态</span></div><div class="time">习惯</div></div>
+                  <div class="task"><div class="task-main"><strong>明日计划预览</strong><span>睡前 5 分钟 · 只看，不决策过多</span></div><div class="time">预览</div></div>
+                </div>
+              </div>
+              <div class="nav">
+                <div class="nav-item active"><div class="nav-icon active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10.5L12 4l8 6.5V20H4z"></path></svg></div><span>今日</span></div>
+                <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg></div><span>行动</span></div>
+                <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V4l14 4-14 4"></path></svg></div><span>目标</span></div>
+                <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c2-4 6-6 8-6s6 2 8 6"></path></svg></div><span>我的</span></div>
+              </div>
+            </div>
+            <div class="phone-label" style="color:#BEB6FF;">A-Dark · 岛屿夜航</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="state-board">
+        <h2>浅深模式关系</h2>
+        <p>这里重点不是“深色好不好看”，而是它是否仍然属于岛屿晨曦。浅色负责开始一天，深色负责收束一天；一个给你轻推力，一个给你安定感。</p>
+        <div class="state-grid">
+          <div class="state-col light">
+            <h3>浅色 · 晨曦</h3>
+            <p>打开时更有空气感和呼吸感，适合白天频繁查看。</p>
+            <div class="state-samples">
+              <div class="state-card"><div class="state-chip">空态</div><strong>今天安排还很轻</strong><span>空态像留白，不像缺内容，会鼓励你开始安排今天。</span></div>
+              <div class="state-card"><div class="state-chip">AI 待采纳</div><strong>AI 推荐先推进 Q3 产品迭代</strong><span>建议像晨光里的提示卡，带一点鼓励感。</span></div>
+              <div class="state-card"><div class="state-chip">已完成</div><strong>今日计划已采纳并执行 2 项</strong><span>完成态柔和，不会让页面变成冰冷仪表板。</span></div>
+            </div>
+          </div>
+          <div class="state-col dark">
+            <h3>深色 · 夜航</h3>
+            <p>更适合夜间专注和收束，但仍然保留生活化与温度。</p>
+            <div class="state-samples">
+              <div class="state-card"><div class="state-chip">空态</div><strong>今晚先把节奏放慢</strong><span>空态不是技术控制台，而是让你平静地决定今晚还要不要继续推进。</span></div>
+              <div class="state-card"><div class="state-chip">AI 待采纳</div><strong>AI 已整理出夜间收尾方案</strong><span>它仍然像陪伴式建议，不会突然变成强命令式面板。</span></div>
+              <div class="state-card"><div class="state-chip">风险提醒</div><strong>逾期任务建议今晚处理 2 项</strong><span>危险信息被保留，但亮度和饱和度都收住了，更适合夜间使用。</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

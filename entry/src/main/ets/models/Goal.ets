@@ -77,6 +77,7 @@ export interface GoalData {
   endDate: number;
   createdAt: number;
   updatedAt: number;
+  completedAt?: number;
   isPriority: boolean;
   isArchived?: boolean;
   archivedAt?: number;
@@ -94,6 +95,7 @@ export class Goal {
   endDate: number;
   createdAt: number;
   updatedAt: number;
+  completedAt?: number;
   isPriority: boolean;
   isArchived: boolean;
   archivedAt?: number;
@@ -109,6 +111,7 @@ export class Goal {
     this.endDate = Date.now() + 90 * 24 * 60 * 60 * 1000; // 默认 90 天
     this.createdAt = Date.now();
     this.updatedAt = Date.now();
+    this.completedAt = undefined;
     this.isPriority = isPriority;
     this.isArchived = false;
     this.archivedAt = undefined;
@@ -140,6 +143,13 @@ export class Goal {
   updateProgress(): void {
     this.progress = this.calculateProgress();
     this.updatedAt = Date.now();
+    if (this.progress >= 100) {
+      if (!this.completedAt) {
+        this.completedAt = this.updatedAt;
+      }
+    } else {
+      this.completedAt = undefined;
+    }
   }
   
   removeKeyResult(krId: string): void {
@@ -165,6 +175,7 @@ export class Goal {
     goal.endDate = json.endDate;
     goal.createdAt = json.createdAt;
     goal.updatedAt = json.updatedAt;
+    goal.completedAt = json.completedAt;
     goal.isPriority = json.isPriority ?? false;
     goal.isArchived = json.isArchived ?? false;
     goal.archivedAt = json.archivedAt;
