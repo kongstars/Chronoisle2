@@ -137,6 +137,14 @@ export struct TodayTabV2 {
     return this.savedPlan.focusTasks;
   }
 
+  private hasActionableTodayPlan(): boolean {
+    return this.getPlanFocusTasks().some((item: SavedPlanTaskItem) => item.type !== 'reminder');
+  }
+
+  private getActionablePlanTaskCount(): number {
+    return this.getPlanFocusTasks().filter((item: SavedPlanTaskItem) => item.type !== 'reminder').length;
+  }
+
   private getPlanFocusTasksDisplay(): SavedPlanTaskItem[] {
     return this.getPlanFocusTasks().slice(0, 7);
   }
@@ -239,6 +247,26 @@ export struct TodayTabV2 {
     return Math.min(100, Math.max(0, goal.progress || 0));
   }
 
+  private getReminderStatusText(item: ReminderSnapshot): string {
+    if (item.completedToday) {
+      return '今天已完成';
+    }
+    if (item.isDueNow) {
+      return '需要尽快处理';
+    }
+    return '今天待处理';
+  }
+
+  private getReminderStatusColor(item: ReminderSnapshot): string {
+    if (item.completedToday) {
+      return this.themeColors.success;
+    }
+    if (item.isDueNow) {
+      return this.themeColors.danger;
+    }
+    return this.themeColors.textSecondary;
+  }
+
   private getQuickActions(): QuickAction[] {
     return [
       { icon: 'task', label: '新建任务', action: () => { if (this.onCreateTask) this.onCreateTask(); } },
@@ -303,8 +331,7 @@ export struct TodayTabV2 {
               .height(V2_QUICK_ACTION_SIZE)
               .backgroundColor(this.themeColors.primarySubtle)
               .borderRadius(V2_QUICK_ACTION_SIZE / 2)
-              .border({ width: 1, color: this.themeColors.primaryLight + '55' })
-              .shadow({ radius: 4, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
+              .border({ width: 1, color: this.themeColors.primaryLight })
 
             AppIcon({ name: item.icon, iconSize: 22, framed: false, color: this.themeColors.primary })
           }
@@ -336,27 +363,27 @@ export struct TodayTabV2 {
             .fontSize(V2_FONT_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
-          Text(this.savedPlan ? '把今天最重要的事收在一张焦点卡里' : '先收拢今天的重点，再开始推进')
+          Text(this.hasActionableTodayPlan() ? '把今天最重要的事收在一张焦点卡里' : '先收拢今天的重点，再开始推进')
             .fontSize(V2_FONT_CAPTION)
             .fontColor(this.themeColors.textSecondary)
         }
         .layoutWeight(1)
         .alignItems(HorizontalAlign.Start)
 
-        if (this.savedPlan) {
-          Text(`${this.getPlanFocusTasks().length} 项`)
+        if (this.hasActionableTodayPlan()) {
+          Text(`${this.getActionablePlanTaskCount()} 项`)
             .fontSize(V2_FONT_CAPTION)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.themeColors.primary)
             .padding({ left: 7, right: 7, top: 2, bottom: 2 })
             .backgroundColor(this.themeColors.surfaceRaised)
-            .border({ width: 1, color: this.themeColors.primaryLight + '55' })
+            .border({ width: 1, color: this.themeColors.primaryLight })
             .borderRadius(10)
         }
       }
       .width('100%')
 
-      if (!this.savedPlan || this.getPlanFocusTasks().length === 0) {
+      if (!this.hasActionableTodayPlan()) {
         Column({ space: 6 }) {
           Text('还没有今日计划')
             .fontSize(V2_FONT_BODY)
@@ -386,7 +413,7 @@ export struct TodayTabV2 {
 
       // 底部操作
       Row({ space: 8 }) {
-        Text(this.savedPlan ? '查看完整计划' : '生成 AI 计划')
+        Text(this.hasActionableTodayPlan() ? '查看完整计划' : '生成 AI 计划')
           .fontSize(V2_FONT_BODY)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeColors.primary)
@@ -400,8 +427,8 @@ export struct TodayTabV2 {
     .padding(V2_CARD_PADDING)
     .backgroundColor(this.themeColors.announcementSurface)
     .borderRadius(V2_CARD_RADIUS)
-    .border({ width: 1, color: this.themeColors.primaryLight + '66' })
-    .shadow({ radius: 12, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 4 })
+    .border({ width: 1, color: this.themeColors.primaryLight })
+    .shadow({ radius: 8, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
   }
 
   @Builder
@@ -438,75 +465,71 @@ export struct TodayTabV2 {
       })
 
       // 内容区
-      Column({ space: 2 }) {
+      Column({ space: 6 }) {
         Row({ space: 6 }) {
-          // 分类标签（任务类型）
           if (item.type !== 'reminder' && this.getTaskCategory(item.id) !== null) {
             Text(this.getTaskCategory(item.id)!.label)
               .fontSize(V2_FONT_MICRO)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getTaskCategory(item.id)!.color)
-              .padding({ left: 5, right: 5, top: 1, bottom: 1 })
-              .backgroundColor(this.getTaskCategory(item.id)!.color + '1A')
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .backgroundColor(this.themeColors.surfaceSoft)
               .borderRadius(4)
           }
 
-          // 提醒标签
           if (item.type === 'reminder') {
             Text('提醒')
               .fontSize(V2_FONT_MICRO)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.themeColors.primary)
-              .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
               .backgroundColor(this.themeColors.primarySubtle)
               .borderRadius(4)
           }
-
-          Text(item.title)
-            .fontSize(V2_FONT_BODY)
-            .fontColor(item.completed ? this.themeColors.textMuted : this.themeColors.textPrimary)
-            .decoration({ type: item.completed ? TextDecorationType.LineThrough : TextDecorationType.None })
-            .layoutWeight(1)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .onClick(() => {
-              if (item.type !== 'reminder' && this.onOpenTaskDetail) this.onOpenTaskDetail(item.id);
-            })
         }
         .width('100%')
-        .alignItems(VerticalAlign.Center)
 
-        // 副信息行：目标名称 / 时间
-        if ((item.goalTitle && item.goalTitle.length > 0) || (item.reminderTime && item.reminderTime.length > 0)) {
-          Row({ space: 6 }) {
-            if (item.goalTitle && item.goalTitle.length > 0) {
-              Text(item.goalTitle)
-                .fontSize(V2_FONT_CAPTION)
-                .fontColor(this.themeColors.textMuted)
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            if (item.reminderTime && item.reminderTime.length > 0) {
-              Text(item.reminderTime)
-                .fontSize(V2_FONT_CAPTION)
-                .fontColor(this.themeColors.textSecondary)
-            }
-          }
+        Text(item.title)
+          .fontSize(V2_FONT_BODY)
+          .fontColor(item.completed ? this.themeColors.textMuted : this.themeColors.textPrimary)
+          .decoration({ type: item.completed ? TextDecorationType.LineThrough : TextDecorationType.None })
           .width('100%')
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .onClick(() => {
+            if (item.type !== 'reminder' && this.onOpenTaskDetail) this.onOpenTaskDetail(item.id);
+          })
+
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+          if (item.goalTitle && item.goalTitle.length > 0) {
+            Text(item.goalTitle)
+              .fontSize(V2_FONT_CAPTION)
+              .fontColor(this.themeColors.textMuted)
+              .margin({ right: 8, bottom: 4 })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          if (item.reminderTime && item.reminderTime.length > 0) {
+            Text(item.reminderTime)
+              .fontSize(V2_FONT_CAPTION)
+              .fontColor(this.themeColors.textSecondary)
+              .margin({ right: 8, bottom: 4 })
+          }
+          if (item.estimatedMinutes && !item.completed) {
+            Text(this.formatEstimatedHours(item.estimatedMinutes))
+              .fontSize(V2_FONT_CAPTION)
+              .fontColor(this.themeColors.textMuted)
+              .margin({ right: 8, bottom: 4 })
+          }
         }
+        .width('100%')
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
-
-      if (item.estimatedMinutes && !item.completed) {
-        Text(this.formatEstimatedHours(item.estimatedMinutes))
-          .fontSize(V2_FONT_CAPTION)
-          .fontColor(this.themeColors.textMuted)
-      }
     }
     .width('100%')
-    .padding({ top: 6, bottom: 6 })
-    .alignItems(VerticalAlign.Center)
+    .padding({ top: 8, bottom: 8 })
+    .alignItems(VerticalAlign.Top)
   }
 
   private formatEstimatedHours(minutes: number): string {
@@ -530,7 +553,7 @@ export struct TodayTabV2 {
 
   @Builder
   private RemindersSection() {
-    Column({ space: 6 }) {
+    Column({ space: 8 }) {
       Row() {
         Text('今日提醒')
           .fontSize(V2_FONT_TITLE)
@@ -553,7 +576,7 @@ export struct TodayTabV2 {
           .fontColor(this.themeColors.textMuted)
           .padding({ top: 4, bottom: 4 })
       } else {
-        Column({ space: 0 }) {
+        Column({ space: 8 }) {
           ForEach(this.getTodayReminders(), (item: ReminderSnapshot) => {
             this.ReminderRow(item)
           }, (item: ReminderSnapshot) => `${item.id}_${item.completedToday}`)
@@ -566,52 +589,65 @@ export struct TodayTabV2 {
 
   @Builder
   private ReminderRow(item: ReminderSnapshot) {
-    Row({ space: 10 }) {
-      // 左侧内容
-      Column({ space: 3 }) {
-        // 提醒名称（允许换行）
-        Text(item.title)
-          .fontSize(V2_FONT_BODY)
-          .fontColor(item.completedToday ? this.themeColors.textMuted : this.themeColors.textPrimary)
-          .decoration({ type: item.completedToday ? TextDecorationType.LineThrough : TextDecorationType.None })
-          .width('100%')
+    Column({ space: 8 }) {
+      Text(item.title)
+        .fontSize(V2_FONT_BODY)
+        .fontColor(item.completedToday ? this.themeColors.textMuted : this.themeColors.textPrimary)
+        .decoration({ type: item.completedToday ? TextDecorationType.LineThrough : TextDecorationType.None })
+        .width('100%')
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        // 类型 + 时间
-        Row({ space: 8 }) {
-          Text(item.typeLabel)
-            .fontSize(V2_FONT_CAPTION)
-            .fontColor(this.themeColors.primary)
-            .padding({ left: 5, right: 5, top: 1, bottom: 1 })
-            .backgroundColor(this.themeColors.primarySubtle)
-            .borderRadius(4)
-
-          Text(item.timeText)
-            .fontSize(V2_FONT_CAPTION)
-            .fontColor(item.completedToday ? this.themeColors.success : (item.isDueNow ? this.themeColors.danger : this.themeColors.textSecondary))
-        }
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      // 右侧操作按钮
-      if (!item.completedToday) {
-        Text('标记完成')
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+        Text(item.typeLabel)
           .fontSize(V2_FONT_CAPTION)
           .fontColor(this.themeColors.primary)
-          .fontWeight(FontWeight.Medium)
-          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-          .borderRadius(6)
+          .padding({ left: 6, right: 6, top: 2, bottom: 2 })
           .backgroundColor(this.themeColors.primarySubtle)
-          .onClick(() => {
-            if (this.onCompleteReminder) this.onCompleteReminder(item.id);
-          })
-      } else {
-        AppIcon({ name: 'success', iconSize: 16, framed: false, color: this.themeColors.success })
+          .borderRadius(4)
+          .margin({ right: 8, bottom: 4 })
+
+        Text(item.timeText)
+          .fontSize(V2_FONT_CAPTION)
+          .fontColor(item.completedToday ? this.themeColors.success : (item.isDueNow ? this.themeColors.danger : this.themeColors.textSecondary))
+          .margin({ right: 8, bottom: 4 })
+
+        Text(this.getReminderStatusText(item))
+          .fontSize(V2_FONT_CAPTION)
+          .fontColor(this.getReminderStatusColor(item))
+          .margin({ right: 8, bottom: 4 })
       }
+      .width('100%')
+
+      Row() {
+        if (!item.completedToday) {
+          Text('标记完成')
+            .fontSize(V2_FONT_CAPTION)
+            .fontColor(this.themeColors.primary)
+            .fontWeight(FontWeight.Medium)
+            .padding({ left: 8, right: 8, top: 5, bottom: 5 })
+            .borderRadius(6)
+            .backgroundColor(this.themeColors.primarySubtle)
+            .onClick(() => {
+              if (this.onCompleteReminder) this.onCompleteReminder(item.id);
+            })
+        } else {
+          Row({ space: 4 }) {
+            AppIcon({ name: 'success', iconSize: 14, framed: false, color: this.themeColors.success })
+            Text('已完成')
+              .fontSize(V2_FONT_CAPTION)
+              .fontColor(this.themeColors.success)
+          }
+        }
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.End)
     }
     .width('100%')
-    .padding({ top: 8, bottom: 8 })
-    .alignItems(VerticalAlign.Center)
+    .padding({ left: 12, right: 12, top: 12, bottom: 12 })
+    .backgroundColor(this.themeColors.surfaceRaised)
+    .borderRadius(V2_CARD_RADIUS)
+    .border({ width: 1, color: this.themeColors.borderColor })
   }
 
   @Builder
@@ -665,7 +701,7 @@ export struct TodayTabV2 {
           .fontSize(V2_FONT_SUBTITLE)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeColors.textPrimary)
-          .maxLines(1)
+          .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width('100%')
 
@@ -725,7 +761,7 @@ export struct TodayTabV2 {
       .padding({ left: 12, right: 12, top: 10, bottom: 10 })
       .backgroundColor(this.themeColors.riskSurface)
       .borderRadius(V2_INNER_CARD_RADIUS)
-      .border({ width: 1, color: this.themeColors.danger + '26' })
+      .border({ width: 1, color: this.themeColors.borderColor })
       .onClick(() => {
         if (this.onOpenReschedule) this.onOpenReschedule();
       })
@@ -742,6 +778,7 @@ export struct TodayTabV2 {
         this.OverdueAlert()
         this.PlanCard()
         this.RemindersSection()
+        this.GoalsSection()
 
         // 底部安全区
         Blank().height(50)

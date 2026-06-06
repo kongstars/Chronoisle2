@@ -485,7 +485,7 @@ struct CreateTaskPage {
 
   @Builder
   private HeroCard() {
-    AppCard({ variant: 'soft', paddingLevel: 'md', spacing: SPACE_XS }) {
+    AppCard({ variant: 'accent', paddingLevel: 'md', spacing: SPACE_XS }) {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         AppStatusBadge({ text: this.isEdit ? '编辑任务' : '创建任务', tone: 'primary', iconName: this.isEdit ? 'note' : 'task' })
         if (this.isImportant) {
@@ -498,7 +498,7 @@ struct CreateTaskPage {
       .width('100%')
 
       Text(this.isEdit ? '更新任务内容与执行约束' : '把一个动作定义清楚，后续执行才会更轻')
-        .fontSize(18)
+        .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
@@ -539,7 +539,7 @@ struct CreateTaskPage {
         .padding({ left: SPACE_MD, right: SPACE_MD })
         .backgroundColor(this.themeColors.inputBackground)
         .borderRadius(12)
-        .fontSize(14)
+        .fontSize(TYPE_BODY)
         .fontColor(this.themeColors.textPrimary)
         .placeholderColor(this.themeColors.textMuted)
         .onChange((value: string) => {
@@ -840,7 +840,7 @@ struct CreateTaskPage {
         .borderRadius(12)
         .fontColor(this.themeColors.textPrimary)
         .placeholderColor(this.themeColors.textMuted)
-        .fontSize(14)
+        .fontSize(TYPE_BODY)
         .onChange((value: string) => {
           this.description = value;
           this.aiFill.markUserEdited('description');
@@ -879,7 +879,7 @@ struct CreateTaskPage {
   private SelectionDialog(title: string) {
     Column({ space: SPACE_MD }) {
       Text(title)
-        .fontSize(18)
+        .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
@@ -910,7 +910,7 @@ struct CreateTaskPage {
 
         Column({ space: SPACE_MD }) {
           Text('选择目标')
-            .fontSize(18)
+            .fontSize(TYPE_SECTION_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -986,7 +986,7 @@ struct CreateTaskPage {
 
         Column({ space: SPACE_MD }) {
           Text('选择提醒')
-            .fontSize(18)
+            .fontSize(TYPE_SECTION_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -1060,7 +1060,7 @@ struct CreateTaskPage {
 
         Column({ space: SPACE_MD }) {
           Text('选择衡量标准')
-            .fontSize(18)
+            .fontSize(TYPE_SECTION_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -1126,7 +1126,7 @@ struct CreateTaskPage {
         Column({ space: SPACE_SM }) {
           Row() {
             Text('选择日期和时间')
-              .fontSize(18)
+              .fontSize(TYPE_SECTION_TITLE)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.textPrimary)
             Blank()

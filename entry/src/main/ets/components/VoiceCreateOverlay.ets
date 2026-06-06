@@ -738,7 +738,7 @@ export struct VoiceCreateOverlay {
           .width('100%')
 
           Text(this.getResultSummary())
-            .fontSize(15)
+            .fontSize(TYPE_BODY)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -819,7 +819,7 @@ export struct VoiceCreateOverlay {
         Blank()
 
         if (!this.isBlockingClose(this.phase)) {
-          Button() {
+          Stack({ alignContent: Alignment.Center }) {
             AppIcon({
               name: 'close',
               iconSize: ICON_SIZE_XS,
@@ -827,20 +827,20 @@ export struct VoiceCreateOverlay {
               color: this.themeColors.textSecondary
             })
           }
-            .width(28)
-            .height(28)
-            .backgroundColor(this.themeColors.surfaceSoft)
-            .borderRadius(14)
-            .onClick(() => {
-              this.resetViewState();
-            })
+          .width(28)
+          .height(28)
+          .backgroundColor(this.themeColors.surfaceSoft)
+          .borderRadius(14)
+          .onClick(() => {
+            this.resetViewState();
+          })
         }
       }
       .width('100%')
 
       if ((this.phase === 'error' ? this.errorMessage : this.getPhaseDescriptor().title).length > 0) {
         Text(this.phase === 'error' ? this.errorMessage : this.getPhaseDescriptor().title)
-          .fontSize(15)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.phase === 'error' ? this.themeColors.danger : this.themeColors.textPrimary)
           .width('100%')
@@ -910,7 +910,9 @@ export struct VoiceCreateOverlay {
         Row()
           .width(36)
           .height(36)
-          .backgroundColor(this.themeColors.primary + '14')
+          .backgroundColor(this.phase === 'recording' || this.phase === 'checking'
+            ? this.themeColors.announcementSurface
+            : this.themeColors.primarySubtle)
           .borderRadius(18)
         AppIcon({
           name: 'noise',
@@ -949,12 +951,12 @@ export struct VoiceCreateOverlay {
     .width('100%')
     .height(this.voiceBarHeight)
     .padding({ left: 14, right: 14, top: 10, bottom: 10 })
-    .backgroundColor(this.themeColors.surface)
+    .backgroundColor(this.phase === 'recording' ? this.themeColors.announcementSurface : this.themeColors.surface)
     .borderRadius(20)
     .border({
       width: 1,
       color: this.phase === 'recording' || this.phase === 'checking'
-        ? this.themeColors.primary + '55'
+        ? this.themeColors.primaryLight
         : this.themeColors.borderColor
     })
     .scale({

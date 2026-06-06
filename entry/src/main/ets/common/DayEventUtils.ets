@@ -153,10 +153,6 @@ export function getDayEventOccurrenceTimeOnDate(event: DayEvent, timestamp: numb
     occurrences.push(event.targetDate);
   }
 
-  if (startOfDay(event.startDate) === day) {
-    occurrences.push(event.startDate);
-  }
-
   event.reminderRules.forEach((rule: ReminderRule) => {
     const occurrence = getReminderRuleOccurrenceTimeOnDate(event, rule, timestamp);
     if (occurrence !== undefined) {
@@ -173,12 +169,8 @@ export function getDayEventOccurrenceTimeOnDate(event: DayEvent, timestamp: numb
 }
 
 export function getEventsForDate(events: DayEvent[], timestamp: number): DayEvent[] {
-  const day = startOfDay(timestamp);
   return events.filter((event: DayEvent) => {
-    if (startOfDay(event.startDate) === day) {
-      return true;
-    }
-    if (event.targetDate !== undefined && startOfDay(event.targetDate) === day) {
+    if (event.targetDate !== undefined && startOfDay(event.targetDate) === startOfDay(timestamp)) {
       return true;
     }
     return event.reminderRules.some((rule: ReminderRule) => matchesReminderRuleOnDate(event, rule, timestamp));

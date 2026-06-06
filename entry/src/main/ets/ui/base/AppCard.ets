@@ -34,11 +34,11 @@ export struct AppCard {
       case 'raised':
         return this.themeColors.surfaceRaised;
       case 'accent':
-        return this.themeColors.primarySubtle;
+        return this.themeColors.announcementSurface;
       case 'premium':
         return this.themeColors.premiumSurface;
       case 'danger':
-        return this.themeColors.dangerSubtle;
+        return this.themeColors.riskSurface;
       default:
         return this.themeColors.cardBackground;
     }
@@ -46,10 +46,10 @@ export struct AppCard {
 
   private getBorderColor(): string {
     if (this.isInteractive() && this.isFocused) {
-      return this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     if (this.isInteractive() && this.isHovered) {
-      return this.themeColors.primaryLight;
+      return this.themeColors.divider;
     }
     switch (this.variant) {
       case 'accent':
@@ -57,7 +57,7 @@ export struct AppCard {
       case 'premium':
         return this.themeColors.premiumBorder;
       case 'danger':
-        return this.themeColors.danger;
+        return this.themeColors.borderColor;
       case 'raised':
         return this.themeColors.divider;
       default:
@@ -86,7 +86,7 @@ export struct AppCard {
     .backgroundColor(this.getBackgroundColor())
     .borderRadius(RADIUS_LG)
     .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
-    .shadow(this.isInteractive() || this.variant === 'raised' ? getRaisedCardShadow(this.themeColors) : getCardShadow(this.themeColors))
+    .shadow(this.variant === 'raised' ? getRaisedCardShadow(this.themeColors) : getCardShadow(this.themeColors))
     .focusable(this.isInteractive())
     .onFocus(() => {
       this.isFocused = true;

@@ -43,10 +43,10 @@ export struct AppSearchBar {
       return this.themeColors.borderColor;
     }
     if (this.isFocused) {
-      return this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.primaryLight;
+      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }
@@ -92,7 +92,7 @@ export struct AppSearchBar {
       }
 
       if (this.editable && this.clearable && this.value.trim().length > 0) {
-        Button() {
+        Stack({ alignContent: Alignment.Center }) {
           Row() {
             AppIcon({
               name: 'close',
@@ -111,7 +111,7 @@ export struct AppSearchBar {
         .padding({ left: 0, right: 0, top: 0, bottom: 0 })
         .backgroundColor(this.themeColors.transparent)
         .enabled(!this.disabled)
-        .stateEffect(!this.disabled)
+        .useEffect(!this.disabled)
         .hoverEffect(HoverEffect.Auto)
         .focusable(!this.disabled)
         .onClick(() => {

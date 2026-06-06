@@ -42,6 +42,23 @@ const DEFAULT_MONGODB_URI = process.env.NODE_ENV === 'production'
   : 'mongodb://127.0.0.1:27017/chronoisle_prod';
 const MONGODB_URI = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
 
+function maskMongoUri(uri) {
+  const value = String(uri || '');
+  return value.replace(/\/\/([^:/]+):([^@/]+)@/, '//$1:***@');
+}
+
+function buildAllowedOrigins() {
+  const raw = String(process.env.CORS_ORIGIN || '').trim();
+  if (!raw) {
+    return process.env.NODE_ENV === 'production'
+      ? []
+      : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+  }
+  return raw.split(',').map(item => item.trim()).filter(Boolean);
+}
+
+const allowedOrigins = buildAllowedOrigins();
+
 mongoose.connect(MONGODB_URI, {
   maxPoolSize: 50,
   minPoolSize: 5,
@@ -50,7 +67,7 @@ mongoose.connect(MONGODB_URI, {
   socketTimeoutMS: 45000,
   family: 4
 }).then(() => {
-  console.log(`MongoDB 连接成功 [${MONGODB_URI}]`);
+  console.log(`MongoDB 连接成功 [${maskMongoUri(MONGODB_URI)}]`);
 }).catch(err => {
   console.error('MongoDB 连接失败:', err.message);
 });
@@ -62,15 +79,37 @@ if (process.env.NODE_ENV === 'production') {
 
 // 中间件
 app.use(attachTraceId);
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS origin denied'));
+  },
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Goal-Planning-Visitor-Id']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Goal-Planning-Visitor-Id', 'X-Trace-Id'],
+  optionsSuccessStatus: 204
 }));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
 // 托管管理后台与官网公开静态文件 (如隐私协议)
-app.use('/admin', express.static(path.join(__dirname, 'admin')));
+app.use('/admin', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+}, express.static(path.join(__dirname, 'admin')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 健康检查端点
@@ -341,7 +380,7 @@ app.use('/api/agent/reschedule', authenticate, agentRateLimiter, agentReschedule
   usageRoutes
 }));
 
-app.post('/api/agent/completion', agentRateLimiter, async (req, res) => {
+app.post('/api/agent/completion', authenticate, agentRateLimiter, async (req, res) => {
   try {
     const { input, parameters, debug, session_id, app_id } = req.body;
     const appId = app_id || process.env.ALIBABA_CLOUD_BAILIAN_APP_ID;
@@ -458,6 +497,10 @@ app.get('/api/speech/token/protected', authenticate, async (req, res) => {
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
+  if (err && err.message === 'CORS origin denied') {
+    return sendError(res, 403, 'CORS_ORIGIN_DENIED', '当前来源未被服务器允许访问');
+  }
+
   if (err && (err.type === 'entity.too.large' || err.status === 413)) {
     console.warn(`请求体过大: ${req.method} ${req.originalUrl} limit=${JSON_BODY_LIMIT}`);
     return sendError(res, 413, 'REQUEST_TOO_LARGE', '需要重排的任务内容过多，请先减少超长描述或稍后重试', {

@@ -13,40 +13,20 @@ import { AppCard } from '../ui/base/AppCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { MOTION_CURVE_STANDARD, MOTION_DURATION_BASE, MOTION_DURATION_SLOW } from '../foundation/tokens/MotionTokens';
+import {
+  ONBOARDING_SHADOW_LG, ONBOARDING_SHADOW_MD, ONBOARDING_SHADOW_SM, ONBOARDING_TRANSPARENT, ONBOARDING_WHITE,
+  ONBOARDING_WHITE_10, ONBOARDING_WHITE_12, ONBOARDING_WHITE_14, ONBOARDING_WHITE_15, ONBOARDING_WHITE_16,
+  ONBOARDING_WHITE_20, ONBOARDING_WHITE_30, ONBOARDING_WHITE_40, ONBOARDING_WHITE_50, ONBOARDING_WHITE_70,
+  ONBOARDING_WHITE_75, ONBOARDING_WHITE_80, ONBOARDING_WHITE_85, ONBOARDING_WHITE_90
+} from '../foundation/tokens/OnboardingTokens';
 import { RADIUS_LG, RADIUS_MD, RADIUS_XL } from '../foundation/tokens/RadiusTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_PAGE_TITLE, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 
 const ONBOARDING_PREFS_NAME: string = 'onboarding_prefs';
 const ONBOARDING_COMPLETED_KEY: string = 'onboarding_completed';
-const ONBOARDING_WHITE: string = '#FFFFFF';
-const ONBOARDING_WHITE_90: string = 'rgba(255,255,255,0.9)';
-const ONBOARDING_WHITE_85: string = 'rgba(255,255,255,0.85)';
-const ONBOARDING_WHITE_80: string = 'rgba(255,255,255,0.8)';
-const ONBOARDING_WHITE_75: string = 'rgba(255,255,255,0.75)';
-const ONBOARDING_WHITE_70: string = 'rgba(255,255,255,0.7)';
-const ONBOARDING_WHITE_50: string = 'rgba(255,255,255,0.5)';
-const ONBOARDING_WHITE_40: string = 'rgba(255,255,255,0.4)';
-const ONBOARDING_WHITE_30: string = 'rgba(255,255,255,0.3)';
-const ONBOARDING_WHITE_20: string = 'rgba(255,255,255,0.2)';
-const ONBOARDING_WHITE_16: string = 'rgba(255,255,255,0.16)';
-const ONBOARDING_WHITE_15: string = 'rgba(255,255,255,0.15)';
-const ONBOARDING_WHITE_14: string = 'rgba(255,255,255,0.14)';
-const ONBOARDING_WHITE_12: string = 'rgba(255,255,255,0.12)';
-const ONBOARDING_WHITE_10: string = 'rgba(255,255,255,0.1)';
-const ONBOARDING_TRANSPARENT: string = 'rgba(0,0,0,0)';
-const ONBOARDING_SHADOW_LG: string = 'rgba(0,0,0,0.15)';
-const ONBOARDING_SHADOW_MD: string = 'rgba(0,0,0,0.12)';
-const ONBOARDING_SHADOW_SM: string = 'rgba(0,0,0,0.1)';
-
 const onboardingLogger = Logger.create('OnboardingPage');
 export const ONBOARDING_ENTRY_PAYLOAD_KEY: string = 'onboarding_entry_payload';
 export const ONBOARDING_COMPLETED_RUNTIME_KEY: string = 'onboarding_completed_runtime';
-
-const ONBOARDING_STEP_GRADIENTS: [string, number][][] = [
-  [['#667EEA', 0], ['#764BA2', 1]],
-  [['#4F46E5', 0], ['#06B6D4', 1]],
-  [['#11998E', 0], ['#38EF7D', 1]]
-];
 
 // ======== 预设目标案例 ========
 
@@ -54,8 +34,6 @@ interface PresetGoal {
   icon: string;
   label: string;
   color: string;
-  gradientStart: string;
-  gradientEnd: string;
   category: GoalCategory;
   title: string;
   description: string;
@@ -94,8 +72,6 @@ const PRESET_GOALS: PresetGoal[] = [
     icon: 'health',
     label: '健康',
     color: CATEGORY_COLORS[GoalCategory.HEALTH],
-    gradientStart: '#43E97B',
-    gradientEnd: '#38F9D7',
     category: GoalCategory.HEALTH,
     title: '三个月减重10斤',
     description: '通过合理饮食和规律运动，在三个月内健康减重10斤'
@@ -104,8 +80,6 @@ const PRESET_GOALS: PresetGoal[] = [
     icon: 'growth',
     label: '成长',
     color: CATEGORY_COLORS[GoalCategory.LEARNING],
-    gradientStart: '#F6D365',
-    gradientEnd: '#FDA085',
     category: GoalCategory.LEARNING,
     title: '30天养成阅读习惯',
     description: '每天坚持阅读至少30分钟，一个月内读完3本书'
@@ -114,8 +88,6 @@ const PRESET_GOALS: PresetGoal[] = [
     icon: 'finance',
     label: '财富',
     color: CATEGORY_COLORS[GoalCategory.FINANCE],
-    gradientStart: '#A18CD1',
-    gradientEnd: '#FBC2EB',
     category: GoalCategory.FINANCE,
     title: '半年攒下第一个1万应急金',
     description: '通过控制支出和记账，半年内存够1万元应急储备金'
@@ -124,8 +96,6 @@ const PRESET_GOALS: PresetGoal[] = [
     icon: 'joy',
     label: '快乐',
     color: CATEGORY_COLORS[GoalCategory.FUN],
-    gradientStart: '#FF6B6B',
-    gradientEnd: '#FFAB76',
     category: GoalCategory.FUN,
     title: '学会弹一首完整的吉他曲',
     description: '从零基础开始，3个月内学会弹奏一首完整的吉他曲'
@@ -251,6 +221,56 @@ struct OnboardingPage {
       return PRESET_GOALS[this.selectedPresetIndex].color;
     }
     return this.themeColors.primary;
+  }
+
+  private getCategoryAccent(category: GoalCategory): string {
+    switch (category) {
+      case GoalCategory.HEALTH:
+        return this.themeColors.success;
+      case GoalCategory.LEARNING:
+        return this.themeColors.primary;
+      case GoalCategory.FINANCE:
+        return this.themeColors.warning;
+      case GoalCategory.FUN:
+        return this.themeColors.premium;
+      default:
+        return this.themeColors.primary;
+    }
+  }
+
+  private getCategorySurface(category: GoalCategory): string {
+    switch (category) {
+      case GoalCategory.HEALTH:
+        return this.themeColors.successSubtle;
+      case GoalCategory.LEARNING:
+        return this.themeColors.primarySubtle;
+      case GoalCategory.FINANCE:
+        return this.themeColors.warningSubtle;
+      case GoalCategory.FUN:
+        return this.themeColors.premiumSurface;
+      default:
+        return this.themeColors.primarySubtle;
+    }
+  }
+
+  private getStepPrimaryColor(step: number): string {
+    if (step === 0) {
+      return this.themeColors.primaryDark;
+    }
+    if (step === 1) {
+      return this.themeColors.primary;
+    }
+    return this.themeColors.primaryDark;
+  }
+
+  private getStepSecondaryColor(step: number): string {
+    if (step === 0) {
+      return this.themeColors.premium;
+    }
+    if (step === 1) {
+      return this.themeColors.accent;
+    }
+    return this.themeColors.success;
   }
 
   hasValidGoalInput(): boolean {
@@ -380,7 +400,10 @@ struct OnboardingPage {
   }
 
   getStepGradient(): [string, number][] {
-    return ONBOARDING_STEP_GRADIENTS[this.currentStep] || ONBOARDING_STEP_GRADIENTS[0];
+    return [
+      [this.getStepPrimaryColor(this.currentStep), 0],
+      [this.getStepSecondaryColor(this.currentStep), 1]
+    ];
   }
 
   build() {
@@ -442,7 +465,7 @@ struct OnboardingPage {
       }
       .layoutWeight(1)
 
-      Button() {
+      Stack({ alignContent: Alignment.Center }) {
         Row({ space: 4 }) {
           Text('跳过')
             .fontSize(TYPE_BODY)
@@ -560,12 +583,14 @@ struct OnboardingPage {
       .margin({ top: 12 })
 
       // 底部按钮
-      Button('开始创建第一个目标')
+      Stack({ alignContent: Alignment.Center }) {
+        Text('开始创建第一个目标')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.hasAgreedPrivacy
-          ? (this.getStepGradient()[0][0] as string)
+          ? this.themeColors.primary
           : ONBOARDING_WHITE_40)
+      }
         .backgroundColor(this.hasAgreedPrivacy ? ONBOARDING_WHITE : ONBOARDING_WHITE_12)
         .borderRadius(RADIUS_XL)
         .width('75%')
@@ -702,10 +727,12 @@ struct OnboardingPage {
       .scrollBar(BarState.Off)
 
       // 底部按钮
-      Button('让 AI 帮我拆解')
+      Stack({ alignContent: Alignment.Center }) {
+        Text('让 AI 帮我拆解')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.hasValidGoalInput() ? this.themeColors.primary : ONBOARDING_WHITE_50)
+      }
         .backgroundColor(this.hasValidGoalInput() ? ONBOARDING_WHITE : ONBOARDING_WHITE_15)
         .borderRadius(RADIUS_XL)
         .width('75%')
@@ -728,18 +755,18 @@ struct OnboardingPage {
       AppIcon({
         name: PRESET_GOALS[index].icon,
         iconSize: 36,
-        color: ONBOARDING_WHITE,
-        surfaceColor: ONBOARDING_WHITE_14
+        color: this.getCategoryAccent(PRESET_GOALS[index].category),
+        surfaceColor: this.getCategorySurface(PRESET_GOALS[index].category)
       })
 
       Text(PRESET_GOALS[index].label)
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
-        .fontColor(ONBOARDING_WHITE)
+        .fontColor(this.themeColors.textPrimary)
 
       Text(PRESET_GOALS[index].title)
         .fontSize(TYPE_META)
-        .fontColor(ONBOARDING_WHITE_75)
+        .fontColor(this.themeColors.textSecondary)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .textAlign(TextAlign.Center)
@@ -748,16 +775,11 @@ struct OnboardingPage {
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .padding({ left: 8, right: 8, top: 14, bottom: 14 })
-    .linearGradient({
-      angle: 145,
-      colors: this.selectedPresetIndex === index
-        ? [[ONBOARDING_WHITE_40, 0], [ONBOARDING_WHITE_20, 1]]
-        : [[PRESET_GOALS[index].gradientStart + '30', 0], [PRESET_GOALS[index].gradientEnd + '20', 1]]
-    })
+    .backgroundColor(this.selectedPresetIndex === index ? this.themeColors.announcementSurface : this.themeColors.surfaceRaised)
     .borderRadius(RADIUS_LG)
     .border({
-      width: this.selectedPresetIndex === index ? 2.5 : 1,
-      color: this.selectedPresetIndex === index ? ONBOARDING_WHITE : ONBOARDING_WHITE_20
+      width: this.selectedPresetIndex === index ? 1.5 : 1,
+      color: this.selectedPresetIndex === index ? this.themeColors.primaryLight : this.themeColors.borderColor
     })
     .shadow({ radius: 12, color: ONBOARDING_SHADOW_SM, offsetY: 4 })
     .animation({ duration: MOTION_DURATION_BASE, curve: MOTION_CURVE_STANDARD })

@@ -20,6 +20,7 @@ import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
 import { RADIUS_LG, RADIUS_PILL, RADIUS_SM } from '../foundation/tokens/RadiusTokens';
 import { SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import {
+  TYPE_HERO_TITLE,
   TYPE_BODY,
   TYPE_CAPTION,
   TYPE_META,
@@ -171,6 +172,16 @@ export struct GoalsTab {
     }
   }
 
+  private getGoalCardAccent(goal: Goal): string {
+    if (goal.isArchived) {
+      return this.themeColors.textMuted;
+    }
+    if (goal.isPriority) {
+      return this.themeColors.primary;
+    }
+    return this.themeColors.primaryLight;
+  }
+
   private getCategoryBadgeBackground(category: GoalCategory): string {
     switch (category) {
       case GoalCategory.HEALTH:
@@ -248,11 +259,11 @@ export struct GoalsTab {
     Row({ space: SPACE_SM }) {
       Column({ space: 2 }) {
         Text('目标')
-          .fontSize(24)
+          .fontSize(TYPE_HERO_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         Text(this.getDisplayHeaderSubtitle())
-          .fontSize(14)
+          .fontSize(TYPE_META)
           .fontColor(this.themeColors.textSecondary)
       }
       .layoutWeight(1)
@@ -320,7 +331,7 @@ export struct GoalsTab {
       Row({ space: SPACE_MD }) {
         Column({ space: 2 }) {
           Text(goal.title)
-            .fontSize(20)
+            .fontSize(TYPE_SECTION_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .maxLines(2)
@@ -339,12 +350,15 @@ export struct GoalsTab {
           Text(`${Math.min(100, Math.max(0, goal.progress || 0))}%`)
             .fontSize(TYPE_NUMERIC_MD)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.getCategoryAccent(goal.category))
+            .fontColor(this.themeColors.primary)
           Text('完成度')
             .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
         }
         .alignItems(HorizontalAlign.End)
+        .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_XS, bottom: SPACE_XS })
+        .backgroundColor(this.themeColors.surfaceRaised)
+        .borderRadius(RADIUS_SM)
       }
       .width('100%')
       .alignItems(VerticalAlign.Center)
@@ -360,7 +374,7 @@ export struct GoalsTab {
         Row()
           .width(`${Math.min(100, Math.max(0, goal.progress || 0))}%`)
           .height(6)
-          .backgroundColor(this.getCategoryAccent(goal.category))
+          .backgroundColor(this.themeColors.primary)
           .borderRadius(3)
       }
       .width('100%')
@@ -373,7 +387,7 @@ export struct GoalsTab {
               Circle()
                 .width(5)
                 .height(5)
-                .fill(this.getCategoryAccent(goal.category))
+                .fill(this.themeColors.primary)
               Text(item)
                 .fontSize(TYPE_BODY)
                 .fontColor(this.themeColors.textPrimary)
@@ -389,10 +403,10 @@ export struct GoalsTab {
     }
     .width('100%')
     .padding(SPACE_MD)
-    .backgroundColor(this.themeColors.cardBackground)
+    .backgroundColor(this.themeColors.announcementSurface)
     .borderRadius(RADIUS_LG)
-    .border({ width: BORDER_DEFAULT, color: this.getCategoryAccent(goal.category) })
-    .shadow(getCardShadow(this.themeColors))
+    .border({ width: BORDER_DEFAULT, color: this.themeColors.primaryLight })
+    .shadow(getRaisedCardShadow(this.themeColors))
     .onClick(() => {
       if (this.onOpenGoalDetail) {
         this.onOpenGoalDetail(goal.id);
@@ -407,8 +421,9 @@ export struct GoalsTab {
         Row()
           .width(20)
           .height(20)
-          .backgroundColor(this.getCategoryBadgeBackground(category))
+          .backgroundColor(this.themeColors.surfaceRaised)
           .borderRadius(RADIUS_PILL)
+          .border({ width: BORDER_DEFAULT, color: this.getCategoryBadgeBackground(category) })
         AppIcon({
           name: this.getCategoryIconName(category),
           iconSize: 12,
@@ -446,9 +461,10 @@ export struct GoalsTab {
         : `今天还有 ${this.getGoalTaskCount(goal)} 件行动`,
       percentText: `${Math.min(100, Math.max(0, goal.progress || 0))}%`,
       keyResults: this.getGoalKeyResultSummaries(goal),
-      accentColor: this.getCategoryAccent(goal.category),
+      accentColor: this.getGoalCardAccent(goal),
       badgeTextColor: this.getCategoryBadgeTextColor(goal.category),
       badgeBackgroundColor: this.getCategoryBadgeBackground(goal.category),
+      surfaceColor: goal.isPriority ? this.themeColors.announcementSurface : this.themeColors.surfaceRaised,
       tapAction: () => {
         if (this.onOpenGoalDetail) {
           this.onOpenGoalDetail(goal.id);

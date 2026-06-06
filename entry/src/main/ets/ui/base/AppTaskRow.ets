@@ -41,7 +41,7 @@ export struct AppTaskRow {
       return this.embedded ? this.themeColors.transparent : this.themeColors.surfaceSoft;
     }
     if (this.isFocused) {
-      return this.themeColors.primarySubtle;
+      return this.themeColors.announcementSurface;
     }
     if (this.isHovered && (this.isOpenInteractive() || this.isToggleInteractive())) {
       return this.themeColors.surfaceSoft;
@@ -54,10 +54,10 @@ export struct AppTaskRow {
       return this.themeColors.borderColor;
     }
     if (this.isFocused) {
-      return this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     if (this.isHovered && (this.isOpenInteractive() || this.isToggleInteractive())) {
-      return this.themeColors.primaryLight;
+      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }

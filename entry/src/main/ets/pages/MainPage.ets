@@ -548,11 +548,12 @@ struct MainPage {
       Row()
         .width('100%')
         .height('100%')
-        .backgroundColor(this.themeColors.primary)
+        .backgroundColor(this.themeColors.announcementSurface)
         .borderRadius(RADIUS_PILL)
+        .border({ width: BORDER_DEFAULT, color: this.themeColors.primaryLight })
       SymbolGlyph($r('sys.symbol.mic'))
-        .fontSize(22)
-        .fontColor([this.themeColors.textOnPrimary])
+        .fontSize(NAV_ICON_SIZE)
+        .fontColor([this.themeColors.primary])
         .fontWeight(FontWeight.Medium)
         .renderingStrategy(SymbolRenderingStrategy.SINGLE)
     }
@@ -788,12 +789,12 @@ struct MainPage {
         Row()
           .width(32)
           .height(32)
-          .backgroundColor(this.voiceInlinePhase === 'recording' ? this.themeColors.danger + '22' :
-                          this.voiceInlinePhase === 'error' ? this.themeColors.danger + '15' :
-                          this.themeColors.primary + '15')
+          .backgroundColor(this.voiceInlinePhase === 'recording' ? this.themeColors.riskSurface :
+                          this.voiceInlinePhase === 'error' ? this.themeColors.dangerSubtle :
+                          this.themeColors.primarySubtle)
           .borderRadius(16)
         SymbolGlyph($r('sys.symbol.mic'))
-          .fontSize(16)
+          .fontSize(TYPE_BODY)
           .fontColor([this.voiceInlinePhase === 'recording' ? this.themeColors.danger :
                      this.voiceInlinePhase === 'error' ? this.themeColors.danger :
                      this.themeColors.primary])
@@ -988,7 +989,7 @@ struct MainPage {
 
   @Builder
   private FloatingButton() {
-    Button() {
+    Stack({ alignContent: Alignment.Center }) {
       MainFabButton()
     }
     .width(this.fabSize)
@@ -996,7 +997,7 @@ struct MainPage {
     .backgroundColor(Color.Transparent)
     .borderRadius(this.fabSize / 2)
     .border({ width: BORDER_DEFAULT, color: this.getFabBorderColor() })
-    .stateEffect(true)
+    .useEffect(true)
     .hoverEffect(HoverEffect.Auto)
     .focusable(true)
     .onFocus(() => {

@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const IapOrder = require('../models/IapOrder');
 const CreditAccount = require('../models/CreditAccount');
@@ -26,6 +27,12 @@ if (!JWT_SECRET) {
 }
 const _JWT_SECRET = JWT_SECRET || 'chronoisle-dev-insecure-key-do-not-use-in-production';
 const ACCOUNT_DELETION_CONFIRMATION = 'CONFIRM_DELETE_ACCOUNT';
+const AUTH_CODE_TTL_MS = 5 * 60 * 1000;
+const AUTH_CODE_MAX_VERIFY_ATTEMPTS = 5;
+const AUTH_SEND_CODE_WINDOW_MS = 10 * 60 * 1000;
+const AUTH_SEND_CODE_MAX_PER_WINDOW = 5;
+const SUPPORTED_ACCOUNT_TYPES = new Set(['phone', 'email']);
+const sendCodeAttemptStore = new Map();
 
 function extractBearerToken(req) {
   const authHeader = req.headers.authorization;
@@ -76,6 +83,91 @@ function buildUserPayload(user) {
   };
 }
 const REGISTER_BONUS = 50;  // 注册赠送积分
+
+function isProduction() {
+  return process.env.NODE_ENV === 'production';
+}
+
+function normalizeAccountType(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return SUPPORTED_ACCOUNT_TYPES.has(normalized) ? normalized : '';
+}
+
+function normalizeAccount(accountType, value) {
+  const source = String(value || '').trim();
+  if (!source || source.length > 120) {
+    return '';
+  }
+
+  if (accountType === 'phone') {
+    const normalizedPhone = source.replace(/\s+/g, '');
+    return /^1\d{10}$/.test(normalizedPhone) ? normalizedPhone : '';
+  }
+
+  if (accountType === 'email') {
+    const normalizedEmail = source.toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) ? normalizedEmail : '';
+  }
+
+  return '';
+}
+
+function buildVerificationKey(accountType, account) {
+  return `${accountType}:${account}`;
+}
+
+function issueVerificationCode() {
+  const configuredCode = String(process.env.AUTH_TEST_CODE || '').trim();
+  if (!isProduction() && /^\d{6}$/.test(configuredCode)) {
+    return configuredCode;
+  }
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+function shouldExposeDevCode() {
+  return !isProduction();
+}
+
+function isVerificationCodeFlowEnabled() {
+  return !isProduction() || String(process.env.ENABLE_PRODUCTION_VERIFICATION_CODE_LOGIN || '').trim() === 'true';
+}
+
+function consumeVerificationRecord(accountType, account, code) {
+  const key = buildVerificationKey(accountType, account);
+  const record = verificationCodes.get(key);
+  if (!record || record.expiresAt < Date.now()) {
+    verificationCodes.delete(key);
+    return { ok: false, message: '验证码无效或已过期' };
+  }
+
+  if (record.attemptCount >= AUTH_CODE_MAX_VERIFY_ATTEMPTS) {
+    verificationCodes.delete(key);
+    return { ok: false, message: '验证码校验失败次数过多，请重新获取' };
+  }
+
+  if (record.code !== String(code || '').trim()) {
+    record.attemptCount += 1;
+    verificationCodes.set(key, record);
+    return { ok: false, message: '验证码无效或已过期' };
+  }
+
+  verificationCodes.delete(key);
+  return { ok: true };
+}
+
+function isSendCodeRateLimited(req, accountKey) {
+  const ip = String(req.ip || req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim();
+  const key = `${ip}|${accountKey}`;
+  const now = Date.now();
+  const current = sendCodeAttemptStore.get(key);
+  if (!current || now - current.windowStart > AUTH_SEND_CODE_WINDOW_MS) {
+    sendCodeAttemptStore.set(key, { windowStart: now, count: 1 });
+    return false;
+  }
+
+  current.count += 1;
+  return current.count > AUTH_SEND_CODE_MAX_PER_WINDOW;
+}
 
 function getMembershipPlanByProductId(productId) {
   if (productId === 'vip_yearly_continuous') return 'yearly_continuous';
@@ -160,29 +252,56 @@ function parseHuaweiIdToken(idToken) {
 }
 
 router.post('/send-code', (req, res) => {
-  const { accountType, account } = req.body;
-  
-  if (!account) {
-    return sendError(res, 400, 'AUTH_ACCOUNT_REQUIRED', '账号不可为空');
+  const accountType = normalizeAccountType(req.body?.accountType);
+  const account = normalizeAccount(accountType, req.body?.account);
+
+  if (!isVerificationCodeFlowEnabled()) {
+    return sendError(res, 503, 'AUTH_CODE_DELIVERY_NOT_CONFIGURED', '当前环境未配置验证码下发通道，请改用第三方登录或联系管理员');
   }
 
-  // 始终固定验证码为 123456 用于跑测试流程
-  const code = '123456';
-  const expiresAt = Date.now() + 5 * 60 * 1000;
-  
-  verificationCodes.set(`${accountType}:${account}`, { code, expiresAt });
-  
-  return sendSuccess(res, {
-    message: '验证码已发送'
+  if (!accountType) {
+    return sendError(res, 400, 'AUTH_ACCOUNT_TYPE_INVALID', '仅支持手机号或邮箱验证码登录');
+  }
+
+  if (!account) {
+    return sendError(res, 400, 'AUTH_ACCOUNT_REQUIRED', '账号格式无效或为空');
+  }
+
+  const verificationKey = buildVerificationKey(accountType, account);
+  if (isSendCodeRateLimited(req, verificationKey)) {
+    return sendError(res, 429, 'AUTH_CODE_RATE_LIMITED', '验证码发送过于频繁，请稍后再试');
+  }
+
+  const code = issueVerificationCode();
+  const expiresAt = Date.now() + AUTH_CODE_TTL_MS;
+  verificationCodes.set(verificationKey, {
+    code,
+    expiresAt,
+    attemptCount: 0
   });
+
+  const payload = {
+    message: '验证码已发送'
+  };
+  if (shouldExposeDevCode()) {
+    payload.devCode = code;
+  }
+
+  return sendSuccess(res, payload);
 });
 
 router.post('/register', async (req, res) => {
-  const { accountType, account, code, avatar } = req.body;
-  
-  const record = verificationCodes.get(`${accountType}:${account}`);
-  if (!record || record.code !== code || record.expiresAt < Date.now()) {
-    return sendError(res, 400, 'AUTH_CODE_INVALID', '验证码无效或已过期');
+  const accountType = normalizeAccountType(req.body?.accountType);
+  const account = normalizeAccount(accountType, req.body?.account);
+  const { code, avatar } = req.body || {};
+
+  if (!accountType || !account) {
+    return sendError(res, 400, 'AUTH_ACCOUNT_INVALID', '账号类型或账号格式无效');
+  }
+
+  const verificationResult = consumeVerificationRecord(accountType, account, code);
+  if (!verificationResult.ok) {
+    return sendError(res, 400, 'AUTH_CODE_INVALID', verificationResult.message);
   }
 
   try {
@@ -200,7 +319,6 @@ router.post('/register', async (req, res) => {
     });
 
     await newUser.save();
-    verificationCodes.delete(`${accountType}:${account}`);
 
     // 赠送注册积分
     await grantRegisterBonus(userId);
@@ -266,11 +384,17 @@ router.post('/account/delete', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { accountType, account, code } = req.body;
+  const accountType = normalizeAccountType(req.body?.accountType);
+  const account = normalizeAccount(accountType, req.body?.account);
+  const code = req.body?.code;
 
-  const record = verificationCodes.get(`${accountType}:${account}`);
-  if (!record || record.code !== code || record.expiresAt < Date.now()) {
-    return sendError(res, 400, 'AUTH_CODE_INVALID', '验证码无效或已过期');
+  if (!accountType || !account) {
+    return sendError(res, 400, 'AUTH_ACCOUNT_INVALID', '账号类型或账号格式无效');
+  }
+
+  const verificationResult = consumeVerificationRecord(accountType, account, code);
+  if (!verificationResult.ok) {
+    return sendError(res, 400, 'AUTH_CODE_INVALID', verificationResult.message);
   }
 
   try {
@@ -280,11 +404,9 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user.displayId) {
-      user.displayId = Math.floor(10000000 + Math.random() * 90000000).toString();
+      user.displayId = crypto.randomInt(10000000, 100000000).toString();
       await user.save();
     }
-
-    verificationCodes.delete(`${accountType}:${account}`);
     
     const token = jwt.sign({ userId: user.userId, accountType: user.accountType, account: user.account }, _JWT_SECRET, { expiresIn: '30d' });
 

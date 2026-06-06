@@ -22,7 +22,7 @@ import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_NUMERIC_MD, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('ReschedulePage');
@@ -397,7 +397,7 @@ struct ReschedulePage {
 
   @Builder
   private HeroCard() {
-    AppCard({ variant: 'soft', spacing: SPACE_SM }) {
+    AppCard({ variant: 'accent', spacing: SPACE_SM }) {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         AppStatusBadge({ text: 'AI 一键重排', tone: 'primary', iconName: 'ai' })
         if (this.quotaHint.length > 0) {
@@ -407,7 +407,7 @@ struct ReschedulePage {
       .width('100%')
 
       Text(this.getHeroTitle())
-        .fontSize(22)
+        .fontSize(TYPE_HERO_TITLE)
         .fontWeight(FontWeight.Bold)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -607,7 +607,7 @@ struct ReschedulePage {
         Row({ space: SPACE_SM }) {
           Column({ space: 4 }) {
             Text(`${this.overdueTasks.length}`)
-              .fontSize(20)
+              .fontSize(TYPE_NUMERIC_MD)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.danger)
             Text('全部逾期')
@@ -619,7 +619,7 @@ struct ReschedulePage {
 
           Column({ space: 4 }) {
             Text(`${this.getOverduePreviewTasks().length}`)
-              .fontSize(20)
+              .fontSize(TYPE_NUMERIC_MD)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.warning)
             Text('当前展示')
@@ -631,7 +631,7 @@ struct ReschedulePage {
 
           Column({ space: 4 }) {
             Text(`${this.getHiddenOverdueCount()}`)
-              .fontSize(20)
+              .fontSize(TYPE_NUMERIC_MD)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.textSecondary)
             Text('未展开')

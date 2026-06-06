@@ -12,7 +12,7 @@ import { AppEmptyState } from '../ui/base/AppEmptyState';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { PAGE_PADDING, SECTION_GAP, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
 import { AppErrorService } from '../services/AppErrorService';
 import { Logger } from '../Utils/Logger';
@@ -222,7 +222,7 @@ struct CreditTransactionsPage {
           .fontColor(this.themeColors.textSecondary)
           .width('100%')
         Text(value)
-          .fontSize(24)
+          .fontSize(TYPE_HERO_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(color)
           .width('100%')
@@ -241,7 +241,7 @@ struct CreditTransactionsPage {
       Row() {
         Column({ space: 6 }) {
           Text(item.description && item.description.length > 0 ? item.description : this.getFallbackTitle(item))
-            .fontSize(15)
+            .fontSize(TYPE_BODY)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
@@ -258,7 +258,7 @@ struct CreditTransactionsPage {
         .alignItems(HorizontalAlign.Start)
 
         Text(`${this.getAmountText(item)} \u79ef\u5206`)
-          .fontSize(15)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getAmountColor(item))
           .margin({ left: 12 })

@@ -212,34 +212,160 @@ struct GoalInfoPage {
       }
     }
 
+    const reminderTime = this.parseReminderTime(reminder.reminderTime || reminder.suggestedTime);
     const rule: ReminderRule = {
       type: ruleType,
-      hour: 9,
-      minute: 0
+      hour: reminderTime.hour,
+      minute: reminderTime.minute
     };
 
     if (reminder.rule === 'weekly') {
-      rule.weekday = reminder.timeParams && reminder.timeParams.length > 0 ? parseInt(reminder.timeParams[0]) : 1;
+      rule.weekday = reminder.timeParams && reminder.timeParams.length > 0 ? parseInt(`${reminder.timeParams[0]}`, 10) : 1;
       if (reminder.category === 'habit') {
         rule.targetCount = 1;
       }
     } else if (reminder.rule === 'monthly') {
-      rule.dayOfMonth = reminder.timeParams && reminder.timeParams.length > 0 ? parseInt(reminder.timeParams[0]) : 1;
+      rule.dayOfMonth = reminder.timeParams && reminder.timeParams.length > 0 ? parseInt(`${reminder.timeParams[0]}`, 10) : 1;
       if (reminder.category === 'habit') {
         rule.targetCount = 1;
       }
     } else if (reminder.rule === 'target_date') {
       rule.targetDate = reminder.timeParams && reminder.timeParams.length > 0
-        ? new Date(reminder.timeParams[0]).getTime()
+        ? new Date(`${reminder.timeParams[0]}`.replace(/-/g, '/')).getTime()
         : Date.now() + 24 * 60 * 60 * 1000;
     }
 
-    const event = new DayEvent(reminder.title, dayEventType, Date.now());
+    const startDate = this.resolveReminderDraftStartDate(reminder, rule, reminderTime.hour, reminderTime.minute);
+    const event = new DayEvent(reminder.title, dayEventType, startDate);
     if (rule.targetDate) {
       event.targetDate = rule.targetDate;
+      event.endDate = this.endOfDay(rule.targetDate);
     }
     event.addReminderRule(rule);
+    const parsedEndDate = this.parseEndDate(reminder.endDate);
+    if (parsedEndDate !== undefined) {
+      event.endDate = event.endDate !== undefined ? Math.min(event.endDate, parsedEndDate) : parsedEndDate;
+    }
     return event.toJSON();
+  }
+
+  private parseReminderTime(rawValue?: string): { hour: number; minute: number } {
+    const safeValue = (rawValue || '').trim();
+    const matched = safeValue.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (!matched) {
+      return { hour: 9, minute: 0 };
+    }
+
+    const hour = parseInt(matched[1], 10);
+    const minute = parseInt(matched[2], 10);
+    if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return { hour: 9, minute: 0 };
+    }
+
+    return { hour, minute };
+  }
+
+  private resolveReminderDraftStartDate(reminder: ReminderItem, rule: ReminderRule, hour: number, minute: number): number {
+    if (reminder.rule === 'target_date' && rule.targetDate !== undefined) {
+      return this.startOfDay(rule.targetDate);
+    }
+
+    if (reminder.rule === 'weekly') {
+      const weekdays = (reminder.timeParams || [])
+        .map((item: string | number) => parseInt(`${item}`, 10))
+        .filter((item: number) => !isNaN(item) && item >= 0 && item <= 6);
+      return this.startOfDay(this.getNextWeeklyOccurrence(weekdays.length > 0 ? weekdays : [1], hour, minute));
+    }
+
+    if (reminder.rule === 'monthly') {
+      const rawDay = reminder.timeParams && reminder.timeParams.length > 0
+        ? parseInt(`${reminder.timeParams[0]}`, 10)
+        : 1;
+      return this.startOfDay(this.getNextMonthlyOccurrence(rawDay, hour, minute));
+    }
+
+    return this.startOfDay(this.getNextDailyOccurrence(hour, minute));
+  }
+
+  private getNextDailyOccurrence(hour: number, minute: number, referenceTime: number = Date.now()): number {
+    const today = this.startOfDay(referenceTime);
+    const candidate = this.applyTime(today, hour, minute);
+    if (candidate >= referenceTime) {
+      return candidate;
+    }
+    return this.applyTime(today + 24 * 60 * 60 * 1000, hour, minute);
+  }
+
+  private getNextWeeklyOccurrence(weekdays: number[], hour: number, minute: number, referenceTime: number = Date.now()): number {
+    let nextOccurrence: number | undefined = undefined;
+    weekdays.forEach((weekday: number) => {
+      const candidate = this.getNextWeeklyOccurrenceForDay(weekday, hour, minute, referenceTime);
+      if (nextOccurrence === undefined || candidate < nextOccurrence) {
+        nextOccurrence = candidate;
+      }
+    });
+    return nextOccurrence !== undefined ? nextOccurrence : this.getNextDailyOccurrence(hour, minute, referenceTime);
+  }
+
+  private getNextWeeklyOccurrenceForDay(weekday: number, hour: number, minute: number, referenceTime: number): number {
+    const today = this.startOfDay(referenceTime);
+    const currentWeekday = new Date(today).getDay();
+    const normalizedWeekday = weekday >= 0 && weekday <= 6 ? weekday : 1;
+    let diff = (normalizedWeekday - currentWeekday + 7) % 7;
+    let candidate = this.applyTime(today + diff * 24 * 60 * 60 * 1000, hour, minute);
+    if (candidate < referenceTime) {
+      diff = diff === 0 ? 7 : diff + 7;
+      candidate = this.applyTime(today + diff * 24 * 60 * 60 * 1000, hour, minute);
+    }
+    return candidate;
+  }
+
+  private getNextMonthlyOccurrence(dayOfMonth: number, hour: number, minute: number, referenceTime: number = Date.now()): number {
+    const normalizedDay = Math.max(1, Math.min(31, dayOfMonth));
+    const referenceDate = new Date(referenceTime);
+    for (let monthOffset = 0; monthOffset < 24; monthOffset++) {
+      const rawMonth = referenceDate.getMonth() + monthOffset;
+      const year = referenceDate.getFullYear() + Math.floor(rawMonth / 12);
+      const month = rawMonth % 12;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      if (normalizedDay > daysInMonth) {
+        continue;
+      }
+      const candidate = new Date(year, month, normalizedDay, hour, minute, 0, 0).getTime();
+      if (candidate >= referenceTime) {
+        return candidate;
+      }
+    }
+    return this.getNextDailyOccurrence(hour, minute, referenceTime);
+  }
+
+  private parseEndDate(rawValue?: string): number | undefined {
+    if (!rawValue) {
+      return undefined;
+    }
+    const parsed = new Date(rawValue.replace(/-/g, '/')).getTime();
+    if (isNaN(parsed)) {
+      return undefined;
+    }
+    return this.endOfDay(parsed);
+  }
+
+  private startOfDay(timestamp: number): number {
+    const date = new Date(timestamp);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  }
+
+  private endOfDay(timestamp: number): number {
+    const date = new Date(timestamp);
+    date.setHours(23, 59, 59, 999);
+    return date.getTime();
+  }
+
+  private applyTime(dayTimestamp: number, hour: number, minute: number): number {
+    const date = new Date(this.startOfDay(dayTimestamp));
+    date.setHours(hour, minute, 0, 0);
+    return date.getTime();
   }
 
   private openReminderCreatePage(): void {
@@ -443,7 +569,7 @@ struct GoalInfoPage {
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .backgroundColor(this.themeColors.primarySubtle)
     .borderRadius(RADIUS_MD)
-    .border({ width: 1, color: this.themeColors.primary + '26' })
+    .border({ width: 1, color: this.themeColors.primaryLight })
   }
 
   @Builder
@@ -499,7 +625,7 @@ struct GoalInfoPage {
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
     .backgroundColor(this.themeColors.successSubtle)
     .borderRadius(RADIUS_MD)
-    .border({ width: 1, color: this.themeColors.success + '33' })
+    .border({ width: 1, color: this.themeColors.borderColor })
   }
 
   @Builder

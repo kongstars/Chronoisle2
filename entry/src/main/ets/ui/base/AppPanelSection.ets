@@ -44,7 +44,7 @@ export struct AppPanelSection {
         .alignItems(HorizontalAlign.Start)
 
         if (this.actionText.length > 0) {
-          Button() {
+          Stack({ alignContent: Alignment.Center }) {
             Row({ space: SPACE_2XS }) {
               if (this.actionIconName.length > 0) {
                 AppIcon({
@@ -70,7 +70,7 @@ export struct AppPanelSection {
           .padding({ left: SPACE_SM, right: SPACE_SM, top: 0, bottom: 0 })
           .backgroundColor(this.themeColors.transparent)
           .borderRadius(RADIUS_PILL)
-          .stateEffect(true)
+          .useEffect(true)
           .hoverEffect(HoverEffect.Auto)
           .onClick(() => {
             if (this.onAction) {

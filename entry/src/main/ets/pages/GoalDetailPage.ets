@@ -1,7 +1,7 @@
 
 import { Goal, KeyResult, GoalCategory } from '../models/Goal';
 import { db } from '../storage/Database';
-import { CATEGORIES, CATEGORY_COLORS, CategoryInfo } from '../common/Constants';
+import { CATEGORIES, CategoryInfo } from '../common/Constants';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { Task, TaskStatus } from '../models/Task';
 import { DayEvent, getEventTypeIcon, getEventTypeLabel } from '../models/DayEvent';
@@ -128,6 +128,36 @@ struct GoalDetailPage {
       this.refreshFlag++;
       this.loadGoalData();
       this.getUIContext().getPromptAction().showToast({ message: 'AI 目标拆解应用成功' });
+    }
+  }
+
+  private getCategoryAccent(category: GoalCategory): string {
+    switch (category) {
+      case GoalCategory.HEALTH:
+        return this.themeColors.success;
+      case GoalCategory.LEARNING:
+        return this.themeColors.primary;
+      case GoalCategory.FINANCE:
+        return this.themeColors.warning;
+      case GoalCategory.FUN:
+        return this.themeColors.premium;
+      default:
+        return this.themeColors.primary;
+    }
+  }
+
+  private getCategorySurface(category: GoalCategory): string {
+    switch (category) {
+      case GoalCategory.HEALTH:
+        return this.themeColors.successSubtle;
+      case GoalCategory.LEARNING:
+        return this.themeColors.primarySubtle;
+      case GoalCategory.FINANCE:
+        return this.themeColors.warningSubtle;
+      case GoalCategory.FUN:
+        return this.themeColors.premiumSurface;
+      default:
+        return this.themeColors.primarySubtle;
     }
   }
   
@@ -433,24 +463,29 @@ struct GoalDetailPage {
 
   @Builder
   InfoTabChip(label: string, tab: 'reminders' | 'tasks', count: number) {
-    Button() {
+    Row() {
       Row() {
         Text(label)
           .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.activeInfoTab === tab ? this.themeColors.textOnPrimary : this.themeColors.textPrimary)
+          .fontColor(this.activeInfoTab === tab ? this.themeColors.primary : this.themeColors.textPrimary)
 
         Text(`${count}`)
           .fontSize(TYPE_META)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.activeInfoTab === tab ? this.themeColors.textOnPrimary : this.themeColors.primary)
+          .fontColor(this.activeInfoTab === tab ? this.themeColors.primary : this.themeColors.primary)
           .margin({ left: SPACE_SM })
       }
     }
     .height(ACTION_CHIP_HEIGHT)
+    .justifyContent(FlexAlign.Center)
     .padding({ left: 10, right: 10 })
     .margin({ right: SPACE_SM })
-    .backgroundColor(this.activeInfoTab === tab ? this.themeColors.primary : this.themeColors.surfaceLight)
+    .backgroundColor(this.activeInfoTab === tab ? this.themeColors.primarySubtle : this.themeColors.surfaceLight)
+    .border({
+      width: 1,
+      color: this.activeInfoTab === tab ? this.themeColors.primaryLight : this.themeColors.borderColor
+    })
     .borderRadius(12)
     .onClick(() => {
       this.activeInfoTab = tab;
@@ -594,7 +629,7 @@ struct GoalDetailPage {
     }
     .width('100%')
     .padding(SPACE_MD)
-    .backgroundColor(this.themeColors.surface)
+    .backgroundColor(isDayEventEnded(event) ? this.themeColors.surfaceSoft : this.themeColors.surface)
     .borderRadius(12)
     .margin({ bottom: SPACE_SM })
     .shadow({
@@ -603,7 +638,6 @@ struct GoalDetailPage {
       offsetX: 0,
       offsetY: 2
     })
-    .opacity(isDayEventEnded(event) ? 0.72 : 1)
     .onClick(() => {
       this.openReminderEditor(event.id);
     })
@@ -616,15 +650,20 @@ struct GoalDetailPage {
       // Row 1: Category Badge | Spacer | Start Date
       Row() {
           Row() {
-            AppIcon({ name: CATEGORIES.find((c) => c.value === this.goal!.category)?.icon || '', iconSize: ICON_SIZE_LG, framed: false })
+            AppIcon({
+              name: CATEGORIES.find((c) => c.value === this.goal!.category)?.icon || '',
+              iconSize: ICON_SIZE_LG,
+              framed: false,
+              color: this.getCategoryAccent(this.goal!.category)
+            })
               .margin({ right: SPACE_2XS })
             Text(this.goal!.category)
             .fontSize(TYPE_META)
-            .fontColor(this.themeColors.textOnPrimary)
+            .fontColor(this.getCategoryAccent(this.goal!.category))
             .fontWeight(FontWeight.Medium)
         }
         .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-        .backgroundColor(CATEGORY_COLORS[this.goal!.category] || this.themeColors.primary)
+        .backgroundColor(this.getCategorySurface(this.goal!.category))
         .borderRadius(12)
 
         if (this.goal!.isPriority) {
@@ -1580,7 +1619,7 @@ struct GoalDetailPage {
     Stack({ alignContent: Alignment.Center }) {
       Row() {
         // 完成/取消完成按钮
-        Button() {
+        Stack({ alignContent: Alignment.Center }) {
           if (this.getCurrentTask(task).status === 'completed') {
             AppIcon({ name: 'success', iconSize: ICON_SIZE_XS, framed: false, color: this.themeColors.success })
           }
@@ -1592,9 +1631,8 @@ struct GoalDetailPage {
           width: 1.5,
           color: this.getCurrentTask(task).status === 'completed' ? this.themeColors.success : this.themeColors.borderColor
         })
-        .backgroundColor('transparent')
+        .backgroundColor(this.isArchivedGoal() ? this.themeColors.surfaceSoft : this.themeColors.transparent)
         .enabled(!this.isArchivedGoal())
-        .opacity(this.isArchivedGoal() ? 0.5 : 1)
         .onClick(() => {
           this.completeTask(task);
         })
@@ -1621,7 +1659,7 @@ struct GoalDetailPage {
             Row() {
               if (this.getCurrentTask(task).goalTitle) {
                 Text(this.getCurrentTask(task).goalTitle)
-                  .fontSize(10)
+                  .fontSize(TYPE_CAPTION)
                   .fontColor(this.themeColors.primary)
                   .backgroundColor(this.themeColors.primarySubtle)
                   .padding({ left: SPACE_XS, right: SPACE_XS, top: SPACE_2XS, bottom: SPACE_2XS })
@@ -1656,7 +1694,7 @@ struct GoalDetailPage {
           Row() {
             if (this.getCurrentTask(task).isOverdue) {
               Text('逾期')
-                .fontSize(10)
+                .fontSize(TYPE_CAPTION)
                 .fontWeight(FontWeight.Bold)
                 .fontColor(this.themeColors.textOnPrimary)
                 .padding({ left: SPACE_2XS, right: SPACE_2XS, top: SPACE_2XS, bottom: SPACE_2XS })
@@ -1697,13 +1735,15 @@ struct GoalDetailPage {
       if (!this.isArchivedGoal() && this.showTaskActionOverlay && this.selectedTaskForAction?.id === task.id) {
         Column() {
           Row() {
-            Button() {
+            Row() {
               Text(this.getCurrentTask(task).isPinned ? '取消置顶' : '置顶')
                 .fontSize(TYPE_BODY)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.themeColors.textOnPrimary)
             }
             .height(BUTTON_HEIGHT_MD)
+            .alignItems(VerticalAlign.Center)
+            .justifyContent(FlexAlign.Center)
             .padding({ left: PANEL_GAP, right: PANEL_GAP })
             .borderRadius(19)
             .backgroundColor(this.themeColors.textSecondary)

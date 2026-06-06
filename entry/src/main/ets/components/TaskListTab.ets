@@ -9,7 +9,7 @@ import { AppEmptyState } from '../ui/base/AppEmptyState';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { SPACE_2XS, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
-import { TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META } from '../foundation/tokens/TypographyTokens';
 import { BUTTON_HEIGHT_LG, TASK_LIST_CONTENT_MAX_WIDTH, TASK_LIST_FILTER_PANEL_WIDTH, TASK_LIST_TWO_COLUMN_MIN_WIDTH } from '../foundation/tokens/PageDensityTokens';
 import { BOTTOM_CONTENT_SPACER, CHECKBOX_SIZE_SM, ICON_BUTTON_SIZE_SM, TASK_DUE_LABEL_WIDTH, TASK_RAIL_WIDTH_LG, TASK_RAIL_WIDTH_SM } from '../foundation/tokens/ComponentSizeTokens';
 import { RADIUS_LG, RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
@@ -83,7 +83,7 @@ struct ActionTaskCard {
 
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
             if (this.goalBadgeText.length > 0) {
-              AppStatusBadge({ text: this.goalBadgeText, tone: 'primary', iconName: 'goal' })
+              AppStatusBadge({ text: this.goalBadgeText, tone: 'neutral', iconName: 'goal' })
             }
 
             if (this.statusLabel.length > 0) {
@@ -236,6 +236,7 @@ export struct TaskListTab {
   private filteredTasksCacheSource: Task[] | null = null;
   private filteredTasksCacheKeyword: string = '';
   private filteredTasksCacheFilter: string = '';
+  private filteredTasksCacheRecentCount: number = -1;
   private filteredTasksCache: Task[] = [];
   private taskCountCacheSource: Task[] | null = null;
   private pendingCountCache: number = 0;
@@ -550,11 +551,11 @@ export struct TaskListTab {
   private PageHeader() {
     Column({ space: 2 }) {
       Text('行动')
-        .fontSize(24)
+        .fontSize(TYPE_HERO_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
       Text(this.getHeaderSubtitle())
-        .fontSize(14)
+        .fontSize(TYPE_META)
         .fontColor(this.themeColors.textSecondary)
     }
     .width('100%')
@@ -688,7 +689,7 @@ export struct TaskListTab {
           if (task.goalTitle.trim().length > 0 || this.getTaskStatusLabel(task).length > 0) {
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
               if (task.goalTitle.trim().length > 0) {
-                AppStatusBadge({ text: this.getGoalBadgeText(task), tone: 'primary', iconName: 'goal' })
+                AppStatusBadge({ text: this.getGoalBadgeText(task), tone: 'neutral', iconName: 'goal' })
               }
 
               if (this.getTaskStatusLabel(task).length > 0) {

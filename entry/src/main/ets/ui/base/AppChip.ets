@@ -39,10 +39,10 @@ export struct AppChip {
 
   private getBorderColor(): string {
     if (this.isFocused && !this.disabled) {
-      return this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     if (this.isHovered && !this.disabled) {
-      return this.active ? getToneBorderColor(this.themeColors, this.tone) : this.themeColors.primaryLight;
+      return this.active ? getToneBorderColor(this.themeColors, this.tone) : this.themeColors.divider;
     }
     return this.active ? getToneBorderColor(this.themeColors, this.tone) : this.themeColors.borderColor;
   }

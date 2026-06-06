@@ -27,40 +27,40 @@ export struct AppPageHeader {
     if (this.backFocused || this.backHovered) {
       return this.themeColors.surfaceSoft;
     }
-    return this.themeColors.surface;
+    return this.themeColors.transparent;
   }
 
   private getBackBorderColor(): string {
     if (this.backFocused) {
-      return this.themeColors.primary;
-    }
-    if (this.backHovered) {
       return this.themeColors.primaryLight;
     }
-    return this.themeColors.borderColor;
+    if (this.backHovered) {
+      return this.themeColors.divider;
+    }
+    return this.themeColors.transparent;
   }
 
   private getActionBackgroundColor(): string {
     if (this.actionFocused || this.actionHovered) {
-      return this.themeColors.surface;
+      return this.themeColors.surfaceSoft;
     }
-    return this.themeColors.primarySubtle;
+    return this.themeColors.transparent;
   }
 
   private getActionBorderColor(): string {
     if (this.actionFocused) {
-      return this.themeColors.primary;
-    }
-    if (this.actionHovered) {
       return this.themeColors.primaryLight;
     }
-    return this.themeColors.primarySubtle;
+    if (this.actionHovered) {
+      return this.themeColors.divider;
+    }
+    return this.themeColors.transparent;
   }
 
   build() {
     Row({ space: SPACE_SM }) {
       if (this.showBack) {
-        Button() {
+        Stack({ alignContent: Alignment.Center }) {
           Stack({ alignContent: Alignment.Center }) {
             AppIcon({
               name: 'chevron-left',
@@ -77,7 +77,7 @@ export struct AppPageHeader {
         .backgroundColor(this.getBackBackgroundColor())
         .borderRadius(RADIUS_XL)
         .border({ width: BORDER_DEFAULT, color: this.getBackBorderColor() })
-        .stateEffect(true)
+        .useEffect(true)
         .hoverEffect(HoverEffect.Auto)
         .focusable(true)
         .onFocus(() => {
@@ -118,7 +118,7 @@ export struct AppPageHeader {
       .alignItems(HorizontalAlign.Start)
 
       if (this.actionText.length > 0) {
-        Button() {
+        Stack({ alignContent: Alignment.Center }) {
           Row({ space: SPACE_2XS }) {
             if (this.actionIconName.length > 0) {
               AppIcon({
@@ -140,36 +140,36 @@ export struct AppPageHeader {
           .alignItems(VerticalAlign.Center)
           .justifyContent(FlexAlign.Center)
         }
-          .height(TOUCH_TARGET_SM)
-          .padding({ left: SPACE_MD, right: SPACE_MD, top: 0, bottom: 0 })
-          .backgroundColor(this.getActionBackgroundColor())
-          .borderRadius(RADIUS_PILL)
-          .border({ width: BORDER_DEFAULT, color: this.getActionBorderColor() })
-          .stateEffect(true)
-          .hoverEffect(HoverEffect.Auto)
-          .focusable(true)
-          .onFocus(() => {
-            this.actionFocused = true;
-          })
-          .onBlur(() => {
-            this.actionFocused = false;
-          })
-          .onHover((isHover: boolean) => {
-            this.actionHovered = isHover;
-          })
-          .onClick(() => {
-            if (this.onAction) {
-              this.onAction();
-            }
-          })
+        .height(TOUCH_TARGET_SM)
+        .padding({ left: SPACE_MD, right: SPACE_MD, top: 0, bottom: 0 })
+        .backgroundColor(this.getActionBackgroundColor())
+        .borderRadius(RADIUS_PILL)
+        .border({ width: BORDER_DEFAULT, color: this.getActionBorderColor() })
+        .useEffect(true)
+        .hoverEffect(HoverEffect.Auto)
+        .focusable(true)
+        .onFocus(() => {
+          this.actionFocused = true;
+        })
+        .onBlur(() => {
+          this.actionFocused = false;
+        })
+        .onHover((isHover: boolean) => {
+          this.actionHovered = isHover;
+        })
+        .onClick(() => {
+          if (this.onAction) {
+            this.onAction();
+          }
+        })
       } else if (this.actionIconName.length > 0) {
-        // 圆形图标按钮（与 Tab 页右上角一致）
         Stack({ alignContent: Alignment.Center }) {
           Row()
             .width(40)
             .height(40)
-            .backgroundColor(this.themeColors.surfaceSoft)
+            .backgroundColor(this.getActionBackgroundColor())
             .borderRadius(20)
+            .border({ width: BORDER_DEFAULT, color: this.getActionBorderColor() })
 
           AppIcon({
             name: this.actionIconName,
@@ -180,6 +180,18 @@ export struct AppPageHeader {
         }
         .width(40)
         .height(40)
+        .useEffect(true)
+        .hoverEffect(HoverEffect.Auto)
+        .focusable(true)
+        .onFocus(() => {
+          this.actionFocused = true;
+        })
+        .onBlur(() => {
+          this.actionFocused = false;
+        })
+        .onHover((isHover: boolean) => {
+          this.actionHovered = isHover;
+        })
         .onClick(() => {
           if (this.onAction) {
             this.onAction();

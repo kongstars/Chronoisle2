@@ -195,11 +195,15 @@ export class ThirdPartyAuthService {
         return null;
       }
       
-      const hostAndQuery = urlParts[1].split('/')[0];
-      const host = hostAndQuery.split('?')[0];
-      const queryString = urlParts[1].split('?')[1] || '';
+      const urlBody = urlParts.slice(1).join('://');
+      const hostAndRest = urlBody.split('/');
+      const hostPart = hostAndRest[0] || '';
+      const fragmentString = urlBody.includes('#') ? (urlBody.split('#')[1] || '') : '';
+      const queryString = urlBody.includes('?') ? (urlBody.split('?')[1] || '').split('#')[0] : '';
+      const paramString = fragmentString || queryString;
+      const host = hostPart.split('?')[0].split('#')[0];
       const params: Record<string, string> = {};
-      queryString.split('&').forEach(param => {
+      paramString.split('&').forEach(param => {
         const parts = param.split('=');
         const key = parts[0];
         const value = parts[1];

@@ -1,7 +1,7 @@
 # 四时清单 UI System V2 — 设计规范
 
-> 创建时间：2026-05-20 | 最后更新：2026-05-20
-> 定位：效率工具 · 清新简洁 · 轻科技感 · 结构清晰
+> 创建时间：2026-05-20 | 最后更新：2026-06-05
+> 定位：效率工具 · 岛屿晨曦 · 温润克制 · 高可用主工作界面
 
 ---
 
@@ -20,36 +20,48 @@
 
 ## 2. 色彩系统
 
-### 主色
+### 主题方向
+
+- 浅色主题：`岛屿晨曦`
+- 深色主题：`岛屿夜航`
+- 核心目标：减少冷工具感，用暖沙底 + 柔紫主色建立品牌记忆，同时保证高频使用下的稳定可读性
+
+### 主色与表面
 
 | Token | 浅色模式 | 深色模式 | 用途 |
 | --- | --- | --- | --- |
-| `primary` | `#2563EB` | `#60A5FA` | 主操作、选中态、链接、FAB |
-| `primarySubtle` | `#EFF6FF` | `#1E3A5F` | 主色背景（badge、输入框聚焦） |
+| `primary` | `#7679F5` | `#9A96FF` | 主操作、选中态、链接、激活标签 |
+| `primaryLight` | `#9A96FF` | `#BEB6FF` | 主色弱描边、焦点边界、选中强调 |
+| `primarySubtle` | `#F3EDFF` | `#31263A` | 主色弱背景、轻按钮、选中表面 |
+| `background` | `#FBF4E9` | `#17121D` | 页面底色 |
+| `surface` | `#FFFDF9` | `#211827` | 标准卡片与一级面板 |
+| `surfaceRaised` | `#FFFFFF` | `#2D2234` | 强调卡片、悬浮表面 |
+| `surfaceSoft` | `#F7EFE6` | `#261D2D` | 输入框、Segment 容器、弱面板 |
+| `announcementSurface` | `#F7F1FF` | `#30273B` | 焦点卡、AI / 语音 / 建议类弱强调表面 |
+| `riskSurface` | `#FCEEEB` | `#3A2930` | 风险提示与逾期表面 |
 
-### 语义色![alt text](image.png)
+### 语义色
 
-| Token | 浅色 | 用途 |
-| --- | --- | --- |
-| `success` | `#10B981` | 完成、正向反馈 |
-| `successSubtle` | `#D1FAE5` | 完成态背景 |
-| `warning` | `#F59E0B` | 注意、逾期预警 |
-| `danger` | `#EF4444` | 错误、删除、逾期 |
-| `info` | `#6366F1` | AI 相关、提示 |
+| Token | 浅色 | 深色 | 用途 |
+| --- | --- | --- | --- |
+| `success` | `#42A483` | `#59B294` | 完成、正向反馈 |
+| `successSubtle` | `#EEF8F3` | `#24372E` | 完成态背景 |
+| `warning` | `#D69041` | `#F1A765` | 注意、优先、轻警告 |
+| `warningSubtle` | `#FFF2E2` | `#3A2B23` | 警告弱背景 |
+| `danger` | `#DD7A72` | `#D98C86` | 错误、删除、逾期 |
+| `dangerSubtle` | `#FCEEEB` | `#3A2930` | 危险弱背景 |
+| `premium` | `#C79A4C` | `#E1BA65` | 会员、权益、积分 |
 
-### 中性色阶
+### 文本与边框
 
-| Token | 浅色 | 用途 |
-| --- | --- | --- |
-| `background` | `#FAFBFC` | 页面底色 |
-| `surface` | `#FFFFFF` | 卡片底色 |
-| `surfaceSoft` | `#F3F4F6` | 输入框、次级区域、未选中按钮底 |
-| `surfaceOverlay` | `rgba(0,0,0,0.4)` | 遮罩层 |
-| `textPrimary` | `#111827` | 标题、正文 |
-| `textSecondary` | `#6B7280` | 辅助说明 |
-| `textMuted` | `#9CA3AF` | 占位符、禁用态 |
-| `textOnPrimary` | `#FFFFFF` | 主色按钮上的文字/图标 |
-| `borderColor` | `#E5E7EB` | 分割线、卡片边框、未选中圆圈 |
+| Token | 浅色 | 深色 | 用途 |
+| --- | --- | --- | --- |
+| `textPrimary` | `#2B2233` | `#F5EDF7` | 标题、正文、关键数字 |
+| `textSecondary` | `#786C7D` | `#B8A8BF` | 副说明、页面摘要 |
+| `textMuted` | `#B2A7B1` | `#8F7F97` | 占位、弱提示、未激活 |
+| `textOnPrimary` | `#FFFFFF` | `#FFFFFF` | 主色实心按钮上的文字/图标 |
+| `borderColor` | `#E7DDD1` | `#3A2D43` | 卡片边框、输入框、分割线 |
+| `divider` | `#EEE5DA` | `rgba(255, 255, 255, 0.08)` | 弱分界 |
 
 ---
 
@@ -213,18 +225,19 @@ AppIcon({ name: 'edit', iconSize: ICON_SIZE_XS, framed: false, color: themeColor
 ## 8. 卡片规范
 
 ### 主卡片（独立区块）
-- 背景：`surface`（白色）
+- 背景：`surface` 或 `surfaceRaised`
 - 圆角：`lg`（18px）
 - 阴影：中（`0 4px 10px cardShadow`）
 - 内边距：16px
 - 边框：1px `borderColor`
 
-### 焦点卡片（页面核心区域，如今日计划）
-- 背景：`surface`
+### 焦点卡片（页面核心区域，如今日计划 / 焦点目标 / 语音入口）
+- 背景：优先 `announcementSurface`
 - 圆角：`lg`（18px）
 - 阴影：强（`0 6px 16px cardShadow`）
-- 左侧色条：4px 宽，`primary` 色，通过 `border({ width: { left: 4 } })` 实现
-- 内边距：16px
+- 边框：1px `primaryLight` 弱描边
+- 禁止：大面积高饱和实色底、粗左色条、厚重描边
+- 说明：焦点感依赖“表面层级 + 文案层级 + 弱主色边界”，不靠强行上色
 
 ### 次级卡片（嵌套在主卡片内）
 - 背景：`surfaceSoft`
@@ -233,9 +246,9 @@ AppIcon({ name: 'edit', iconSize: ICON_SIZE_XS, framed: false, color: themeColor
 - 内边距：12px
 
 ### 提示条（逾期、错误）
-- 背景：语义色的浅色变体（如 `#FEF2F2`）
+- 背景：`riskSurface` 或 `dangerSubtle`
 - 圆角：`sm`（8px）
-- 边框：1px 语义色浅色（如 `#FECACA`）
+- 边框：1px `danger` 的弱边界
 - 内边距：12-14px
 
 ---
@@ -260,11 +273,12 @@ AppIcon({ name: 'edit', iconSize: ICON_SIZE_XS, framed: false, color: themeColor
 - 用于"查看全部"、"生成 AI 计划"等文字链接
 
 ### 快速操作按钮（首页专用）
-- 容器：44px 圆形，`primary` 实色背景
-- 图标：22px，白色
-- 阴影：轻 FAB 级别
+- 容器：44px 圆形，`primarySubtle` 背景
+- 图标：22px，`primary`
+- 边界：1px `primaryLight` 弱描边
+- 阴影：轻卡片级，不使用 FAB 级重阴影
 - 下方文字：Caption（12px），`textSecondary`
-- 居中方式：`Stack({ alignContent: Alignment.Center })`
+- 原则：更像“轻命令入口”，不要做成 4 个抢眼的大主按钮
 
 ### 悬浮按钮（FAB）
 - 容器：46px 圆形，`primary` 实色背景
@@ -340,11 +354,11 @@ AppIcon({ name: 'edit', iconSize: ICON_SIZE_XS, framed: false, color: themeColor
 ┌─────────────────────────────────┐
 │  问候区（Display + 日期）         │
 ├─────────────────────────────────┤
-│  快速操作栏（4 × 46px 圆形按钮） │
+│  快速操作栏（4 × 44px 弱主色按钮）│
 ├─────────────────────────────────┤
 │  逾期提示条（仅有逾期时显示）     │
 ├─────────────────────────────────┤
-│  今日计划卡片（焦点卡片 + 左色条  │
+│  今日计划卡片（焦点卡片 + 弱主色边界│
 │  最多显示 7 项任务）             │
 ├─────────────────────────────────┤
 │  今日提醒（横向滚动小卡片）       │
@@ -403,7 +417,7 @@ AppIcon({ name: 'edit', iconSize: ICON_SIZE_XS, framed: false, color: themeColor
 - **上下内边距**：上 4px，下 8px
 - **胶囊高度**：56px（BOTTOM_BAR_HEIGHT - 8）
 - **胶囊圆角**：999px（RADIUS_PILL）
-- **背景**：`navBackground`（浅色白色 / 深色 `#1B283B`）
+- **背景**：`navBackground`
 - **阴影**：`radius: 16, offsetY: 4, color: cardShadow`
 - **无顶部分割线**（靠阴影与内容区分）
 
@@ -445,12 +459,12 @@ AppIcon({ name: 'edit', iconSize: ICON_SIZE_XS, framed: false, color: themeColor
 | P0 | 底部导航 Tab 结构调整（4 Tab + 去 FAB） | ✅ 已完成 |
 | P0 | 信息密度优化（紧凑间距 + 更多内容） | ✅ 已完成 |
 | P0 | V2 设计 Token 全局应用（所有页面统一） | ✅ 已完成 |
-| P1 | 任务列表页（行动 Tab）V2 | 待做 |
-| P2 | 目标 Tab（独立 GoalsTab 组件） | 待做 |
+| P1 | 任务列表页（行动 Tab）V2 | ✅ 已完成首轮 |
+| P1 | 目标 Tab（独立 GoalsTab 组件） | ✅ 已完成首轮 |
 | P3 | 目标详情页 | 待做 |
 | P4 | 创建流程统一（底部半屏弹出） | 待做 |
-| P5 | 新手引导重构 | 待做 |
-| P6 | 深色模式全面适配 | 待做 |
+| P5 | 新手引导重构 | 进行中 |
+| P6 | 深色模式全面适配 | 进行中 |
 
 ---
 
@@ -481,9 +495,11 @@ Row() {
 ### 卡片左侧色条
 
 ```typescript
-// 通过 border 实现，不用嵌套 Row
+// 仅在确实需要强语义时使用左色条
+// 常规焦点卡优先使用 announcementSurface + 弱主色描边
 Column({ space: 12 }) { ... }
-.border({ width: { left: 4 }, color: themeColors.primary })
+.backgroundColor(themeColors.announcementSurface)
+.border({ width: 1, color: themeColors.primaryLight })
 .borderRadius(14)
 ```
 

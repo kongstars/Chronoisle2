@@ -82,7 +82,7 @@ export struct AppButton {
     }
     switch (this.effectiveVariant()) {
       case 'secondary':
-        return this.themeColors.surface;
+        return this.themeColors.surfaceSoft;
       case 'ghost':
         return this.themeColors.transparent;
       case 'danger':
@@ -118,13 +118,13 @@ export struct AppButton {
 
   private getBorderColor(): string {
     if (this.isFocused && this.isEnabled()) {
-      return this.effectiveVariant() === 'primary' ? this.themeColors.primaryLight : this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     return this.effectiveVariant() === 'secondary' ? this.themeColors.borderColor : this.themeColors.transparent;
   }
 
   build() {
-    Button() {
+    Stack({ alignContent: Alignment.Center }) {
       Row() {
         if (this.loading) {
           LoadingProgress()
@@ -163,8 +163,7 @@ export struct AppButton {
     .borderRadius(RADIUS_XL)
     .border({ width: this.getBorderWidth(), color: this.getBorderColor() })
     .opacity(this.isEnabled() ? 1 : DISABLED_OPACITY)
-    .enabled(this.isEnabled())
-    .stateEffect(this.isEnabled())
+    .useEffect(this.isEnabled())
     .hoverEffect(HoverEffect.Auto)
     .focusable(this.isEnabled())
     .onFocus(() => {
@@ -174,7 +173,7 @@ export struct AppButton {
       this.isFocused = false;
     })
     .onClick(() => {
-      if (this.tapAction) {
+      if (this.isEnabled() && this.tapAction) {
         this.tapAction();
       }
     })

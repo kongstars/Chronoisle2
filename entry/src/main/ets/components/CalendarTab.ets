@@ -11,7 +11,7 @@ import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
-import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE, TYPE_NUMERIC_MD } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE, TYPE_NUMERIC_MD } from '../foundation/tokens/TypographyTokens';
 import { BOTTOM_CONTENT_SPACER, BUTTON_HEIGHT_MD, DATE_CELL_CONTROL_SIZE, REMINDER_ACTION_HEIGHT, REMINDER_ACTION_WIDTH, STATUS_STRIP_HEIGHT, STATUS_STRIP_WIDTH_SM } from '../foundation/tokens/ComponentSizeTokens';
 import { ICON_SIZE_LG } from '../foundation/tokens/IconTokens';
 import { BUTTON_HEIGHT_LG, TODAY_SIDE_PANEL_WIDTH, TODAY_TWO_COLUMN_MIN_WIDTH } from '../foundation/tokens/PageDensityTokens';
@@ -32,7 +32,7 @@ export struct CalendarTab {
   onOpenReminderCenter?: () => void;
 
   private isWideLayout(): boolean {
-    return this.contentWidth >= TODAY_TWO_COLUMN_MIN_WIDTH;
+    return this.contentWidth >= (this.embedded ? 920 : TODAY_TWO_COLUMN_MIN_WIDTH);
   }
 
   private updateContentWidth(widthValue: Length): void {
@@ -528,60 +528,71 @@ export struct CalendarTab {
 
   @Builder
   private ReminderRow(item: CalendarReminderItem) {
-    Row({ space: SPACE_SM }) {
-      Column() {
+    Column({ space: SPACE_SM }) {
+      Row({ space: SPACE_SM }) {
+        Column() {
+        }
+        .width(STATUS_STRIP_WIDTH_SM)
+        .height(STATUS_STRIP_HEIGHT)
+        .backgroundColor(this.getStatusAccentColor(this.isReminderCompleted(item) ? 'idle' : this.getSelectedStatus()))
+        .borderRadius(RADIUS_SM)
+
+        Column({ space: SPACE_XS }) {
+          Text(item.event.title)
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .fontSize(TYPE_BODY)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.textPrimary)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+          Text(this.getReminderMeta(item))
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .fontSize(TYPE_META)
+            .fontColor(this.themeColors.textSecondary)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
       }
-      .width(STATUS_STRIP_WIDTH_SM)
-      .height(STATUS_STRIP_HEIGHT)
-      .backgroundColor(this.getStatusAccentColor(this.isReminderCompleted(item) ? 'idle' : this.getSelectedStatus()))
-      .borderRadius(RADIUS_SM)
+      .width('100%')
+      .alignItems(VerticalAlign.Top)
 
-      Column({ space: SPACE_XS }) {
-        Text(item.event.title)
-          .width('100%')
-          .textAlign(TextAlign.Start)
-          .fontSize(TYPE_BODY)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textPrimary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-        Text(this.getReminderMeta(item))
-          .width('100%')
-          .textAlign(TextAlign.Start)
-          .fontSize(TYPE_META)
-          .fontColor(this.themeColors.textSecondary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      if (this.canCompleteReminder(item)) {
-        Button('打卡')
-          .width(REMINDER_ACTION_WIDTH)
-          .height(REMINDER_ACTION_HEIGHT)
-          .fontSize(TYPE_META)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textOnPrimary)
-          .backgroundColor(this.themeColors.primary)
-          .padding({ left: 0, right: 0, top: 0, bottom: 0 })
-          .borderRadius(RADIUS_SM)
-          .onClick(() => {
-            void this.completeEvent(item);
-          })
-      } else {
+      Row() {
         AppStatusBadge({
           text: this.getReminderDisplayStatus(item),
           tone: this.getReminderStatusTone(item),
           iconName: this.getReminderStatusIconName(item)
         })
+
+        Blank()
+
+        if (this.canCompleteReminder(item)) {
+          Button('打卡')
+            .width(REMINDER_ACTION_WIDTH)
+            .height(REMINDER_ACTION_HEIGHT)
+            .fontSize(TYPE_META)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.primary)
+            .backgroundColor(this.themeColors.primarySubtle)
+            .padding({ left: 0, right: 0, top: 0, bottom: 0 })
+            .borderRadius(RADIUS_SM)
+            .border({ width: 1, color: this.themeColors.primaryLight })
+            .onClick(() => {
+              void this.completeEvent(item);
+            })
+        }
       }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_XS, bottom: SPACE_XS })
-    .backgroundColor(this.themeColors.surface)
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_SM, bottom: SPACE_SM })
+    .backgroundColor(this.themeColors.surfaceRaised)
     .borderRadius(RADIUS_MD)
     .border({ width: 1, color: this.themeColors.borderColor })
     .onClick(() => {
@@ -591,45 +602,54 @@ export struct CalendarTab {
 
   @Builder
   private TaskRow(task: Task) {
-    Row({ space: SPACE_SM }) {
-      Column() {
+    Column({ space: SPACE_SM }) {
+      Row({ space: SPACE_SM }) {
+        Column() {
+        }
+        .width(STATUS_STRIP_WIDTH_SM)
+        .height(STATUS_STRIP_HEIGHT)
+        .backgroundColor(this.getTaskUrgencyColor(task))
+        .borderRadius(RADIUS_SM)
+
+        Column({ space: SPACE_XS }) {
+          Text(task.title)
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .fontSize(TYPE_BODY)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.textPrimary)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+          Text(this.getTaskMeta(task))
+            .width('100%')
+            .textAlign(TextAlign.Start)
+            .fontSize(TYPE_META)
+            .fontColor(this.themeColors.textSecondary)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
       }
-      .width(STATUS_STRIP_WIDTH_SM)
-      .height(STATUS_STRIP_HEIGHT)
-      .backgroundColor(this.getTaskUrgencyColor(task))
-      .borderRadius(RADIUS_SM)
+      .width('100%')
+      .alignItems(VerticalAlign.Top)
 
-      Column({ space: SPACE_XS }) {
-        Text(task.title)
-          .width('100%')
-          .textAlign(TextAlign.Start)
-          .fontSize(TYPE_BODY)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textPrimary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-        Text(this.getTaskMeta(task))
-          .width('100%')
-          .textAlign(TextAlign.Start)
-          .fontSize(TYPE_META)
-          .fontColor(this.themeColors.textSecondary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Row() {
+        Blank()
+        AppStatusBadge({
+          text: this.getTaskUrgencyText(task),
+          tone: this.getTaskUrgencyTone(task),
+          iconName: this.getTaskUrgencyIconName(task)
+        })
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      AppStatusBadge({
-        text: this.getTaskUrgencyText(task),
-        tone: this.getTaskUrgencyTone(task),
-        iconName: this.getTaskUrgencyIconName(task)
-      })
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_XS, bottom: SPACE_XS })
-    .backgroundColor(this.themeColors.surface)
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_SM, bottom: SPACE_SM })
+    .backgroundColor(this.themeColors.surfaceRaised)
     .borderRadius(RADIUS_MD)
     .border({ width: 1, color: this.themeColors.borderColor })
     .onClick(() => {
@@ -642,7 +662,7 @@ export struct CalendarTab {
 
   @Builder
   private CalendarPanel() {
-    AppCard({ variant: 'base', spacing: SPACE_SM, paddingLevel: 'md' }) {
+    AppCard({ variant: 'raised', spacing: SPACE_SM, paddingLevel: 'md' }) {
       Column({ space: SPACE_SM }) {
         Row() {
           this.PeriodNavButton('prev', () => { this.movePeriod(-1); })
@@ -709,6 +729,11 @@ export struct CalendarTab {
 
         if (this.getSelectedReminderItems().length > 0) {
           Column({ space: SPACE_SM }) {
+            Text('提醒')
+              .fontSize(TYPE_SECTION_TITLE)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeColors.textPrimary)
+              .width('100%')
             ForEach(this.getSelectedReminderItems(), (item: CalendarReminderItem) => {
               this.ReminderRow(item)
             }, (item: CalendarReminderItem) => `${item.event.id}_${item.occurrenceTime}_${item.state}`)
@@ -718,6 +743,11 @@ export struct CalendarTab {
 
         if (this.getSelectedTasks().length > 0) {
           Column({ space: SPACE_SM }) {
+            Text('行动')
+              .fontSize(TYPE_SECTION_TITLE)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeColors.textPrimary)
+              .width('100%')
             ForEach(this.getSelectedTasks(), (task: Task) => {
               this.TaskRow(task)
             }, (task: Task) => task.id)
@@ -735,12 +765,12 @@ export struct CalendarTab {
       if (!this.embedded) {
         Row() {
           Column({ space: 2 }) {
-            Text('目标')
-              .fontSize(24)
+            Text('时间')
+              .fontSize(TYPE_HERO_TITLE)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.textPrimary)
             Text(this.getCalendarHeaderSubtitle())
-              .fontSize(14)
+              .fontSize(TYPE_META)
               .fontColor(this.themeColors.textSecondary)
           }
           .layoutWeight(1)

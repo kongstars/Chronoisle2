@@ -8,6 +8,59 @@ const CreditTransaction = require('../models/CreditTransaction');
 const { adminAuthenticate, generateAdminToken } = require('../middleware/adminAuth');
 
 const router = express.Router();
+const adminLoginAttempts = new Map();
+const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
+const ADMIN_LOGIN_MAX_ATTEMPTS = 10;
+
+function clampInt(value, fallback, min, max) {
+  const parsed = parseInt(String(value || fallback), 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(Math.max(parsed, min), max);
+}
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildSafeSearchRegex(value) {
+  const normalized = String(value || '').trim().slice(0, 64);
+  if (!normalized) {
+    return null;
+  }
+  return new RegExp(escapeRegex(normalized), 'i');
+}
+
+function getAdminLoginKey(req) {
+  return String(req.ip || req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim();
+}
+
+function isAdminLoginRateLimited(req) {
+  const key = getAdminLoginKey(req);
+  const now = Date.now();
+  const current = adminLoginAttempts.get(key);
+  if (!current || now - current.windowStart > ADMIN_LOGIN_WINDOW_MS) {
+    adminLoginAttempts.set(key, { windowStart: now, count: 0 });
+    return false;
+  }
+  return current.count >= ADMIN_LOGIN_MAX_ATTEMPTS;
+}
+
+function recordAdminLoginFailure(req) {
+  const key = getAdminLoginKey(req);
+  const now = Date.now();
+  const current = adminLoginAttempts.get(key);
+  if (!current || now - current.windowStart > ADMIN_LOGIN_WINDOW_MS) {
+    adminLoginAttempts.set(key, { windowStart: now, count: 1 });
+    return;
+  }
+  current.count += 1;
+}
+
+function clearAdminLoginFailures(req) {
+  adminLoginAttempts.delete(getAdminLoginKey(req));
+}
 
 /**
  * POST /api/admin/login
@@ -18,14 +71,20 @@ router.post('/login', (req, res) => {
   const adminUser = process.env.ADMIN_USERNAME || 'admin';
   const adminPass = process.env.ADMIN_PASSWORD;
 
+  if (isAdminLoginRateLimited(req)) {
+    return res.status(429).json({ success: false, message: '登录失败次数过多，请稍后再试' });
+  }
+
   if (!adminPass) {
     return res.status(500).json({ success: false, message: '系统未配置管理员密码' });
   }
 
   if (username !== adminUser || password !== adminPass) {
+    recordAdminLoginFailure(req);
     return res.status(401).json({ success: false, message: '用户名或密码错误' });
   }
 
+  clearAdminLoginFailures(req);
   const token = generateAdminToken(username);
   res.json({ success: true, token, message: '登录成功' });
 });
@@ -39,18 +98,18 @@ router.use(adminAuthenticate);
  */
 router.get('/users', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const search = req.query.search || '';
+    const page = clampInt(req.query.page, 1, 1, 100000);
+    const limit = clampInt(req.query.limit, 20, 1, 100);
+    const searchRegex = buildSafeSearchRegex(req.query.search);
     const skip = (page - 1) * limit;
 
     const query = {};
-    if (search) {
+    if (searchRegex) {
       query.$or = [
-        { account: { $regex: search, $options: 'i' } },
-        { nickname: { $regex: search, $options: 'i' } },
-        { displayId: { $regex: search, $options: 'i' } },
-        { userId: { $regex: search, $options: 'i' } }
+        { account: searchRegex },
+        { nickname: searchRegex },
+        { displayId: searchRegex },
+        { userId: searchRegex }
       ];
     }
     if (req.query.membershipType && req.query.membershipType !== 'all') {
@@ -271,7 +330,7 @@ router.get('/usage/ai-features', async (req, res) => {
  */
 router.get('/usage/monthly', async (req, res) => {
   try {
-    const months = parseInt(req.query.months) || 6;
+    const months = clampInt(req.query.months, 6, 1, 24);
 
     const results = await UsageSummary.aggregate([
       {
@@ -318,8 +377,8 @@ router.get('/usage/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const month = req.query.month || '';
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const page = clampInt(req.query.page, 1, 1, 100000);
+    const limit = clampInt(req.query.limit, 50, 1, 100);
     const skip = (page - 1) * limit;
 
     const query = { userId };
@@ -354,7 +413,7 @@ router.get('/usage/ranking', async (req, res) => {
   try {
     const month = req.query.month || '';
     const type = req.query.type || 'voice'; // voice or token
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = clampInt(req.query.limit, 20, 1, 100);
 
     const matchStage = {};
     if (month) {
@@ -654,7 +713,7 @@ router.get('/stats/overview', async (req, res) => {
  */
 router.get('/revenue/monthly', async (req, res) => {
   try {
-    const months = parseInt(req.query.months) || 12;
+    const months = clampInt(req.query.months, 12, 1, 24);
     const now = new Date();
     const rows = [];
 
@@ -696,21 +755,21 @@ router.get('/revenue/monthly', async (req, res) => {
  */
 router.get('/revenue/users', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = clampInt(req.query.page, 1, 1, 100000);
+    const limit = clampInt(req.query.limit, 20, 1, 100);
     const status = req.query.status || 'active'; // active/expired/all
-    const search = req.query.search || '';
+    const searchRegex = buildSafeSearchRegex(req.query.search);
     const skip = (page - 1) * limit;
     const now = Date.now();
 
     const query = { membershipType: 'premium' };
     if (status === 'active') query.membershipExpireAt = { $gt: now };
     if (status === 'expired') query.membershipExpireAt = { $lte: now };
-    if (search) {
+    if (searchRegex) {
       query.$or = [
-        { account: { $regex: search, $options: 'i' } },
-        { nickname: { $regex: search, $options: 'i' } },
-        { displayId: { $regex: search, $options: 'i' } }
+        { account: searchRegex },
+        { nickname: searchRegex },
+        { displayId: searchRegex }
       ];
     }
 
@@ -750,7 +809,7 @@ router.get('/revenue/users', async (req, res) => {
  */
 router.get('/revenue/expiring', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 7;
+    const days = clampInt(req.query.days, 7, 1, 90);
     const now = Date.now();
     const deadline = now + days * 24 * 60 * 60 * 1000;
 
@@ -775,4 +834,3 @@ router.get('/revenue/expiring', async (req, res) => {
 });
 
 module.exports = router;
-

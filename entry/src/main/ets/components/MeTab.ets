@@ -11,6 +11,7 @@ import { AppCard } from '../ui/base/AppCard';
 import { AppChip } from '../ui/base/AppChip';
 import { AppListRow } from '../ui/base/AppListRow';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
+import { AppIcon } from '../ui/base/AppIcon';
 import { SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
 import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_NUMERIC_LG, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
@@ -457,7 +458,7 @@ export struct MeTab {
       // 数据中心
       Column({ space: 6 }) {
         Text('数据中心')
-          .fontSize(18)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         this.SyncAndDataCard()
@@ -468,7 +469,7 @@ export struct MeTab {
       // 主题偏好
       Column({ space: 6 }) {
         Text('主题偏好')
-          .fontSize(18)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         this.ThemeCard()
@@ -479,7 +480,7 @@ export struct MeTab {
       // 更多
       Column({ space: 6 }) {
         Text('更多')
-          .fontSize(18)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         this.MoreCard()
@@ -489,13 +490,25 @@ export struct MeTab {
 
       // 退出登录
       Row() {
-        AppButton({
-          text: '退出登录',
-          variant: 'danger',
-          fullWidth: true,
-          iconName: 'warning',
-          tapAction: () => { void this.handleLogout(); }
-        })
+        Row({ space: SPACE_XS }) {
+          AppIcon({
+            name: 'warning',
+            iconSize: 16,
+            framed: false,
+            color: this.themeColors.danger
+          })
+          Text('退出登录')
+            .fontSize(TYPE_BODY)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.danger)
+        }
+        .width('100%')
+        .height(44)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(this.themeColors.dangerSubtle)
+        .borderRadius(22)
+        .border({ width: 1, color: this.themeColors.borderColor })
+        .onClick(() => { void this.handleLogout(); })
       }
       .width('100%')
       .justifyContent(FlexAlign.Center)
@@ -527,7 +540,7 @@ export struct MeTab {
 
       Column({ space: 6 }) {
         Text('主题偏好')
-          .fontSize(18)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         this.ThemeCard()
@@ -537,7 +550,7 @@ export struct MeTab {
 
       Column({ space: 6 }) {
         Text('更多')
-          .fontSize(18)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         this.MoreCard()
@@ -554,11 +567,11 @@ export struct MeTab {
         // 顶部问候区（与今日页风格一致）
         Column({ space: 4 }) {
           Text('我的')
-            .fontSize(24)
+            .fontSize(TYPE_HERO_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
           Text('账户、权益、同步和帮助入口')
-            .fontSize(14)
+            .fontSize(TYPE_META)
             .fontColor(this.themeColors.textSecondary)
         }
         .width('100%')

@@ -286,18 +286,26 @@ struct TaskDetailPage {
   }
 
   getPriorityColor(priority: string): string {
-    return this.themeColors.textOnPrimary;
-  }
-
-  getPriorityBackground(priority: string): string {
     switch (priority) {
       case TaskPriority.HIGH:
-        return this.themeColors.danger;
+        return this.themeColors.warning;
       case TaskPriority.LOW:
         return this.themeColors.textSecondary;
       case TaskPriority.NORMAL:
       default:
         return this.themeColors.primary;
+    }
+  }
+
+  getPriorityBackground(priority: string): string {
+    switch (priority) {
+      case TaskPriority.HIGH:
+        return this.themeColors.warningSubtle;
+      case TaskPriority.LOW:
+        return this.themeColors.surfaceSoft;
+      case TaskPriority.NORMAL:
+      default:
+        return this.themeColors.primarySubtle;
     }
   }
 
@@ -431,7 +439,7 @@ struct TaskDetailPage {
       Row() {
         Row() {
           if (this.task?.isImportant) {
-            this.TagChip('重要', this.themeColors.textOnPrimary, this.themeColors.warning)
+            this.TagChip('重要', this.themeColors.warning, this.themeColors.warningSubtle)
           }
           this.TagChip(this.getStatusText(), this.getStatusColor(), this.getStatusBackground())
           this.TagChip(
@@ -901,7 +909,7 @@ struct TaskDetailPage {
                 .decoration({ type: subtask.isCompleted ? TextDecorationType.LineThrough : TextDecorationType.None })
                 .layoutWeight(1)
 
-              Button() {
+              Stack({ alignContent: Alignment.Center }) {
                 AppIcon({
                   name: 'close',
                   iconSize: ICON_SIZE_XS,
@@ -911,7 +919,8 @@ struct TaskDetailPage {
               }
               .width(ICON_BUTTON_SIZE_SM)
               .height(ICON_BUTTON_SIZE_SM)
-              .backgroundColor(Color.Transparent)
+              .backgroundColor(this.themeColors.surfaceSoft)
+              .borderRadius(ICON_BUTTON_SIZE_SM / 2)
               .onClick(() => {
                 this.deleteSubtask(subtask.id);
               })

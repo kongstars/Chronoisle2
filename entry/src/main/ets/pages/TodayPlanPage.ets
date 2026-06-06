@@ -18,7 +18,7 @@ import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_CARD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('TodayPlanPage');
@@ -173,6 +173,19 @@ struct TodayPlanPage {
       return '当前为本地执行计划';
     }
     return '今天还没有可用计划';
+  }
+
+  private getSourceTone(): 'primary' | 'info' | 'success' | 'neutral' {
+    if (this.isPendingPreview()) {
+      return 'info';
+    }
+    if (this.planSource === 'cloud_adopted') {
+      return 'success';
+    }
+    if (this.planSource === 'local') {
+      return 'neutral';
+    }
+    return 'primary';
   }
 
   private getHeroTitle(): string {
@@ -428,8 +441,12 @@ struct TodayPlanPage {
       });
       const summary = JSON.stringify(summaryItems);
       const generated = await AgentService.generateTodayPlan(summary);
+      if (generated.errorMsg && generated.errorMsg.length > 0) {
+        this.showToast(AppErrorService.fromMessage(generated.errorMsg, 'AI 暂时无法生成计划'));
+        return;
+      }
       if (!generated || (!generated.focusTasks.length && !generated.deferTasks.length)) {
-        this.showToast('AI 暂时无法生成有效计划，请手动选择任务');
+        this.showToast('AI 暂时无法生成计划，请稍后重试或手动选择任务');
         return;
       }
       const taskMap: Record<string, Task> = {};
@@ -481,19 +498,19 @@ struct TodayPlanPage {
 
   @Builder
   private HeroCard() {
-    AppCard({ variant: 'soft', spacing: SPACE_SM }) {
+    AppCard({ variant: 'accent', spacing: SPACE_SM }) {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         AppStatusBadge({ text: 'AI 今日计划', tone: 'primary', iconName: 'ai' })
         AppStatusBadge({
           text: this.getSourceLabel(),
-          tone: this.isPendingPreview() ? 'info' : 'neutral',
+          tone: this.getSourceTone(),
           iconName: this.isPendingPreview() ? 'info' : 'success'
         })
       }
       .width('100%')
 
       Text(this.getHeroTitle())
-        .fontSize(22)
+        .fontSize(TYPE_HERO_TITLE)
         .fontWeight(FontWeight.Bold)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -508,7 +525,7 @@ struct TodayPlanPage {
 
       Text(this.getPlanStats(this.getPrimaryPlan()))
         .fontSize(TYPE_META)
-        .fontColor(this.themeColors.textMuted)
+        .fontColor(this.themeColors.primary)
         .width('100%')
     }
   }
@@ -516,7 +533,7 @@ struct TodayPlanPage {
   @Builder
   private TaskCard(item: SavedPlanTaskItem, label: string, tone: 'primary' | 'warning', action: PlanTaskAction) {
     AppCard({
-      variant: tone === 'warning' ? 'soft' : 'base',
+      variant: tone === 'warning' ? 'soft' : 'raised',
       spacing: SPACE_XS,
       interactive: true,
       tapAction: () => {
@@ -526,7 +543,7 @@ struct TodayPlanPage {
       Row({ space: 10 }) {
         Text(item.title)
           .layoutWeight(1)
-          .fontSize(16)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .maxLines(1)
@@ -582,7 +599,7 @@ struct TodayPlanPage {
       Row({ space: 10 }) {
         Text(task.title)
           .layoutWeight(1)
-          .fontSize(15)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .maxLines(1)
@@ -647,7 +664,7 @@ struct TodayPlanPage {
 
   @Builder
   private PlanSummaryCard(plan: SavedTodayPlan) {
-    AppCard({ variant: 'base', spacing: SPACE_SM }) {
+    AppCard({ variant: this.isPendingPreview() ? 'accent' : 'raised', spacing: SPACE_SM }) {
       Text('计划摘要')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
@@ -708,7 +725,8 @@ struct TodayPlanPage {
     }
     .width('100%')
     .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: SPACE_SM, bottom: SPACE_CARD })
-    .backgroundColor(this.themeColors.background)
+    .backgroundColor(this.themeColors.surfaceRaised)
+    .border({ width: { top: 1 }, color: this.themeColors.divider })
   }
 
   build() {
@@ -764,6 +782,11 @@ struct TodayPlanPage {
                   .fontColor(this.themeColors.textPrimary)
                   .width('100%')
 
+                Text('先把今天最值得推进的几件事收在这里，采纳后它会成为今天的执行参考顺序。')
+                  .fontSize(TYPE_META)
+                  .fontColor(this.themeColors.textSecondary)
+                  .width('100%')
+
                 if ((this.getPrimaryPlan() as SavedTodayPlan).focusTasks.length === 0) {
                   AppEmptyState({
                     iconName: 'focus',
@@ -791,6 +814,11 @@ struct TodayPlanPage {
                     .fontSize(TYPE_SECTION_TITLE)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
+                    .width('100%')
+
+                  Text('这些任务不是删除，而是先从今天的带宽里移开，避免执行重心被冲散。')
+                    .fontSize(TYPE_META)
+                    .fontColor(this.themeColors.textSecondary)
                     .width('100%')
 
                   ForEach((this.getPrimaryPlan() as SavedTodayPlan).deferTasks, (item: SavedPlanTaskItem) => {

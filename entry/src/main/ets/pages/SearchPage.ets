@@ -14,6 +14,7 @@ import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
 import { TYPE_BODY, TYPE_META, TYPE_PAGE_TITLE, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { ICON_SIZE_SM } from '../foundation/tokens/IconTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('SearchPage');
@@ -273,7 +274,7 @@ struct SearchPage {
       Row({ space: 10 }) {
         AppIcon({
           name: 'search',
-          iconSize: 16,
+          iconSize: ICON_SIZE_SM,
           framed: false,
           color: this.themeColors.textMuted
         })
@@ -281,7 +282,7 @@ struct SearchPage {
         TextInput({ placeholder: '搜索目标、提醒和任务', text: this.keyword })
           .layoutWeight(1)
           .height(40)
-          .fontSize(14)
+          .fontSize(TYPE_BODY)
           .fontColor(this.themeColors.textPrimary)
           .backgroundColor(Color.Transparent)
           .placeholderColor(this.themeColors.textMuted)
@@ -292,10 +293,10 @@ struct SearchPage {
           })
 
         if (this.keyword.trim().length > 0) {
-          Button() {
+          Stack({ alignContent: Alignment.Center }) {
             AppIcon({
               name: 'close',
-              iconSize: 16,
+              iconSize: ICON_SIZE_SM,
               framed: false,
               color: this.themeColors.textMuted
             })
@@ -418,7 +419,7 @@ struct SearchPage {
       .width('100%')
 
       Text(task.title)
-        .fontSize(16)
+        .fontSize(TYPE_BODY)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')

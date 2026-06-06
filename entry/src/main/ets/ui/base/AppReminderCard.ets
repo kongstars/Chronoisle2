@@ -32,7 +32,7 @@ export struct AppReminderCard {
       return this.themeColors.surfaceSoft;
     }
     if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.surface;
+      return this.themeColors.surfaceRaised;
     }
     return this.themeColors.cardBackground;
   }
@@ -42,10 +42,10 @@ export struct AppReminderCard {
       return this.themeColors.borderColor;
     }
     if (this.isFocused) {
-      return this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.primaryLight;
+      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }

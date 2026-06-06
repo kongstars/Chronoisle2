@@ -291,7 +291,7 @@ struct UserPage {
         Column({ space: 6 }) {
           Row({ space: 10 }) {
             Text(this.getDisplayName())
-              .fontSize(16)
+              .fontSize(TYPE_BODY)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.textPrimary)
               .layoutWeight(1)

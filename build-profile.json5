@@ -52,13 +52,13 @@
         "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "storeFile": "D:/key/zhengshimiyao.p12",
-          "storePassword": "0000001F8A09FBB80313C0B797716524088432249FF3365C24D89884214F2987D2DC75A2CB8BDE81C3E3D79D5DAFA0",
-          "keyAlias": "key",
-          "keyPassword": "0000001FAB0E2A652DEC07B98736AFC00CCFDD9CE1FF0E038584CDB56B7A86D5D3AD885D7BF865AA4021CEB4E51783",
+          "storeFile": "TODO_SET_LOCAL_RELEASE_STORE_FILE",
+          "storePassword": "TODO_SET_LOCAL_RELEASE_STORE_PASSWORD",
+          "keyAlias": "TODO_SET_LOCAL_RELEASE_KEY_ALIAS",
+          "keyPassword": "TODO_SET_LOCAL_RELEASE_KEY_PASSWORD",
           "signAlg": "SHA256withECDSA",
-          "profile": "C:/Users/tianchen/Downloads/shoucifabuRelease.p7b",
-          "certpath": "C:/Users/tianchen/Downloads/release_cert.cer"
+          "profile": "TODO_SET_LOCAL_RELEASE_PROFILE_PATH",
+          "certpath": "TODO_SET_LOCAL_RELEASE_CERT_PATH"
         }
       }
     ]

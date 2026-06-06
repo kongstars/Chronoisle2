@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
 
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'chronoisle-admin-secret-2026';
+function getAdminJwtSecret() {
+  const secret = String(process.env.ADMIN_JWT_SECRET || '').trim();
+  if (!secret) {
+    throw new Error('ADMIN_JWT_SECRET_NOT_CONFIGURED');
+  }
+  return secret;
+}
 
 /**
  * 管理员身份验证中间件
@@ -14,13 +20,16 @@ function adminAuthenticate(req, res, next) {
 
   const token = authHeader.substring(7);
   try {
-    const decoded = jwt.verify(token, ADMIN_JWT_SECRET);
+    const decoded = jwt.verify(token, getAdminJwtSecret());
     if (decoded.role !== 'admin') {
       return res.status(403).json({ success: false, message: '无管理员权限' });
     }
     req.admin = decoded;
     next();
   } catch (err) {
+    if (err && err.message === 'ADMIN_JWT_SECRET_NOT_CONFIGURED') {
+      return res.status(503).json({ success: false, message: '管理后台未完成安全配置' });
+    }
     return res.status(401).json({ success: false, message: '管理员Token无效或已过期' });
   }
 }
@@ -31,7 +40,7 @@ function adminAuthenticate(req, res, next) {
 function generateAdminToken(username) {
   return jwt.sign(
     { username, role: 'admin' },
-    ADMIN_JWT_SECRET,
+    getAdminJwtSecret(),
     { expiresIn: '7d' }
   );
 }

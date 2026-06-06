@@ -11,14 +11,24 @@ let eventCategoryChart = null;
 let telemetryTrendChart = null;
 
 // ===== Auth =====
-function getToken() { return localStorage.getItem('admin_token'); }
+function getToken() {
+  return sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+}
+function saveToken(token) {
+  sessionStorage.setItem('admin_token', token);
+  localStorage.removeItem('admin_token');
+}
+function clearToken() {
+  sessionStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_token');
+}
 function authHeaders() {
   return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() };
 }
 async function apiFetch(path, opts = {}) {
   const res = await fetch(API + path, { headers: authHeaders(), ...opts });
   if (res.status === 401) {
-    localStorage.removeItem('admin_token');
+    clearToken();
     window.location.href = 'login.html';
     return null;
   }
@@ -34,11 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== Navigation =====
 function initNav() {
+  if (localStorage.getItem('admin_token') && !sessionStorage.getItem('admin_token')) {
+    saveToken(localStorage.getItem('admin_token'));
+  }
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => switchPage(item.dataset.page));
   });
   document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('admin_token');
+    clearToken();
     window.location.href = 'login.html';
   });
   document.getElementById('userSearch').addEventListener('keydown', e => {
@@ -88,6 +101,25 @@ function formatDateShort(ts) {
   if (!ts) return '-';
   const d = new Date(ts);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function safeText(value, fallback = '-') {
+  const normalized = String(value ?? '').trim();
+  return escapeHtml(normalized || fallback);
+}
+function safeUserId(value) {
+  return String(value ?? '').replace(/[^A-Za-z0-9_-]/g, '');
+}
+function safeCssToken(value, fallback = 'other') {
+  const normalized = String(value ?? '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  return normalized || fallback;
 }
 function accountTypeBadge(type) {
   const map = {
@@ -262,11 +294,11 @@ async function loadExpiringWarning() {
   }
   tbody.innerHTML = users.map(u => `
     <tr>
-      <td style="color:var(--text);font-weight:600;">${u.displayId || '-'}</td>
-      <td>${u.nickname || u.account || '-'}</td>
+      <td style="color:var(--text);font-weight:600;">${safeText(u.displayId)}</td>
+      <td>${safeText(u.nickname || u.account)}</td>
       <td style="color:var(--warning);">${formatDate(u.membershipExpireAt)}</td>
       <td><span class="badge ${u.remainingDays <= 3 ? 'badge-danger' : 'badge-warning'}">${u.remainingDays}天</span></td>
-      <td><a href="#" onclick="openUserDetail('${u.userId}');return false;" style="color:var(--primary);font-weight:500;">管理</a></td>
+      <td><a href="#" onclick="openUserDetail('${safeUserId(u.userId)}');return false;" style="color:var(--primary);font-weight:500;">管理</a></td>
     </tr>
   `).join('');
 }
@@ -292,26 +324,27 @@ async function loadUsers(page) {
   }
 
   tbody.innerHTML = users.map(u => {
-    const shortUuid = u.userId ? u.userId.substring(0, 8) + '...' : '-';
+    const userId = safeUserId(u.userId);
+    const shortUuid = userId ? userId.substring(0, 8) + '...' : '-';
     const platform = u.deviceInfo?.platform || '-';
-    const deviceModel = u.deviceInfo?.model ? `<span title="${u.deviceInfo.model}" style="font-size:11px;">${u.deviceInfo.model.substring(0, 10)}</span>` : '-';
+    const deviceModel = u.deviceInfo?.model ? `<span title="${safeText(u.deviceInfo.model)}" style="font-size:11px;">${safeText(u.deviceInfo.model.substring(0, 10), '')}</span>` : '-';
     return `
-    <tr onclick="openUserDetail('${u.userId}')" style="cursor:pointer;">
-      <td style="color:var(--text);font-weight:600;">${u.displayId || '-'}</td>
+    <tr onclick="openUserDetail('${userId}')" style="cursor:pointer;">
+      <td style="color:var(--text);font-weight:600;">${safeText(u.displayId)}</td>
       <td>
-        <span class="uuid-cell" title="${u.userId}" onclick="event.stopPropagation();copyToClipboard('${u.userId}')">${shortUuid}</span>
+        <span class="uuid-cell" title="${userId}" onclick="event.stopPropagation();copyToClipboard('${userId}')">${safeText(shortUuid)}</span>
       </td>
-      <td>${u.nickname ? `<strong>${u.nickname}</strong><br><span style="font-size:11px;color:var(--text-muted);">${u.account}</span>` : u.account || '-'}</td>
+      <td>${u.nickname ? `<strong>${safeText(u.nickname)}</strong><br><span style="font-size:11px;color:var(--text-muted);">${safeText(u.account)}</span>` : safeText(u.account)}</td>
       <td>${accountTypeBadge(u.accountType)}</td>
       <td>${deviceModel}</td>
-      <td><span style="font-size:11px;color:var(--text-muted);">${u.appVersion || '-'}</span></td>
+      <td><span style="font-size:11px;color:var(--text-muted);">${safeText(u.appVersion)}</span></td>
       <td><span class="badge" style="background:#8b5cf6;color:white;">${u.creditBalance || 0} 积分</span></td>
       <td>${membershipBadge(u)}</td>
       <td style="font-size:12px;">${u.membershipType === 'premium' && u.membershipExpireAt > Date.now() ? formatDate(u.membershipExpireAt) : '-'}</td>
       <td style="font-size:12px;">${formatDateShort(u.createdAt)}</td>
       <td style="font-size:12px;">${u.lastActiveAt ? formatDate(u.lastActiveAt) : formatDate(u.lastLoginAt)}</td>
       <td onclick="event.stopPropagation();">
-        <a href="#" onclick="openUserDetail('${u.userId}');return false;" style="color:var(--primary);text-decoration:none;font-weight:500;font-size:13px;">详情</a>
+        <a href="#" onclick="openUserDetail('${userId}');return false;" style="color:var(--primary);text-decoration:none;font-weight:500;font-size:13px;">详情</a>
       </td>
     </tr>`;
   }).join('');
@@ -355,9 +388,9 @@ async function openUserDetail(userId) {
   // 行为时间线
   const behaviorRows = (behavior.events || []).slice(0, 15).map(e => `
     <div class="timeline-item">
-      <span class="event-tag cat-${e.eventCategory}">${e.eventName}</span>
+      <span class="event-tag cat-${safeCssToken(e.eventCategory)}">${safeText(e.eventName)}</span>
       <span class="timeline-time">${formatDate(e.createdAt)}</span>
-      ${e.properties && Object.keys(e.properties).length ? `<span style="font-size:11px;color:var(--text-muted);">${JSON.stringify(e.properties).substring(0,60)}</span>` : ''}
+      ${e.properties && Object.keys(e.properties).length ? `<span style="font-size:11px;color:var(--text-muted);">${safeText(JSON.stringify(e.properties).substring(0, 60), '')}</span>` : ''}
     </div>
   `).join('') || '<div class="empty-state" style="font-size:13px;">暂无行为数据</div>';
 
@@ -367,7 +400,7 @@ async function openUserDetail(userId) {
     <div class="timeline-item">
       <span class="event-tag" style="background:${tx.amount > 0 ? '#10b981' : '#f43f5e'};color:#fff;">${tx.amount > 0 ? '+' : ''}${tx.amount} 积分</span>
       <span class="timeline-time">${formatDate(tx.createdAt)}</span>
-      <span style="font-size:12px;color:var(--text);">${tx.description || tx.type}</span>
+      <span style="font-size:12px;color:var(--text);">${safeText(tx.description || tx.type)}</span>
       <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">(单次后余额: ${tx.balanceAfter})</span>
     </div>
   `).join('') : '<div class="empty-state" style="font-size:13px;">暂无积分流水</div>';
@@ -379,13 +412,13 @@ async function openUserDetail(userId) {
         <div class="info-label" style="color:var(--primary);">云端数据规模</div>
         <div class="info-value" style="color:var(--primary);font-weight:700;">${syncStats.goals} 个目标 / ${syncStats.tasks} 个任务</div>
       </div>
-      <div class="info-item"><div class="info-label">用户UUID</div><div class="info-value uuid-cell" onclick="copyToClipboard('${user.userId}')" title="点击复制">${user.userId}</div></div>
-      <div class="info-item"><div class="info-label">四时显示号</div><div class="info-value">${user.displayId || '-'}</div></div>
-      <div class="info-item"><div class="info-label">账号</div><div class="info-value">${user.account || '-'}</div></div>
-      <div class="info-item"><div class="info-label">昵称</div><div class="info-value">${user.nickname || '-'}</div></div>
+      <div class="info-item"><div class="info-label">用户UUID</div><div class="info-value uuid-cell" onclick="copyToClipboard('${safeUserId(user.userId)}')" title="点击复制">${safeText(user.userId)}</div></div>
+      <div class="info-item"><div class="info-label">四时显示号</div><div class="info-value">${safeText(user.displayId)}</div></div>
+      <div class="info-item"><div class="info-label">账号</div><div class="info-value">${safeText(user.account)}</div></div>
+      <div class="info-item"><div class="info-label">昵称</div><div class="info-value">${safeText(user.nickname)}</div></div>
       <div class="info-item"><div class="info-label">账号类型</div><div class="info-value">${accountTypeBadge(user.accountType)}</div></div>
-      <div class="info-item"><div class="info-label">设备型号</div><div class="info-value">${user.deviceInfo?.model || '-'}</div></div>
-      <div class="info-item"><div class="info-label">客户端版本</div><div class="info-value">${user.appVersion || '-'}</div></div>
+      <div class="info-item"><div class="info-label">设备型号</div><div class="info-value">${safeText(user.deviceInfo?.model)}</div></div>
+      <div class="info-item"><div class="info-label">客户端版本</div><div class="info-value">${safeText(user.appVersion)}</div></div>
       <div class="info-item"><div class="info-label">注册时间</div><div class="info-value">${formatDate(user.createdAt)}</div></div>
       <div class="info-item"><div class="info-label">最后活跃</div><div class="info-value">${formatDate(user.lastActiveAt || user.lastLoginAt)}</div></div>
       <div class="info-item" style="grid-column:span 2;">
@@ -395,7 +428,7 @@ async function openUserDetail(userId) {
             <span class="badge ${user.membershipType === 'premium' ? 'badge-warning' : 'badge-primary'}">${user.membershipType === 'premium' ? '高级会员' : '免费用户'}</span>
             ${user.membershipType === 'premium' ? `<span style="margin-left:8px;font-size:12px;color:${user.membershipExpireAt > now ? 'var(--text-muted)' : 'var(--danger)'};">${user.membershipExpireAt > now ? '到期：' + formatDate(user.membershipExpireAt) : '已于 ' + formatDate(user.membershipExpireAt) + ' 到期'}</span>` : ''}
           </div>
-          <button class="btn-primary" style="height:32px;font-size:12px;padding:0 12px;border-radius:6px;" onclick="openMembershipManage('${user.userId}')">管理增减</button>
+          <button class="btn-primary" style="height:32px;font-size:12px;padding:0 12px;border-radius:6px;" onclick="openMembershipManage('${safeUserId(user.userId)}')">管理增减</button>
         </div>
       </div>
       <div class="info-item" style="grid-column:span 2;">
@@ -405,7 +438,7 @@ async function openUserDetail(userId) {
             <span style="font-size:24px;font-weight:700;color:#8b5cf6;">${creditAccount ? creditAccount.balance : 0}</span>
             <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">(总计发放: ${creditAccount ? creditAccount.totalEarned : 0} / 总计消耗: ${creditAccount ? creditAccount.totalConsumed : 0})</span>
           </div>
-          <button class="btn-primary" style="height:32px;font-size:12px;padding:0 12px;border-radius:6px;background:#8b5cf6;" onclick="openCreditManage('${user.userId}')">管理积分</button>
+          <button class="btn-primary" style="height:32px;font-size:12px;padding:0 12px;border-radius:6px;background:#8b5cf6;" onclick="openCreditManage('${safeUserId(user.userId)}')">管理积分</button>
         </div>
       </div>
     </div>
@@ -624,12 +657,12 @@ async function loadRevenueUsers(page) {
 
   tbody.innerHTML = users.map(u => `
     <tr>
-      <td style="font-weight:600;color:var(--text);">${u.displayId || '-'}</td>
-      <td>${u.nickname || u.account || '-'}</td>
+      <td style="font-weight:600;color:var(--text);">${safeText(u.displayId)}</td>
+      <td>${safeText(u.nickname || u.account)}</td>
       <td>${u.isActive ? '<span class="badge badge-warning">有效</span>' : '<span class="badge badge-danger">已到期</span>'}</td>
       <td style="font-size:12px;">${formatDate(u.membershipExpireAt)}</td>
       <td><span style="color:${u.remainingDays > 7 ? 'var(--success)' : u.remainingDays > 0 ? 'var(--warning)' : 'var(--danger)'};">${u.remainingDays > 0 ? u.remainingDays + '天' : '已到期'}</span></td>
-      <td><a href="#" onclick="openUserDetail('${u.userId}');return false;" style="color:var(--primary);font-weight:500;font-size:13px;">详情</a></td>
+      <td><a href="#" onclick="openUserDetail('${safeUserId(u.userId)}');return false;" style="color:var(--primary);font-weight:500;font-size:13px;">详情</a></td>
     </tr>
   `).join('');
 
@@ -666,7 +699,7 @@ async function loadRanking() {
   tbody.innerHTML = data.data.map((r, i) => `
     <tr>
       <td style="color:var(--text);font-weight:700;">${i + 1}</td>
-      <td>${r.user ? (r.user.nickname || r.user.account || r.userId) : r.userId}</td>
+      <td>${safeText(r.user ? (r.user.nickname || r.user.account || r.userId) : r.userId)}</td>
       <td>${r.user ? accountTypeBadge(r.user.accountType) : '-'}</td>
       <td style="color:${isVoice ? 'var(--warning)' : 'var(--danger)'};font-weight:600;">${isVoice ? formatSeconds(r.amount) : formatTokens(r.amount)}</td>
       <td>${r.count || 0}次</td>
@@ -739,7 +772,7 @@ async function loadTopEvents() {
     ${data.data.map((e, i) => `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <span style="font-size:13px;font-weight:500;">${i + 1}. ${e.eventName}</span>
+          <span style="font-size:13px;font-weight:500;">${i + 1}. ${safeText(e.eventName)}</span>
           <span style="font-size:12px;color:var(--text-muted);">${e.count.toLocaleString()} 次 · ${e.uniqueUsers} 人</span>
         </div>
         <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;">
@@ -831,17 +864,18 @@ async function loadEventStream(page) {
   }
 
   tbody.innerHTML = events.map(e => {
+    const userId = safeUserId(e.userId);
     const props = e.properties && Object.keys(e.properties).length
-      ? `<span style="font-size:11px;color:var(--text-muted);font-family:monospace;">${JSON.stringify(e.properties).substring(0, 80)}</span>`
+      ? `<span style="font-size:11px;color:var(--text-muted);font-family:monospace;">${safeText(JSON.stringify(e.properties).substring(0, 80), '')}</span>`
       : '-';
     return `
     <tr>
       <td style="font-size:12px;white-space:nowrap;">${formatDate(e.createdAt)}</td>
-      <td><span class="uuid-cell" onclick="copyToClipboard('${e.userId}')" title="${e.userId}">${e.userId.substring(0, 8)}...</span></td>
-      <td style="font-weight:500;">${e.eventName}</td>
-      <td><span class="event-tag cat-${e.eventCategory}">${e.eventCategory}</span></td>
-      <td style="font-size:12px;">${e.platform || '-'}</td>
-      <td style="font-size:12px;">${e.appVersion || '-'}</td>
+      <td><span class="uuid-cell" onclick="copyToClipboard('${userId}')" title="${userId}">${safeText(userId ? userId.substring(0, 8) + '...' : '-')}</span></td>
+      <td style="font-weight:500;">${safeText(e.eventName)}</td>
+      <td><span class="event-tag cat-${safeCssToken(e.eventCategory)}">${safeText(e.eventCategory)}</span></td>
+      <td style="font-size:12px;">${safeText(e.platform)}</td>
+      <td style="font-size:12px;">${safeText(e.appVersion)}</td>
       <td>${props}</td>
     </tr>`;
   }).join('');

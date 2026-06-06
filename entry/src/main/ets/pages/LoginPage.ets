@@ -12,7 +12,7 @@ import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { AppCard } from '../ui/base/AppCard';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('LoginPage');
@@ -118,7 +118,7 @@ struct LoginPage {
             AppStatusBadge({ text: '目标驱动 · 今日执行', tone: 'info', iconName: 'today' })
 
             Text('欢迎使用四时清单')
-              .fontSize(24)
+              .fontSize(TYPE_HERO_TITLE)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.themeColors.textPrimary)
 
@@ -185,25 +185,25 @@ struct LoginPage {
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
 
-      Button() {
+      Row() {
         Row({ space: 10 }) {
           Image($r('app.media.huawei_login_logo_white'))
             .width(22)
             .height(22)
             .objectFit(ImageFit.Contain)
           Text(this.logging ? '登录中...' : '使用华为账号登录')
-            .fontSize(15)
+            .fontSize(TYPE_BODY)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.themeColors.textOnPrimary)
+            .fontColor(this.isAgreedPrivacy ? this.themeColors.textOnPrimary : this.themeColors.textMuted)
         }
         .justifyContent(FlexAlign.Center)
       }
       .width('100%')
       .height(44)
-      .backgroundColor(this.themeColors.textPrimary)
+      .backgroundColor(this.isAgreedPrivacy ? this.themeColors.textPrimary : this.themeColors.surfaceSoft)
       .borderRadius(22)
+      .border({ width: 1, color: this.isAgreedPrivacy ? this.themeColors.textPrimary : this.themeColors.borderColor })
       .enabled(!this.logging && this.isAgreedPrivacy)
-      .opacity(this.isAgreedPrivacy ? 1 : 0.65)
       .onClick(() => {
         void this.loginWithHuaweiId();
       })

@@ -19,7 +19,7 @@ import { AppIcon } from '../ui/base/AppIcon';
 import { AppSegmentTabs } from '../ui/base/AppSegmentTabs';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
 import { SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
-import { TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
+import { TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META } from '../foundation/tokens/TypographyTokens';
 
 @Component
 export struct ActionTab {
@@ -28,7 +28,7 @@ export struct ActionTab {
   @Prop goals: Goal[] = [];
   @Prop dayEvents: DayEvent[] = [];
 
-  // 视图切换：0 时间  1 列表
+  // 视图切换：0 列表  1 时间
   @State viewIndex: number = 0;
 
   onCreate?: () => void;
@@ -101,7 +101,7 @@ export struct ActionTab {
       if (badge.length > 0) {
         Row() {
           Text(badge)
-            .fontSize(10)
+            .fontSize(TYPE_CAPTION)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textOnPrimary)
         }
@@ -111,7 +111,7 @@ export struct ActionTab {
         .justifyContent(FlexAlign.Center)
         .backgroundColor(this.themeColors.danger)
         .borderRadius(7)
-        .border({ width: 1.5, color: this.themeColors.background })
+        .border({ width: 1, color: this.themeColors.background })
         .position({ x: 26, y: -4 })
       }
     }
@@ -125,11 +125,11 @@ export struct ActionTab {
     Row({ space: SPACE_SM }) {
       Column({ space: 2 }) {
         Text('行动')
-          .fontSize(24)
+          .fontSize(TYPE_HERO_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
         Text(this.getSubtitle())
-          .fontSize(14)
+          .fontSize(TYPE_META)
           .fontColor(this.themeColors.textSecondary)
       }
       .layoutWeight(1)
@@ -180,7 +180,7 @@ export struct ActionTab {
   private ViewSwitcher() {
     Row() {
       AppSegmentTabs({
-        tabs: ['时间', '列表'],
+        tabs: ['列表', '时间'],
         selectedIndex: this.viewIndex,
         onSelect: (index: number) => {
           this.viewIndex = index;
@@ -198,6 +198,12 @@ export struct ActionTab {
 
       Column() {
         if (this.viewIndex === 0) {
+          TaskListTab({
+            tasks: this.tasks,
+            goals: this.goals,
+            embedded: true
+          })
+        } else {
           CalendarTab({
             dayEvents: this.dayEvents,
             tasks: this.tasks,
@@ -207,12 +213,6 @@ export struct ActionTab {
                 this.onOpenReminderCenter();
               }
             }
-          })
-        } else {
-          TaskListTab({
-            tasks: this.tasks,
-            goals: this.goals,
-            embedded: true
           })
         }
       }

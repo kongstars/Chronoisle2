@@ -44,7 +44,7 @@ export struct AppListRow {
       return this.themeColors.transparent;
     }
     if (this.isFocused) {
-      return this.themeColors.primarySubtle;
+      return this.themeColors.announcementSurface;
     }
     if (this.isHovered) {
       return this.themeColors.surfaceSoft;
@@ -123,7 +123,7 @@ export struct AppListRow {
       .constraintSize({ minHeight: TOUCH_TARGET_LG })
       .backgroundColor(this.getRowBackgroundColor())
       .borderRadius(RADIUS_MD)
-      .border({ width: BORDER_SUBTLE, color: this.isFocused && this.isInteractive() ? this.themeColors.primary : this.themeColors.transparent })
+      .border({ width: BORDER_SUBTLE, color: this.isFocused && this.isInteractive() ? this.themeColors.primaryLight : this.themeColors.transparent })
       .opacity(this.getRowOpacity())
       .focusable(this.isInteractive())
       .onFocus(() => {

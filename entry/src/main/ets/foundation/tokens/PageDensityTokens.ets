@@ -7,7 +7,7 @@ export const SEARCH_BAR_BADGE_HEIGHT: number = 24;
 export const LIST_ROW_HEIGHT_COMPACT: number = 58;
 export const LIST_ROW_HEIGHT_DEFAULT: number = 60;
 
-export const REMINDER_CARD_HEIGHT: number = 98;
+export const REMINDER_CARD_HEIGHT: number = 88;
 export const REMINDER_CARD_MIN_WIDTH: number = 190;
 
 export const HERO_PANEL_HEIGHT_COMPACT: number = 220;
@@ -34,5 +34,5 @@ export const FAB_SIZE: number = 56;
 export const BOTTOM_BAR_HEIGHT: number = 64;
 export const NAV_ICON_SIZE: number = 24;
 
-export const BOTTOM_SHEET_TOP_RADIUS: number = 22;
+export const BOTTOM_SHEET_TOP_RADIUS: number = 20;
 export const BOTTOM_SHEET_HEADER_HEIGHT: number = 56;

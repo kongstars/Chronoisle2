@@ -977,7 +977,7 @@ struct DayEventCreatePage {
             .fontColor(value === placeholder ? this.themeColors.textSecondary : this.themeColors.primary)
             .width('100%')
           Text(`点击修改${label}`)
-            .fontSize(11)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
             .width('100%')
         }
@@ -1020,7 +1020,7 @@ struct DayEventCreatePage {
         .width('100%')
       Row() {
         Text(this.formatReminderTime())
-          .fontSize(24)
+          .fontSize(TYPE_HERO_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.primary)
         Blank()
@@ -1042,7 +1042,7 @@ struct DayEventCreatePage {
   @Builder
   private ModeChip(label: string, selected: boolean, onClick: () => void) {
     Text(label)
-      .fontSize(13)
+      .fontSize(TYPE_CAPTION)
       .fontWeight(selected ? FontWeight.Bold : FontWeight.Medium)
       .fontColor(selected ? this.themeColors.textOnPrimary : this.themeColors.textSecondary)
       .padding({ left: 12, right: 12, top: 8, bottom: 8 })
@@ -1061,7 +1061,7 @@ struct DayEventCreatePage {
           .fontColor(this.themeColors.textPrimary)
           .width('100%')
         Text(item.subtitle)
-          .fontSize(11)
+          .fontSize(TYPE_CAPTION)
           .fontColor(this.themeColors.textMuted)
           .width('100%')
       }
@@ -1230,7 +1230,7 @@ struct DayEventCreatePage {
   private GoalSection() {
     Column({ space: 8 }) {
       Text('关联目标')
-        .fontSize(13)
+        .fontSize(TYPE_BODY)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
@@ -1242,7 +1242,7 @@ struct DayEventCreatePage {
             .fontColor(this.selectedGoalTitle ? this.themeColors.textPrimary : this.themeColors.textSecondary)
             .width('100%')
           Text('目标（可选）')
-            .fontSize(11)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
             .width('100%')
         }
@@ -1346,7 +1346,7 @@ struct DayEventCreatePage {
         }
       }
       Text(`当前规则：${this.getPeriodicRuleSummary()}`)
-        .fontSize(13)
+        .fontSize(TYPE_CAPTION)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
     }
@@ -1402,7 +1402,7 @@ struct DayEventCreatePage {
         }
       }
       Text(`当前规则：${this.getHabitRuleSummary()}`)
-        .fontSize(13)
+        .fontSize(TYPE_CAPTION)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
     }
@@ -1422,7 +1422,7 @@ struct DayEventCreatePage {
       .width('100%')
       .justifyContent(FlexAlign.SpaceBetween)
       Text(`当前规则：${this.getMilestoneRuleSummary()}`)
-        .fontSize(13)
+        .fontSize(TYPE_CAPTION)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
     }
@@ -1470,7 +1470,7 @@ struct DayEventCreatePage {
         this.DateSelector('提醒日期', this.getActiveDateValueText('counterTarget', ''), 'counterTarget', '')
       }
       Text(`当前规则：${this.getCounterRuleSummary()}`)
-        .fontSize(13)
+        .fontSize(TYPE_CAPTION)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
     }
@@ -1482,7 +1482,7 @@ struct DayEventCreatePage {
     Column({ space: 12 }) {
       this.DateSelector('目标时间', this.getActiveDateValueText('countdownTarget', ''), 'countdownTarget', '')
       Text('倒计时只记录目标时间，不额外创建提醒时间，首页会直接展示剩余天数。')
-        .fontSize(13)
+        .fontSize(TYPE_CAPTION)
         .lineHeight(18)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
@@ -1498,7 +1498,7 @@ struct DayEventCreatePage {
     if (this.getSuggestions().length > 0) {
       Column({ space: 10 }) {
         Text('自动提醒建议')
-          .fontSize(17)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .width('100%')

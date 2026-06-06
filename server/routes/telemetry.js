@@ -5,6 +5,26 @@ const { adminAuthenticate } = require('../middleware/adminAuth');
 
 const router = express.Router();
 
+function clampInt(value, fallback, min, max) {
+  const parsed = parseInt(String(value || fallback), 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(Math.max(parsed, min), max);
+}
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildSafeContainsRegex(value) {
+  const normalized = String(value || '').trim().slice(0, 64);
+  if (!normalized) {
+    return null;
+  }
+  return new RegExp(escapeRegex(normalized), 'i');
+}
+
 // ============================================================
 // 客户端上报接口（需用户登录，由 index.js 的 authenticate 中间件保护）
 // ============================================================
@@ -103,8 +123,8 @@ router.use(adminAuthenticate);
  */
 router.get('/admin/top-events', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 7;
-    const limit = parseInt(req.query.limit) || 20;
+    const days = clampInt(req.query.days, 7, 1, 90);
+    const limit = clampInt(req.query.limit, 20, 1, 100);
     const category = req.query.category || '';
 
     const since = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -134,15 +154,16 @@ router.get('/admin/top-events', async (req, res) => {
 router.get('/admin/events', async (req, res) => {
   try {
     const { userId, eventName, category } = req.query;
-    const days = parseInt(req.query.days) || 7;
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const days = clampInt(req.query.days, 7, 1, 90);
+    const page = clampInt(req.query.page, 1, 1, 100000);
+    const limit = clampInt(req.query.limit, 30, 1, 100);
     const skip = (page - 1) * limit;
+    const eventNameRegex = buildSafeContainsRegex(eventName);
 
     const since = Date.now() - days * 24 * 60 * 60 * 1000;
     const match = { createdAt: { $gte: since } };
     if (userId) match.userId = userId;
-    if (eventName) match.eventName = { $regex: eventName, $options: 'i' };
+    if (eventNameRegex) match.eventName = eventNameRegex;
     if (category) match.eventCategory = category;
 
     const [events, total] = await Promise.all([
@@ -167,7 +188,7 @@ router.get('/admin/events', async (req, res) => {
  */
 router.get('/admin/daily-trend', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 14;
+    const days = clampInt(req.query.days, 14, 1, 90);
     const since = Date.now() - days * 24 * 60 * 60 * 1000;
 
     const results = await TelemetryEvent.aggregate([
@@ -215,7 +236,7 @@ router.get('/admin/daily-trend', async (req, res) => {
 router.get('/admin/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const limit = clampInt(req.query.limit, 30, 1, 100);
 
     const events = await TelemetryEvent.find({ userId })
       .sort({ createdAt: -1 })

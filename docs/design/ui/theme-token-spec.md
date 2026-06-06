@@ -1,6 +1,6 @@
 # Chronoisle 深浅色主题 Token 规范
 
-更新时间：2026-04-19
+更新时间：2026-06-05
 
 适用对象：设计、前端、测试
 
@@ -80,7 +80,7 @@
 - [AppTheme.ets](</D:/code/Chronoisle2/entry/src/main/ets/theme/AppTheme.ets:1>)
 - [ThemeService.ets](</D:/code/Chronoisle2/entry/src/main/ets/services/ThemeService.ets:1>)
 
-当前已有主题字段：
+当前主题实现已经落到：
 
 - `primary`
 - `primaryLight`
@@ -103,7 +103,7 @@
 - `inputBackground`
 - `borderColor`
 
-这套字段已经够当前版本落地，但从规范角度还不够精细，后续建议补一层更明确的语义 token 映射。
+这套字段已经覆盖当前版本所需的主主题、语义状态、风险面板、公告面板和会员权益层，不再是“只够凑浅深色”的最低限实现。
 
 ## 5. Token 分类
 
@@ -115,10 +115,10 @@
 
 | Token | 用途 | Light | Dark |
 | --- | --- | --- | --- |
-| `primary` | 主动作、主激活态、底部 Tab 激活态 | `#4B7BF7` | `#5E8BFF` |
-| `primaryLight` | 主色浅层背景、选中底色 | `#6D94FF` | `#87A6FF` |
-| `primaryDark` | 主色深层强调、hover/pressed | `#345FE4` | `#4C72E3` |
-| `info` | 信息提示、轻提示组件 | `#4B7BF7` | `#7AA3FF` |
+| `primary` | 主动作、主激活态、底部 Tab 激活态 | `#7679F5` | `#9A96FF` |
+| `primaryLight` | 主色弱描边、选中边界、轻强调 | `#9A96FF` | `#BEB6FF` |
+| `primaryDark` | 主色深层强调、pressed/active | `#5F62DA` | `#817BEA` |
+| `info` | 信息提示、轻提示组件 | `#9A96FF` | `#BEB6FF` |
 
 ### 5.2 Surface Token
 
@@ -126,12 +126,14 @@
 
 | Token | 用途 | Light | Dark |
 | --- | --- | --- | --- |
-| `background` | 页面主背景 | `#F4F7FB` | `#0E1624` |
-| `surface` | 一级表面，如二级页头、底栏背景 | `#FFFFFF` | `#151F30` |
-| `surfaceLight` | 次级表面、弱背景、轻卡片底 | `#F8FAFD` | `#1C293D` |
-| `cardBackground` | 标准卡片背景 | `#FFFFFF` | `#151F30` |
-| `inputBackground` | 输入框、搜索框背景 | `#F8FAFD` | `#1C293D` |
-| `navBackground` | 导航背景 | `#F4F7FB` | `#0E1624` |
+| `background` | 页面主背景 | `#FBF4E9` | `#17121D` |
+| `surface` | 一级表面，如标准卡片与面板 | `#FFFDF9` | `#211827` |
+| `surfaceLight` | 次级表面、弱背景 | `#FFFBF6` | `#2A1F30` |
+| `surfaceRaised` | 强调卡片、悬浮表面 | `#FFFFFF` | `#2D2234` |
+| `surfaceSoft` | Segment 容器、输入区、弱面板 | `#F7EFE6` | `#261D2D` |
+| `cardBackground` | 标准卡片背景 | `#FFFFFF` | `#211827` |
+| `inputBackground` | 输入框、搜索框背景 | `#FFF9F3` | `#2A1F30` |
+| `navBackground` | 导航背景 | `#FFFDF9` | `#231A2A` |
 
 ### 5.3 Text Token
 
@@ -139,9 +141,9 @@
 
 | Token | 用途 | Light | Dark |
 | --- | --- | --- | --- |
-| `textPrimary` | 主标题、正文主信息 | `#162033` | `#F5F7FB` |
-| `textSecondary` | 次级说明、模块描述 | `#60708A` | `#A9B7CB` |
-| `textMuted` | 占位、未激活、弱提示、底部 Tab 未选中图标 | `#97A3B6` | `#78859A` |
+| `textPrimary` | 主标题、正文主信息 | `#2B2233` | `#F5EDF7` |
+| `textSecondary` | 次级说明、模块描述 | `#786C7D` | `#B8A8BF` |
+| `textMuted` | 占位、未激活、弱提示、底部 Tab 未选中图标 | `#B2A7B1` | `#8F7F97` |
 
 ### 5.4 Border & Divider Token
 
@@ -149,8 +151,8 @@
 
 | Token | 用途 | Light | Dark |
 | --- | --- | --- | --- |
-| `borderColor` | 输入框、卡片、底栏顶边、chip 描边 | `#E4EAF3` | `#253249` |
-| `divider` | 分隔线、列表弱分界 | `#E6EBF3` | `rgba(255, 255, 255, 0.08)` |
+| `borderColor` | 输入框、卡片、底栏、chip 描边 | `#E7DDD1` | `#3A2D43` |
+| `divider` | 分隔线、列表弱分界 | `#EEE5DA` | `rgba(255, 255, 255, 0.08)` |
 
 ### 5.5 Feedback Token
 
@@ -158,9 +160,9 @@
 
 | Token | 用途 | Light | Dark |
 | --- | --- | --- | --- |
-| `success` | 成功、已完成、会员有效 | `#2FBE72` | `#35C37B` |
-| `warning` | 风险提醒、轻警告 | `#FFB547` | `#FFBD59` |
-| `danger` | 错误、逾期、破坏性动作 | `#FF5C54` | `#FF6B63` |
+| `success` | 成功、已完成、会员有效 | `#42A483` | `#59B294` |
+| `warning` | 风险提醒、轻警告 | `#D69041` | `#F1A765` |
+| `danger` | 错误、逾期、破坏性动作 | `#DD7A72` | `#D98C86` |
 
 ### 5.6 Effect Token
 
@@ -168,7 +170,7 @@
 
 | Token | 用途 | Light | Dark |
 | --- | --- | --- | --- |
-| `cardShadow` | 卡片阴影 | `rgba(15, 23, 42, 0.08)` | `rgba(2, 6, 23, 0.38)` |
+| `cardShadow` | 卡片阴影 | `rgba(91, 68, 52, 0.10)` | `rgba(7, 5, 10, 0.32)` |
 
 ### 5.7 Business Semantic Token
 
@@ -176,12 +178,12 @@
 
 | 推荐 Token | 用途 | 说明 |
 | --- | --- | --- |
-| `premium` | 会员权益主色 | 建议独立于 `primary`，避免和系统建议混用 |
-| `premiumSurface` | 会员卡背景层 | 浅色和深色都要单独校准 |
-| `riskSurface` | 风险卡弱背景 | 不直接拿 `danger` 降透明度凑 |
-| `announcementSurface` | 公告 Banner 背景 | 与风险和会员区分开 |
-| `syncSuccessSurface` | 同步成功弱背景 | 用于顶部同步状态条 |
-| `syncErrorSurface` | 同步失败弱背景 | 用于同步异常状态 |
+| `premium` | 会员权益主色 | 已实现，保持独立于 `primary` |
+| `premiumSurface` | 会员卡背景层 | 已实现 |
+| `riskSurface` | 风险卡弱背景 | 已实现，不再拿 `danger` 直接降透明度凑 |
+| `announcementSurface` | 公告 / AI / 焦点弱强调背景 | 已实现 |
+| `syncSuccessSurface` | 同步成功弱背景 | 已实现 |
+| `syncErrorSurface` | 同步失败弱背景 | 已实现 |
 
 ## 6. 目标语义层级
 
@@ -242,13 +244,14 @@
 
 规则：
 
-- 背景：`surface`
-- 顶部分隔：`borderColor`
+- 背景：`navBackground`
+- 顶部分隔：无需单独描边，靠胶囊阴影与底色区分
 - 选中图标：`primary`
 - 未选中图标：`textMuted`
 - 选中文字：`primary`
 - 未选中文字：`textSecondary`
 - 不允许在底部 Tab 上使用重阴影、重发光、厚渐变
+- 底栏语音胶囊和导航胶囊必须共享同一 `navBackground`
 
 ### 7.6 Badge / Chip
 
@@ -362,6 +365,8 @@
 - badge / chip 在两种模式下仍有明显选中态
 - 会员卡与风险卡语义不混淆
 - 底部 Tab 激活和未激活一眼可分
+- 分类色仅作为标签和微强调使用，不能主导整张目标卡
+- 焦点卡优先使用 `announcementSurface` + `primaryLight` 弱边界，而不是高饱和整底
 
 ### 11.3 真机级
 
@@ -374,7 +379,7 @@
 
 建议按以下顺序继续：
 
-1. 把当前 `ThemeColors` 映射整理成代码层 token 文件
-2. 优先改底部 Tab、按钮、卡片、输入框四类基础组件
-3. 再清理 Today / Me / Membership 三个 P0 页面里的硬编码颜色
+1. 继续把 `primary + 透明度拼接` 收口到语义表面 token
+2. 优先改 Onboarding / Pomodoro / Voice Overlay / 创建流程四类高权重页面
+3. 把分类色从“卡片主色”收敛成“标签点缀”
 4. 真机截图沉淀一套浅色/深色对照基线

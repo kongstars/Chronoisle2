@@ -254,6 +254,50 @@ struct MembershipPage {
     return this.isPremiumActive() ? '切换' : '立即开通';
   }
 
+  private getProductCardVariant(productId: string): 'premium' | 'raised' | 'soft' {
+    if (this.isProductOpened(productId) || this.getPendingProductId() === productId) {
+      return 'premium';
+    }
+    if (productId.includes('yearly')) {
+      return 'raised';
+    }
+    return 'soft';
+  }
+
+  private getProductBadgeTone(productId: string): 'premium' | 'primary' | 'neutral' {
+    if (this.isProductOpened(productId) || this.getPendingProductId() === productId) {
+      return 'premium';
+    }
+    if (productId.includes('yearly')) {
+      return 'primary';
+    }
+    return 'neutral';
+  }
+
+  private getProductPriceColor(productId: string): string {
+    if (this.isProductOpened(productId) || this.getPendingProductId() === productId) {
+      return this.themeColors.premiumText;
+    }
+    if (productId.includes('yearly')) {
+      return this.themeColors.primary;
+    }
+    return this.themeColors.textPrimary;
+  }
+
+  private getProductMetaColor(productId: string): string {
+    if (this.isProductOpened(productId) || this.getPendingProductId() === productId) {
+      return this.themeColors.premiumText;
+    }
+    return this.themeColors.textMuted;
+  }
+
+  private getProductActionVariant(productId: string): 'premium' | 'secondary' {
+    if (this.isProductOpened(productId)) {
+      return 'secondary';
+    }
+    return 'premium';
+  }
+
   private getPendingSwitchDaysText(): string {
     const effectiveAt = this.getCurrentSubscriptionEndAt();
     if (!effectiveAt) {
@@ -437,14 +481,14 @@ struct MembershipPage {
 
   @Builder
   private ProductCard(product: IAPProduct) {
-    AppCard({ spacing: 10 }) {
+    AppCard({ spacing: 10, variant: this.getProductCardVariant(product.productId) }) {
       Row() {
         Text(this.getProductDisplayName(product))
-          .fontSize(16)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .layoutWeight(1)
-        AppStatusBadge({ text: this.getProductTag(product.productId), tone: 'primary', iconName: 'wallet' })
+        AppStatusBadge({ text: this.getProductTag(product.productId), tone: this.getProductBadgeTone(product.productId), iconName: 'wallet' })
       }
       .width('100%')
 
@@ -459,11 +503,11 @@ struct MembershipPage {
           Text(product.price || '--')
             .fontSize(TYPE_HERO_TITLE)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.themeColors.textPrimary)
+            .fontColor(this.getProductPriceColor(product.productId))
           if (product.priceCurrencyCode) {
             Text(product.priceCurrencyCode)
               .fontSize(TYPE_META)
-              .fontColor(this.themeColors.textMuted)
+              .fontColor(this.getProductMetaColor(product.productId))
               .margin({ top: 8 })
           }
         }
@@ -473,7 +517,7 @@ struct MembershipPage {
 
         AppButton({
           text: this.getProductActionText(product.productId),
-          variant: 'primary',
+          variant: this.getProductActionVariant(product.productId),
           buttonSize: 'sm',
           iconName: 'wallet',
           loading: this.isPurchasing && this.currentProductId === product.productId,
@@ -488,7 +532,7 @@ struct MembershipPage {
         Text(this.getProductPendingHint(product.productId))
           .fontSize(TYPE_META)
           .lineHeight(18)
-          .fontColor(this.themeColors.primary)
+          .fontColor(this.getProductCardVariant(product.productId) === 'premium' ? this.themeColors.premiumText : this.themeColors.primary)
           .width('100%')
           .textAlign(TextAlign.End)
       }
@@ -586,7 +630,7 @@ struct MembershipPage {
               }
             }
 
-            AppCard({ spacing: 10, variant: 'soft' }) {
+            AppCard({ spacing: 10, variant: 'raised' }) {
               Text('会员权益')
                 .fontSize(TYPE_SECTION_TITLE)
                 .fontWeight(FontWeight.Bold)

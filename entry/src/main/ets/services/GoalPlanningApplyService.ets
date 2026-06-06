@@ -74,10 +74,7 @@ export class GoalPlanningApplyService {
       if (reminderActions && reminderActions.length > 0) {
         try {
           for (const recurring of reminderActions) {
-            const event = GoalPlanningApplyService.createRecurringEvent(recurring, goalId, goal.title);
-            if (goal.endDate) {
-              event.endDate = goal.endDate;
-            }
+            const event = GoalPlanningApplyService.createRecurringEvent(recurring, goalId, goal.title, goal.endDate);
             await db.addDayEvent(event);
             createdReminderIds.push(event.id);
           }
@@ -91,12 +88,9 @@ export class GoalPlanningApplyService {
       if (countdowns && countdowns.length > 0) {
         try {
           for (const countdown of countdowns) {
-            const event = GoalPlanningApplyService.createCountdownEvent(countdown, goalId, goal.title);
+            const event = GoalPlanningApplyService.createCountdownEvent(countdown, goalId, goal.title, goal.endDate);
             if (!event) {
               continue;
-            }
-            if (goal.endDate) {
-              event.endDate = goal.endDate;
             }
             await db.addDayEvent(event);
             createdReminderIds.push(event.id);
@@ -180,10 +174,13 @@ export class GoalPlanningApplyService {
     return TaskPriority.NORMAL;
   }
 
-  private static createRecurringEvent(action: RecurringAction, goalId: string, goalTitle: string): DayEvent {
-    const event = new DayEvent(action.title, DayEventType.HABIT, GoalPlanningApplyService.startOfToday());
+  private static createRecurringEvent(action: RecurringAction, goalId: string, goalTitle: string, goalEndDate?: number): DayEvent {
+    const reminderTime = GoalPlanningApplyService.parseReminderTime(action.reminderTime || action.suggestedTime);
+    const startDate = GoalPlanningApplyService.resolveRecurringStartDate(action, reminderTime.hour, reminderTime.minute);
+    const event = new DayEvent(action.title, DayEventType.PERIODIC, startDate);
     event.goalId = goalId;
     event.goalTitle = goalTitle;
+    event.endDate = GoalPlanningApplyService.resolveRecurringEndDate(action.endDate, goalEndDate);
 
     if (action.rule === 'weekly') {
       const rawWeekdays = action.weekdays && action.weekdays.length > 0
@@ -195,8 +192,8 @@ export class GoalPlanningApplyService {
           id: '',
           type: ReminderType.PERIODIC_WEEKLY,
           weekday: weekday,
-          hour: 9,
-          minute: 0
+          hour: reminderTime.hour,
+          minute: reminderTime.minute
         } as ReminderRule);
       });
       return event;
@@ -207,31 +204,32 @@ export class GoalPlanningApplyService {
         id: '',
         type: ReminderType.PERIODIC_MONTHLY,
         dayOfMonth: GoalPlanningApplyService.parseDayOfMonth(action.timeParams || []),
-        hour: 9,
-        minute: 0
+        hour: reminderTime.hour,
+        minute: reminderTime.minute
       } as ReminderRule);
       return event;
     }
 
     event.addReminderRule({
       id: '',
-      type: ReminderType.HABIT_DAILY,
-      hour: 9,
-      minute: 0
+      type: ReminderType.PERIODIC_DAILY,
+      hour: reminderTime.hour,
+      minute: reminderTime.minute
     } as ReminderRule);
     return event;
   }
 
-  private static createCountdownEvent(item: CountdownItem, goalId: string, goalTitle: string): DayEvent | null {
+  private static createCountdownEvent(item: CountdownItem, goalId: string, goalTitle: string, goalEndDate?: number): DayEvent | null {
     const targetDate = new Date(item.targetDate).getTime();
     if (isNaN(targetDate)) {
       return null;
     }
 
-    const event = new DayEvent(item.title, DayEventType.COUNTDOWN, GoalPlanningApplyService.startOfToday());
+    const event = new DayEvent(item.title, DayEventType.COUNTDOWN, GoalPlanningApplyService.startOfDay(targetDate));
     event.targetDate = targetDate;
     event.goalId = goalId;
     event.goalTitle = goalTitle;
+    event.endDate = goalEndDate ? Math.max(goalEndDate, GoalPlanningApplyService.endOfDay(targetDate)) : GoalPlanningApplyService.endOfDay(targetDate);
     event.addReminderRule({
       id: '',
       type: ReminderType.COUNTER_DATE,
@@ -260,9 +258,131 @@ export class GoalPlanningApplyService {
     return value;
   }
 
-  private static startOfToday(): number {
-    const date = new Date();
+  private static parseReminderTime(rawValue?: string): { hour: number; minute: number } {
+    const safeValue = (rawValue || '').trim();
+    const matched = safeValue.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (!matched) {
+      return { hour: 9, minute: 0 };
+    }
+
+    const hour = parseInt(matched[1], 10);
+    const minute = parseInt(matched[2], 10);
+    if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return { hour: 9, minute: 0 };
+    }
+
+    return { hour, minute };
+  }
+
+  private static resolveRecurringEndDate(rawEndDate?: string, goalEndDate?: number): number | undefined {
+    const actionEndDate = GoalPlanningApplyService.parseDateToEndOfDay(rawEndDate);
+    if (actionEndDate !== undefined) {
+      return goalEndDate !== undefined ? Math.min(actionEndDate, goalEndDate) : actionEndDate;
+    }
+    return goalEndDate;
+  }
+
+  private static resolveRecurringStartDate(action: RecurringAction, hour: number, minute: number): number {
+    if (action.rule === 'weekly') {
+      const rawWeekdays = action.weekdays && action.weekdays.length > 0
+        ? action.weekdays
+        : GoalPlanningApplyService.parseWeekdays(action.timeParams || []);
+      return GoalPlanningApplyService.startOfDay(
+        GoalPlanningApplyService.getNextWeeklyOccurrence(rawWeekdays.length > 0 ? rawWeekdays : [1], hour, minute)
+      );
+    }
+
+    if (action.rule === 'monthly') {
+      const nextMonthlyOccurrence = GoalPlanningApplyService.getNextMonthlyOccurrence(
+        GoalPlanningApplyService.parseDayOfMonth(action.timeParams || []),
+        hour,
+        minute
+      );
+      return GoalPlanningApplyService.startOfDay(nextMonthlyOccurrence);
+    }
+
+    return GoalPlanningApplyService.startOfDay(GoalPlanningApplyService.getNextDailyOccurrence(hour, minute));
+  }
+
+  private static getNextDailyOccurrence(hour: number, minute: number, referenceTime: number = Date.now()): number {
+    const today = GoalPlanningApplyService.startOfDay(referenceTime);
+    const candidate = GoalPlanningApplyService.applyTime(today, hour, minute);
+    if (candidate >= referenceTime) {
+      return candidate;
+    }
+    return GoalPlanningApplyService.applyTime(today + 24 * 60 * 60 * 1000, hour, minute);
+  }
+
+  private static getNextWeeklyOccurrence(weekdays: number[], hour: number, minute: number, referenceTime: number = Date.now()): number {
+    let nextOccurrence: number | undefined = undefined;
+    weekdays.forEach((weekday: number) => {
+      const candidate = GoalPlanningApplyService.getNextWeeklyOccurrenceForDay(weekday, hour, minute, referenceTime);
+      if (nextOccurrence === undefined || candidate < nextOccurrence) {
+        nextOccurrence = candidate;
+      }
+    });
+    return nextOccurrence !== undefined ? nextOccurrence : GoalPlanningApplyService.getNextDailyOccurrence(hour, minute, referenceTime);
+  }
+
+  private static getNextWeeklyOccurrenceForDay(weekday: number, hour: number, minute: number, referenceTime: number): number {
+    const today = GoalPlanningApplyService.startOfDay(referenceTime);
+    const currentWeekday = new Date(today).getDay();
+    const normalizedWeekday = weekday >= 0 && weekday <= 6 ? weekday : 1;
+    let diff = (normalizedWeekday - currentWeekday + 7) % 7;
+    let candidate = GoalPlanningApplyService.applyTime(today + diff * 24 * 60 * 60 * 1000, hour, minute);
+    if (candidate < referenceTime) {
+      diff = diff === 0 ? 7 : diff + 7;
+      candidate = GoalPlanningApplyService.applyTime(today + diff * 24 * 60 * 60 * 1000, hour, minute);
+    }
+    return candidate;
+  }
+
+  private static getNextMonthlyOccurrence(dayOfMonth: number, hour: number, minute: number, referenceTime: number = Date.now()): number {
+    const normalizedDay = Math.max(1, Math.min(31, dayOfMonth));
+    const referenceDate = new Date(referenceTime);
+    for (let monthOffset = 0; monthOffset < 24; monthOffset++) {
+      const rawMonth = referenceDate.getMonth() + monthOffset;
+      const year = referenceDate.getFullYear() + Math.floor(rawMonth / 12);
+      const month = rawMonth % 12;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      if (normalizedDay > daysInMonth) {
+        continue;
+      }
+      const candidate = new Date(year, month, normalizedDay, hour, minute, 0, 0).getTime();
+      if (candidate >= referenceTime) {
+        return candidate;
+      }
+    }
+    return GoalPlanningApplyService.getNextDailyOccurrence(hour, minute, referenceTime);
+  }
+
+  private static parseDateToEndOfDay(rawDate?: string): number | undefined {
+    if (!rawDate) {
+      return undefined;
+    }
+    const parsed = new Date(rawDate.replace(/-/g, '/')).getTime();
+    if (isNaN(parsed)) {
+      return undefined;
+    }
+    return GoalPlanningApplyService.endOfDay(parsed);
+  }
+
+  private static applyTime(dayTimestamp: number, hour: number, minute: number): number {
+    const date = new Date(GoalPlanningApplyService.startOfDay(dayTimestamp));
+    date.setHours(hour, minute, 0, 0);
+    return date.getTime();
+  }
+
+  private static startOfDay(timestamp: number): number {
+    const date = new Date(timestamp);
     date.setHours(0, 0, 0, 0);
     return date.getTime();
   }
+
+  private static endOfDay(timestamp: number): number {
+    const date = new Date(timestamp);
+    date.setHours(23, 59, 59, 999);
+    return date.getTime();
+  }
+
 }

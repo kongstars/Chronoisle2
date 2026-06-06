@@ -107,6 +107,7 @@ export interface RecurringAction {
   description?: string;
   cadence?: string;
   reminderTime?: string;
+  suggestedTime?: string;
   rule?: 'daily' | 'weekly' | 'monthly';
   weekdays?: number[];
   timeParams?: Array<string | number>;

@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const CreditAccount = require('../models/CreditAccount');
 const CreditTransaction = require('../models/CreditTransaction');
@@ -15,6 +16,7 @@ if (!JWT_SECRET) {
 }
 const _JWT_SECRET = JWT_SECRET || 'chronoisle-dev-insecure-key-do-not-use-in-production';
 const REGISTER_BONUS = 50;
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 async function grantRegisterBonus(userId) {
   try {
@@ -33,14 +35,93 @@ async function grantRegisterBonus(userId) {
     console.warn('OAuth赠送注册积分失败:', e.message);
   }
 }
-const APP_URL_SCHEME = process.env.APP_URL_SCHEME || 'sishiqingdan://';
+const APP_URL_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i.test(String(process.env.APP_URL_SCHEME || '').trim())
+  ? String(process.env.APP_URL_SCHEME || '').trim()
+  : 'sishiqingdan://';
+
+function getOAuthStateSecret() {
+  const secret = String(process.env.OAUTH_STATE_SECRET || _JWT_SECRET || '').trim();
+  if (!secret) {
+    throw new Error('OAUTH_STATE_SECRET_NOT_CONFIGURED');
+  }
+  return secret;
+}
+
+function toBase64Url(input) {
+  return Buffer.from(input).toString('base64url');
+}
+
+function fromBase64Url(input) {
+  return Buffer.from(String(input || ''), 'base64url').toString('utf8');
+}
+
+function signOAuthState(payload) {
+  return crypto.createHmac('sha256', getOAuthStateSecret()).update(payload).digest('base64url');
+}
+
+function createOAuthState(platform) {
+  const payload = JSON.stringify({
+    platform,
+    nonce: crypto.randomBytes(12).toString('hex'),
+    ts: Date.now()
+  });
+  return `${toBase64Url(payload)}.${signOAuthState(payload)}`;
+}
+
+function verifyOAuthState(state, expectedPlatform) {
+  const raw = String(state || '').trim();
+  const [payloadPart, signaturePart] = raw.split('.');
+  if (!payloadPart || !signaturePart) {
+    return false;
+  }
+
+  let payloadText = '';
+  try {
+    payloadText = fromBase64Url(payloadPart);
+  } catch (error) {
+    return false;
+  }
+
+  const expectedSignature = signOAuthState(payloadText);
+  const signatureBuffer = Buffer.from(signaturePart);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    return false;
+  }
+
+  try {
+    const payload = JSON.parse(payloadText);
+    const ts = Number(payload?.ts || 0);
+    return payload?.platform === expectedPlatform && Number.isFinite(ts) && (Date.now() - ts) <= OAUTH_STATE_TTL_MS;
+  } catch (error) {
+    return false;
+  }
+}
+
+function redirectAppSuccess(res, payload) {
+  const fragment = new URLSearchParams({
+    token: String(payload.token || ''),
+    userId: String(payload.userId || ''),
+    nickname: String(payload.nickname || ''),
+    avatar: String(payload.avatar || '')
+  }).toString();
+  return res.redirect(`${APP_URL_SCHEME}oauth_success#${fragment}`);
+}
+
+function redirectAppError(res, message) {
+  const fragment = new URLSearchParams({
+    message: String(message || '登录失败')
+  }).toString();
+  return res.redirect(`${APP_URL_SCHEME}oauth_error#${fragment}`);
+}
 
 /**
  * 获取第三方登录URL
  * GET /api/auth/oauth/url
  */
 router.get('/url', (req, res) => {
-  const { platform, state } = req.query;
+  const platform = String(req.query.platform || '').trim();
+  const state = createOAuthState(platform);
   
   let authUrl;
   switch (platform) {
@@ -75,7 +156,11 @@ router.get('/wechat/callback', async (req, res) => {
   const { code, state } = req.query;
   
   if (!code) {
-    return res.redirect(`${APP_URL_SCHEME}oauth_error?message=授权失败`);
+    return redirectAppError(res, '授权失败');
+  }
+
+  if (!verifyOAuthState(state, 'wechat')) {
+    return redirectAppError(res, '授权状态无效，请重新发起登录');
   }
   
   try {
@@ -128,12 +213,16 @@ router.get('/wechat/callback', async (req, res) => {
     }, _JWT_SECRET, { expiresIn: '30d' });
     
     // 5. 重定向回应用
-    const redirectUrl = `${APP_URL_SCHEME}oauth_success?token=${token}&userId=${user.userId}&nickname=${encodeURIComponent(user.nickname)}&avatar=${encodeURIComponent(user.avatar)}`;
-    res.redirect(redirectUrl);
+    return redirectAppSuccess(res, {
+      token,
+      userId: user.userId,
+      nickname: user.nickname,
+      avatar: user.avatar
+    });
     
   } catch (error) {
     console.error('微信登录回调错误:', error);
-    res.redirect(`${APP_URL_SCHEME}oauth_error?message=${encodeURIComponent(error.message)}`);
+    return redirectAppError(res, error.message);
   }
 });
 
@@ -145,7 +234,11 @@ router.get('/qq/callback', async (req, res) => {
   const { code, state } = req.query;
   
   if (!code) {
-    return res.redirect(`${APP_URL_SCHEME}oauth_error?message=授权失败`);
+    return redirectAppError(res, '授权失败');
+  }
+
+  if (!verifyOAuthState(state, 'qq')) {
+    return redirectAppError(res, '授权状态无效，请重新发起登录');
   }
   
   try {
@@ -204,12 +297,16 @@ router.get('/qq/callback', async (req, res) => {
     }, _JWT_SECRET, { expiresIn: '30d' });
     
     // 6. 重定向回应用
-    const redirectUrl = `${APP_URL_SCHEME}oauth_success?token=${token}&userId=${user.userId}&nickname=${encodeURIComponent(user.nickname)}&avatar=${encodeURIComponent(user.avatar)}`;
-    res.redirect(redirectUrl);
+    return redirectAppSuccess(res, {
+      token,
+      userId: user.userId,
+      nickname: user.nickname,
+      avatar: user.avatar
+    });
     
   } catch (error) {
     console.error('QQ登录回调错误:', error);
-    res.redirect(`${APP_URL_SCHEME}oauth_error?message=${encodeURIComponent(error.message)}`);
+    return redirectAppError(res, error.message);
   }
 });
 
@@ -221,7 +318,11 @@ router.get('/huawei/callback', async (req, res) => {
   const { code, state } = req.query;
   
   if (!code) {
-    return res.redirect(`${APP_URL_SCHEME}oauth_error?message=${encodeURIComponent('华为授权失败')}`);
+    return redirectAppError(res, '华为授权失败');
+  }
+
+  if (!verifyOAuthState(state, 'huawei')) {
+    return redirectAppError(res, '授权状态无效，请重新发起登录');
   }
   
   try {
@@ -289,12 +390,16 @@ router.get('/huawei/callback', async (req, res) => {
     }, _JWT_SECRET, { expiresIn: '30d' });
     
     // 5. 重定向回应用
-    const redirectUrl = `${APP_URL_SCHEME}oauth_success?token=${token}&userId=${user.userId}&nickname=${encodeURIComponent(user.nickname || user.account)}&avatar=${encodeURIComponent(user.avatar || '')}`;
-    res.redirect(redirectUrl);
+    return redirectAppSuccess(res, {
+      token,
+      userId: user.userId,
+      nickname: user.nickname || user.account,
+      avatar: user.avatar || ''
+    });
     
   } catch (error) {
     console.error('华为登录回调错误:', error);
-    res.redirect(`${APP_URL_SCHEME}oauth_error?message=${encodeURIComponent(error.message)}`);
+    return redirectAppError(res, error.message);
   }
 });
 

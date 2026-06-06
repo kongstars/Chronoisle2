@@ -2,7 +2,6 @@ import { Goal, GoalCategory } from '../models/Goal';
 import { Task, TaskStatus } from '../models/Task';
 import { db } from '../storage/Database';
 import { ThemeMode, ThemeColors, LightTheme } from '../theme/AppTheme';
-import { CATEGORY_COLORS } from '../common/Constants';
 import { themeService } from '../services/ThemeService';
 import { dataSyncService } from '../services/DataSyncService';
 import window from '@ohos.window';
@@ -28,7 +27,6 @@ struct EditGoalPage {
   @State goalId: string = '';
   @State category: GoalCategory = GoalCategory.HEALTH;
   @State categoryTitle: string = '';
-  @State categoryColor: string = CATEGORY_COLORS[GoalCategory.HEALTH];
   @State goalTitle: string = '';
   @State goalDescription: string = '';
   @State isPriority: boolean = false;
@@ -49,7 +47,6 @@ struct EditGoalPage {
       this.goalId = params['goalId'] as string || '';
       this.category = (params['category'] as GoalCategory) || GoalCategory.HEALTH;
       this.categoryTitle = (params['categoryTitle'] as string) || this.category;
-      this.categoryColor = (params['categoryColor'] as string) || CATEGORY_COLORS[GoalCategory.HEALTH];
       this.goalTitle = (params['goalTitle'] as string) || '';
       this.goalDescription = (params['goalDescription'] as string) || '';
       this.isPriority = (params['isPriority'] as boolean) || false;
@@ -92,6 +89,47 @@ struct EditGoalPage {
       return 0;
     }
     return this.currentGoal.keyResults.filter((kr) => kr.completed || kr.progress >= 100).length;
+  }
+
+  private getCategoryChipTone(): 'success' | 'primary' | 'warning' | 'premium' {
+    switch (this.category) {
+      case GoalCategory.HEALTH:
+        return 'success';
+      case GoalCategory.LEARNING:
+        return 'primary';
+      case GoalCategory.FINANCE:
+        return 'warning';
+      case GoalCategory.FUN:
+        return 'premium';
+      default:
+        return 'primary';
+    }
+  }
+
+  private getCategoryChipBackground(): string {
+    switch (this.getCategoryChipTone()) {
+      case 'success':
+        return this.themeColors.successSubtle;
+      case 'warning':
+        return this.themeColors.warningSubtle;
+      case 'premium':
+        return this.themeColors.premiumSurface;
+      default:
+        return this.themeColors.primarySubtle;
+    }
+  }
+
+  private getCategoryChipTextColor(): string {
+    switch (this.getCategoryChipTone()) {
+      case 'success':
+        return this.themeColors.success;
+      case 'warning':
+        return this.themeColors.warning;
+      case 'premium':
+        return this.themeColors.premiumText;
+      default:
+        return this.themeColors.primary;
+    }
   }
 
   private areAllKeyResultsCompleted(): boolean {
@@ -334,9 +372,9 @@ struct EditGoalPage {
             Text(this.categoryTitle)
               .fontSize(TYPE_CAPTION)
               .fontWeight(FontWeight.Medium)
-              .fontColor(this.themeColors.textOnPrimary)
+              .fontColor(this.getCategoryChipTextColor())
               .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-              .backgroundColor(this.categoryColor)
+              .backgroundColor(this.getCategoryChipBackground())
               .borderRadius(999)
 
             if (this.isPriority) {

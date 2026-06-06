@@ -274,7 +274,7 @@ struct TaskSelectPage {
 
   @Builder
   private HeroCard() {
-    AppCard({ variant: 'soft', spacing: SPACE_SM }) {
+    AppCard({ variant: 'accent', spacing: SPACE_SM }) {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         AppStatusBadge({ text: '手动调整', tone: 'info', iconName: 'note' })
         AppStatusBadge({
@@ -286,7 +286,7 @@ struct TaskSelectPage {
       .width('100%')
 
       Text(this.getHeroTitle())
-        .fontSize(18)
+        .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
@@ -335,7 +335,7 @@ struct TaskSelectPage {
       Row({ space: 10 }) {
         Text(task.title)
           .layoutWeight(1)
-          .fontSize(15)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .maxLines(1)

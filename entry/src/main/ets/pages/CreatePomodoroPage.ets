@@ -310,7 +310,8 @@ struct CreatePomodoroPage {
     .width(size)
     .height(size)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(this.themeColors.primary + '15')
+    .backgroundColor(this.themeColors.announcementSurface)
+    .border({ width: 1, color: this.themeColors.primaryLight })
     .borderRadius(radius)
     .onClick(action)
   }
@@ -533,7 +534,7 @@ struct CreatePomodoroPage {
 
                 AppIcon({
                   name: 'chevron-right',
-                  iconSize: 18,
+                  iconSize: ICON_SIZE_SM,
                   framed: false,
                   color: this.themeColors.textMuted
                 })
@@ -768,11 +769,11 @@ struct CreatePomodoroPage {
       }
       .width(BUTTON_HEIGHT_LG)
       .height(BUTTON_HEIGHT_LG)
-      .backgroundColor(this.selectedNoiseKey === option.key ? this.themeColors.primary + '18' : this.themeColors.surfaceLight)
+      .backgroundColor(this.selectedNoiseKey === option.key ? this.themeColors.primarySubtle : this.themeColors.surfaceLight)
       .borderRadius(RADIUS_LG)
       .border({
-        width: this.selectedNoiseKey === option.key ? 2 : 0,
-        color: this.themeColors.primary
+        width: this.selectedNoiseKey === option.key ? 1 : 0,
+        color: this.themeColors.primaryLight
       })
       .alignContent(Alignment.Center)
 
@@ -919,8 +920,12 @@ struct CreatePomodoroPage {
       .padding(SPACE_MD)
     }
     .width('100%')
-    .backgroundColor(this.taskId === task.id ? this.themeColors.primary + '15' : this.themeColors.surfaceLight)
+    .backgroundColor(this.taskId === task.id ? this.themeColors.primarySubtle : this.themeColors.surfaceLight)
     .borderRadius(RADIUS_MD)
+    .border({
+      width: 1,
+      color: this.taskId === task.id ? this.themeColors.primaryLight : this.themeColors.borderColor
+    })
     .margin({ bottom: SPACE_SM })
     .onClick(() => {
       this.selectTask(task);

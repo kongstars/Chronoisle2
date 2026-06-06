@@ -658,11 +658,11 @@ struct ReminderListPage {
   private CategoryTag(item: ReminderDisplayItem) {
     if (item.categoryInfo !== null) {
       Text(item.categoryInfo.label)
-        .fontSize(11)
+        .fontSize(TYPE_CAPTION)
         .fontWeight(FontWeight.Medium)
         .fontColor(item.categoryInfo.color)
         .padding({ left: 5, right: 5, top: 1, bottom: 1 })
-        .backgroundColor(item.categoryInfo.color + '1A')
+        .backgroundColor(this.themeColors.surfaceSoft)
         .borderRadius(4)
     }
   }
@@ -716,25 +716,25 @@ struct ReminderListPage {
       // 进度统计行：完成 N · 当前周期 X/Y · 已跳过
       Row({ space: SPACE_SM }) {
         Text(`完成 ${item.totalCompletedCount}`)
-          .fontSize(11)
+          .fontSize(TYPE_CAPTION)
           .fontColor(this.themeColors.textSecondary)
 
         if (item.periodTargetCount > 0) {
           Text('·')
-            .fontSize(11)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
           Text(`${item.periodLabel} ${item.periodCompletedCount}/${item.periodTargetCount}`)
-            .fontSize(11)
+            .fontSize(TYPE_CAPTION)
             .fontColor(item.periodCompletedCount >= item.periodTargetCount ? this.themeColors.success : this.themeColors.primary)
             .fontWeight(FontWeight.Medium)
         }
 
         if (item.isSkipped) {
           Text('·')
-            .fontSize(11)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
           Text('已跳过 1 次')
-            .fontSize(11)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.warning)
         }
       }

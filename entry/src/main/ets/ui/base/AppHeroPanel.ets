@@ -1,7 +1,7 @@
 import { ThemeColors, LightTheme } from '../../theme/AppTheme';
-import { type AppTone, getToneBorderColor, getToneSurfaceColor } from '../../theme/ThemeSemantics';
+import { type AppTone, getToneSurfaceColor, getToneTextColor } from '../../theme/ThemeSemantics';
 import { BORDER_DEFAULT } from '../../foundation/tokens/BorderTokens';
-import { getRaisedCardShadow } from '../../foundation/tokens/ElevationTokens';
+import { getCardShadow } from '../../foundation/tokens/ElevationTokens';
 import { HERO_PANEL_HEIGHT_COMPACT } from '../../foundation/tokens/PageDensityTokens';
 import { RADIUS_LG, RADIUS_PILL } from '../../foundation/tokens/RadiusTokens';
 import { SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
@@ -21,15 +21,37 @@ export struct AppHeroPanel {
   @Prop minHeight: number = HERO_PANEL_HEIGHT_COMPACT;
   @BuilderParam content: () => void = EmptyHeroBuilder;
 
+  private getPanelBackgroundColor(): string {
+    switch (this.tone) {
+      case 'premium':
+        return this.themeColors.premiumSurface;
+      case 'danger':
+        return this.themeColors.riskSurface;
+      case 'success':
+        return this.themeColors.successSubtle;
+      default:
+        return this.themeColors.announcementSurface;
+    }
+  }
+
+  private getPanelBorderColor(): string {
+    switch (this.tone) {
+      case 'premium':
+        return this.themeColors.premiumBorder;
+      default:
+        return this.themeColors.primaryLight;
+    }
+  }
+
   build() {
     Column({ space: SPACE_XS }) {
       if (this.eyebrow.length > 0) {
         Text(this.eyebrow)
           .fontSize(TYPE_CAPTION)
           .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.primary)
+          .fontColor(getToneTextColor(this.themeColors, this.tone))
           .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_2XS, bottom: SPACE_2XS })
-          .backgroundColor(this.themeColors.primarySubtle)
+          .backgroundColor(getToneSurfaceColor(this.themeColors, this.tone))
           .borderRadius(RADIUS_PILL)
       }
 
@@ -59,9 +81,9 @@ export struct AppHeroPanel {
     .alignItems(HorizontalAlign.Start)
     .padding({ left: SPACE_MD, right: SPACE_MD, top: SPACE_MD, bottom: SPACE_MD })
     .constraintSize({ minHeight: this.minHeight })
-    .backgroundColor(getToneSurfaceColor(this.themeColors, this.tone))
+    .backgroundColor(this.getPanelBackgroundColor())
     .borderRadius(RADIUS_LG)
-    .border({ width: BORDER_DEFAULT, color: getToneBorderColor(this.themeColors, this.tone) })
-    .shadow(getRaisedCardShadow(this.themeColors))
+    .border({ width: BORDER_DEFAULT, color: this.getPanelBorderColor() })
+    .shadow(getCardShadow(this.themeColors))
   }
 }

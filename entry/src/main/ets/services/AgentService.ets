@@ -770,7 +770,7 @@ ${goalsListDesc}
 今日待办池信息：
 ${pendingTasksSummary}
 `;
-    const defaultRes: TodayPlanResult = { focusTasks: [], deferTasks: [], summary: '暂无建议' };
+    const defaultRes: TodayPlanResult = { focusTasks: [], deferTasks: [], summary: '暂无建议', errorMsg: '' };
     return await AgentService.callAgentAPI<TodayPlanResult>(prompt, defaultRes);
   }
 
@@ -961,7 +961,10 @@ export interface ReminderItem {
   title: string;
   category: 'habit' | 'periodic' | 'countdown';
   rule: 'daily' | 'weekly' | 'monthly' | 'target_date';
-  timeParams?: string[];
+  timeParams?: Array<string | number>;
+  reminderTime?: string;
+  suggestedTime?: string;
+  endDate?: string;
 }
 
 export interface GoalClarifyResult {
@@ -991,6 +994,7 @@ export interface TodayPlanResult {
   summary: string;
   totalEstimatedHours?: number;
   groupedTasks?: Record<string, string[]>;
+  errorMsg?: string;
 }
 
 export interface RescheduleItemWithReason {

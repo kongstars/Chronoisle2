@@ -11,7 +11,7 @@ import { AppCard } from '../ui/base/AppCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SPACE_CARD } from '../foundation/tokens/SpacingTokens';
-import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_MICRO, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_DISPLAY_TIMER, TYPE_HERO_TITLE, TYPE_META, TYPE_MICRO, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { MOTION_CURVE_STANDARD, MOTION_DURATION_BASE } from '../foundation/tokens/MotionTokens';
 import { RADIUS_LG, RADIUS_XL } from '../foundation/tokens/RadiusTokens';
 import { Logger } from '../Utils/Logger';
@@ -456,7 +456,7 @@ struct PomodoroPage {
         }
 
         Text(this.formatTime(this.remainingTime))
-          .fontSize(80)
+          .fontSize(TYPE_DISPLAY_TIMER)
           .fontWeight(FontWeight.Lighter)
           .fontColor(this.getPhaseColor())
 
@@ -535,7 +535,7 @@ struct PomodoroPage {
                   .width(36)
                   .height(36)
                   .textAlign(TextAlign.Center)
-                  .backgroundColor(this.isPremium ? this.themeColors.primary + '15' : this.themeColors.surfaceLight)
+                  .backgroundColor(this.isPremium ? this.themeColors.primarySubtle : this.themeColors.surfaceLight)
                   .borderRadius(RADIUS_LG)
 
                 Column() {
@@ -709,11 +709,11 @@ struct PomodoroPage {
                       .width(44)
                       .height(44)
                       .backgroundColor(this.selectedNoiseKey === option.key ?
-                        (this.isNoiseActive ? this.themeColors.primary + '25' : this.themeColors.primary + '12') : this.themeColors.surfaceLight)
+                        (this.isNoiseActive ? this.themeColors.announcementSurface : this.themeColors.primarySubtle) : this.themeColors.surfaceLight)
                       .borderRadius(RADIUS_XL)
                       .border({
-                        width: this.selectedNoiseKey === option.key ? 2 : 0,
-                        color: this.themeColors.primary
+                        width: this.selectedNoiseKey === option.key ? 1 : 0,
+                        color: this.themeColors.primaryLight
                       })
                       .alignContent(Alignment.Center)
 
@@ -755,11 +755,11 @@ struct PomodoroPage {
                       .width(44)
                       .height(44)
                       .backgroundColor(this.selectedNoiseKey === option.key ?
-                        (this.isNoiseActive ? this.themeColors.primary + '25' : this.themeColors.primary + '12') : this.themeColors.surfaceLight)
+                        (this.isNoiseActive ? this.themeColors.announcementSurface : this.themeColors.primarySubtle) : this.themeColors.surfaceLight)
                       .borderRadius(RADIUS_XL)
                       .border({
-                        width: this.selectedNoiseKey === option.key ? 2 : 0,
-                        color: this.themeColors.primary
+                        width: this.selectedNoiseKey === option.key ? 1 : 0,
+                        color: this.themeColors.primaryLight
                       })
                       .alignContent(Alignment.Center)
 

@@ -31,11 +31,11 @@ export struct AppGoalCard {
   }
 
   private getBadgeTextColor(): string {
-    return this.badgeTextColor.length > 0 ? this.badgeTextColor : this.themeColors.success;
+    return this.badgeTextColor.length > 0 ? this.badgeTextColor : this.themeColors.primary;
   }
 
   private getBadgeBackgroundColor(): string {
-    return this.badgeBackgroundColor.length > 0 ? this.badgeBackgroundColor : this.themeColors.successSubtle;
+    return this.badgeBackgroundColor.length > 0 ? this.badgeBackgroundColor : this.themeColors.announcementSurface;
   }
 
   private getSurfaceColor(): string {
@@ -47,7 +47,7 @@ export struct AppGoalCard {
       return this.themeColors.surfaceSoft;
     }
     if (this.isHovered && this.isInteractive() && this.surfaceColor.length <= 0) {
-      return this.themeColors.surface;
+      return this.themeColors.surfaceRaised;
     }
     return this.getSurfaceColor();
   }
@@ -57,10 +57,10 @@ export struct AppGoalCard {
       return this.themeColors.borderColor;
     }
     if (this.isFocused) {
-      return this.themeColors.primary;
+      return this.themeColors.primaryLight;
     }
     if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.primaryLight;
+      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }
@@ -80,9 +80,9 @@ export struct AppGoalCard {
   build() {
     Row({ space: SPACE_SM }) {
       Column()
-        .width(4)
+        .width(2)
         .height(this.getAccentHeight())
-        .backgroundColor(this.getAccentColor())
+        .backgroundColor(this.themeColors.divider)
         .borderRadius(RADIUS_PILL)
 
       Column({ space: SPACE_XS }) {
@@ -92,7 +92,7 @@ export struct AppGoalCard {
               Row()
                 .width(6)
                 .height(6)
-                .backgroundColor(this.getAccentColor())
+                .backgroundColor(this.themeColors.primaryLight)
                 .borderRadius(RADIUS_PILL)
 
               Text(this.badgeText)
@@ -114,7 +114,7 @@ export struct AppGoalCard {
             Text(this.percentText)
               .fontSize(TYPE_SECTION_TITLE)
               .fontWeight(FontWeight.Bold)
-              .fontColor(this.getAccentColor())
+              .fontColor(this.themeColors.primary)
           }
         }
         .width('100%')
@@ -145,7 +145,7 @@ export struct AppGoalCard {
               Circle()
                 .width(5)
                 .height(5)
-                .fill(this.getAccentColor())
+                .fill(this.themeColors.primaryLight)
 
               Text(item)
                 .fontSize(TYPE_BODY)

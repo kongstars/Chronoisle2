@@ -13,7 +13,7 @@ import {
   GoalAssessment, PlanningSession, RuntimeStatus
 } from '../models/PlanningSession';
 import { RADIUS_LG, RADIUS_MD } from '../foundation/tokens/RadiusTokens';
-import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
+import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_MICRO, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { BOTTOM_CONTENT_SPACER, BUTTON_HEIGHT_MD, CHECKBOX_SIZE_LG, CHECKBOX_SIZE_SM, ICON_BUTTON_SIZE_MD } from '../foundation/tokens/ComponentSizeTokens';
 import { ICON_SIZE_LG, ICON_SIZE_XL, ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { PAGE_PADDING, PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
@@ -22,7 +22,7 @@ import { TelemetryService } from '../services/TelemetryService';
 import { UsageService } from '../services/UsageService';
 import { AppErrorService } from '../services/AppErrorService';
 import { AppButton } from '../ui/base/AppButton';
-import { AppCard } from '../ui/base/AppCard';
+import { AppCard, type AppCardVariant } from '../ui/base/AppCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 
@@ -1189,8 +1189,9 @@ struct GoalBreakdownPage {
       schedule = '按计划执行';
     }
 
-    if (action.reminderTime) {
-      return `${schedule} · ${action.reminderTime} 提醒`;
+    const reminderTime = action.reminderTime || action.suggestedTime;
+    if (reminderTime) {
+      return `${schedule} · ${reminderTime} 提醒`;
     }
     return schedule;
   }
@@ -1274,7 +1275,7 @@ struct GoalBreakdownPage {
               })
             }
             Text(item.title)
-              .fontSize(9)
+              .fontSize(TYPE_MICRO)
               .fontWeight(index === this.getStageIndex() ? FontWeight.Medium : FontWeight.Regular)
               .fontColor(index <= this.getStageIndex() ? this.themeColors.primary : this.themeColors.textMuted)
               .maxLines(1)
@@ -1314,7 +1315,7 @@ struct GoalBreakdownPage {
   @Builder
   private StageOverviewCard() {
     Column() {
-      AppCard({ variant: 'raised', paddingLevel: 'md', spacing: SPACE_SM }) {
+      AppCard({ variant: 'accent', paddingLevel: 'md', spacing: SPACE_SM }) {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
           AppStatusBadge({ text: '当前阶段', tone: 'primary', iconName: 'ai' })
           if (this.restoreHint.length > 0) {
@@ -1520,7 +1521,7 @@ struct GoalBreakdownPage {
   private UnderstandingView() {
     Column({ space: SPACE_CARD }) {
       if (this.goalDraft) {
-      this.SectionCard('AI 已理解你的目标', this.goalDraft.title, this.goalDraft.description)
+      this.SectionCard('AI 已理解你的目标', this.goalDraft.title, this.goalDraft.description, 'accent')
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
           this.InfoTag('分类', this.getCategoryLabel(this.goalDraft.category))
@@ -1583,9 +1584,13 @@ struct GoalBreakdownPage {
                   .fontSize(TYPE_META)
                   .padding({ left: SPACE_MD, right: SPACE_MD, top: SPACE_SM, bottom: SPACE_SM })
                   .margin({ right: SPACE_SM, bottom: SPACE_SM })
-                  .backgroundColor(this.answers[q.id] === opt ? this.themeColors.primary : this.themeColors.surfaceLight)
-                  .fontColor(this.answers[q.id] === opt ? this.themeColors.textOnPrimary : this.themeColors.textPrimary)
+                  .backgroundColor(this.answers[q.id] === opt ? this.themeColors.primarySubtle : this.themeColors.surfaceRaised)
+                  .fontColor(this.answers[q.id] === opt ? this.themeColors.primary : this.themeColors.textPrimary)
                   .borderRadius(20)
+                  .border({
+                    width: 1,
+                    color: this.answers[q.id] === opt ? this.themeColors.primaryLight : this.themeColors.borderColor
+                  })
                   .onClick(() => { this.updateAnswer(q.id, opt); })
               })
             }
@@ -1600,8 +1605,9 @@ struct GoalBreakdownPage {
         }
         .width('100%')
         .padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.cardBackground)
+        .backgroundColor(this.themeColors.surfaceRaised)
         .borderRadius(RADIUS_LG)
+        .border({ width: 1, color: this.themeColors.borderColor })
       })
 
       if (this.hasMissingRequiredAnswers()) {
@@ -1636,7 +1642,7 @@ struct GoalBreakdownPage {
       }
       .width('100%')
       .padding(SPACE_CARD)
-      .backgroundColor(this.themeColors.surfaceLight)
+      .backgroundColor(this.themeColors.announcementSurface)
       .borderRadius(RADIUS_LG)
 
       // 难度评估卡片
@@ -1647,8 +1653,8 @@ struct GoalBreakdownPage {
             Blank()
             Text(this.getDifficultyLabel(this.goalAssessment.level))
               .fontSize(TYPE_META).padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_2XS, bottom: SPACE_2XS })
-              .backgroundColor(this.getDifficultyColor(this.goalAssessment.level))
-              .fontColor(this.themeColors.textOnPrimary).borderRadius(12)
+              .backgroundColor(this.getDifficultySurface(this.goalAssessment.level))
+              .fontColor(this.getDifficultyColor(this.goalAssessment.level)).borderRadius(12)
           }
           .width('100%')
 
@@ -1662,7 +1668,8 @@ struct GoalBreakdownPage {
           }
         }
         .width('100%').padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_LG)
+        .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_LG)
+        .border({ width: 1, color: this.themeColors.borderColor })
       }
 
       // 追踪列表
@@ -1739,7 +1746,8 @@ struct GoalBreakdownPage {
             .width('100%')
           }
           .width('100%').padding(PANEL_GAP)
-          .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_MD)
+          .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_MD)
+          .border({ width: 1, color: this.themeColors.borderColor })
         })
       }
     }
@@ -1760,7 +1768,7 @@ struct GoalBreakdownPage {
         }
         .width('100%')
         .padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.surfaceLight)
+        .backgroundColor(this.themeColors.announcementSurface)
         .borderRadius(RADIUS_LG)
 
         if (this.progressPlan && this.progressPlan.tracks.length > 0) {
@@ -1812,7 +1820,8 @@ struct GoalBreakdownPage {
               }
             }
             .width('100%').padding(PANEL_GAP)
-            .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_MD)
+            .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_MD)
+            .border({ width: 1, color: this.themeColors.borderColor })
 
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
               if (task.suggestedDueDate) {
@@ -1856,7 +1865,7 @@ struct GoalBreakdownPage {
                   Text(this.getRuleLabel(action.rule))
                     .fontSize(TYPE_CAPTION).fontColor(this.themeColors.primary)
                     .padding({ left: SPACE_XS, right: SPACE_XS, top: SPACE_2XS, bottom: SPACE_2XS })
-                    .backgroundColor(this.themeColors.surfaceLight).borderRadius(6)
+                    .backgroundColor(this.themeColors.primarySubtle).borderRadius(6)
                 }
               }
               .width('100%')
@@ -1868,7 +1877,8 @@ struct GoalBreakdownPage {
               }
             }
             .width('100%').padding(PANEL_GAP)
-            .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_MD)
+            .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_MD)
+            .border({ width: 1, color: this.themeColors.borderColor })
           })
         }
 
@@ -1889,7 +1899,8 @@ struct GoalBreakdownPage {
               }
             }
             .width('100%').padding(PANEL_GAP)
-            .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_MD)
+            .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_MD)
+            .border({ width: 1, color: this.themeColors.borderColor })
           })
         }
 
@@ -1909,7 +1920,7 @@ struct GoalBreakdownPage {
             Text('方案评估').fontSize(TYPE_SECTION_TITLE).fontWeight(FontWeight.Bold).fontColor(this.themeColors.textPrimary)
             Blank()
             Text(`${this.qualityReport.overallScore}分`)
-              .fontSize(24).fontWeight(FontWeight.Bold)
+              .fontSize(TYPE_HERO_TITLE).fontWeight(FontWeight.Bold)
               .fontColor(this.qualityReport.overallScore >= 70 ? this.themeColors.success : this.themeColors.warning)
           }
           .width('100%')
@@ -1921,7 +1932,7 @@ struct GoalBreakdownPage {
           if (this.qualityReport.suggestions && this.qualityReport.suggestions.length > 0) {
             Column({ space: SPACE_2XS }) {
               ForEach(this.qualityReport.suggestions, (s: string) => {
-                        Text(s).fontSize(TYPE_META).fontColor(this.themeColors.textSecondary).width('100%')
+                        Text(s).fontSize(TYPE_MICRO).fontColor(this.themeColors.textSecondary).width('100%')
               })
             }
             .width('100%')
@@ -1938,12 +1949,13 @@ struct GoalBreakdownPage {
           }
         }
         .width('100%').padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_LG)
+        .backgroundColor(this.themeColors.announcementSurface).borderRadius(RADIUS_LG)
+        .border({ width: 1, color: this.themeColors.primaryLight })
       }
 
       // 目标概览
       if (this.goalDraft) {
-                this.SectionCard('目标', this.goalDraft.title, this.goalDraft.description)
+                this.SectionCard('目标', this.goalDraft.title, this.goalDraft.description, 'accent')
       }
 
       // 追踪概览
@@ -1957,7 +1969,8 @@ struct GoalBreakdownPage {
           })
         }
         .width('100%').padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_LG)
+        .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_LG)
+        .border({ width: 1, color: this.themeColors.borderColor })
       }
 
       // 行动概览
@@ -1969,7 +1982,8 @@ struct GoalBreakdownPage {
             .fontSize(TYPE_META).fontColor(this.themeColors.textSecondary).width('100%')
         }
         .width('100%').padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.cardBackground).borderRadius(RADIUS_LG)
+        .backgroundColor(this.themeColors.surfaceRaised).borderRadius(RADIUS_LG)
+        .border({ width: 1, color: this.themeColors.borderColor })
       }
     }
     .width('100%')
@@ -1991,9 +2005,9 @@ struct GoalBreakdownPage {
 
   // --- 通用组件 ---
   @Builder
-  private SectionCard(title: string, heading: string, desc: string) {
+  private SectionCard(title: string, heading: string, desc: string, variant: AppCardVariant = 'base') {
     Column() {
-      AppCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
+      AppCard({ variant: variant, paddingLevel: 'md', spacing: SPACE_SM }) {
         Text(title).fontSize(TYPE_BODY).fontWeight(FontWeight.Bold).fontColor(this.themeColors.textPrimary).width('100%')
         Text(heading).fontSize(TYPE_SECTION_TITLE).fontWeight(FontWeight.Medium).fontColor(this.themeColors.textPrimary).width('100%')
         if (desc) {
@@ -2017,7 +2031,7 @@ struct GoalBreakdownPage {
     }
     .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_2XS, bottom: SPACE_2XS })
     .margin({ right: SPACE_SM, bottom: SPACE_SM })
-    .backgroundColor(this.themeColors.surfaceLight).borderRadius(8)
+    .backgroundColor(this.themeColors.surfaceSoft).borderRadius(8)
   }
 
   // --- 底部操作栏 ---
@@ -2050,12 +2064,15 @@ struct GoalBreakdownPage {
           AppButton({
             text: '下一步：生成行动方案',
             iconName: 'plan',
+            fullWidth: true,
             tapAction: () => { this.runActions(); }
           })
-            .layoutWeight(1)
+            .width('100%')
+            .constraintSize({ maxWidth: 520 })
         }
         .width('100%')
-        .margin({ left: SPACE_CARD, right: SPACE_CARD, bottom: SPACE_CARD })
+        .justifyContent(FlexAlign.Center)
+        .padding({ left: SPACE_CARD, right: SPACE_CARD, bottom: SPACE_CARD })
       }
       .width('100%').padding({ top: 8 })
     } else if (this.stage === 'actions' && !this.isProcessing) {
@@ -2068,12 +2085,15 @@ struct GoalBreakdownPage {
           AppButton({
             text: '确认并创建目标',
             iconName: 'goal',
+            fullWidth: true,
             tapAction: () => { this.runApply(); }
           })
-            .layoutWeight(1)
+            .width('100%')
+            .constraintSize({ maxWidth: 520 })
         }
         .width('100%')
-        .margin({ left: SPACE_CARD, right: SPACE_CARD, bottom: SPACE_CARD })
+        .justifyContent(FlexAlign.Center)
+        .padding({ left: SPACE_CARD, right: SPACE_CARD, bottom: SPACE_CARD })
       }
       .width('100%').padding({ top: 8 })
     }
@@ -2097,6 +2117,14 @@ struct GoalBreakdownPage {
     if (level === 'hard') return this.themeColors.danger;
     if (level === 'very_hard') return this.themeColors.danger;
     return this.themeColors.warning;
+  }
+
+  private getDifficultySurface(level: string): string {
+    if (level === 'easy') return this.themeColors.successSubtle;
+    if (level === 'moderate') return this.themeColors.warningSubtle;
+    if (level === 'hard') return this.themeColors.dangerSubtle;
+    if (level === 'very_hard') return this.themeColors.riskSurface;
+    return this.themeColors.warningSubtle;
   }
 
   private getRuleLabel(rule: string): string {
@@ -2178,6 +2206,8 @@ struct GoalBreakdownPage {
           .width('100%')
           .height('100%')
           .backgroundColor(this.themeColors.surfaceOverlay)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
 
         Column() {
           AppCard({ variant: 'raised', paddingLevel: 'md', spacing: SPACE_MD }) {
@@ -2219,6 +2249,7 @@ struct GoalBreakdownPage {
           }
         }
         .width('90%')
+        .constraintSize({ maxWidth: 560 })
       }
 
       if (this.showTaskEditor) {
@@ -2226,6 +2257,8 @@ struct GoalBreakdownPage {
           .width('100%')
           .height('100%')
           .backgroundColor(this.themeColors.surfaceOverlay)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
 
         Column() {
           AppCard({ variant: 'raised', paddingLevel: 'md', spacing: SPACE_MD }) {
@@ -2264,6 +2297,7 @@ struct GoalBreakdownPage {
           }
         }
         .width('90%')
+        .constraintSize({ maxWidth: 560 })
       }
     }
     .width('100%').height('100%')
