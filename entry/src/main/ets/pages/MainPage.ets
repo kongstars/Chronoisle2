@@ -9,7 +9,7 @@ import { TodayTabV2 } from '../components/TodayTabV2';
 import { ActionTab } from '../components/ActionTab';
 import { GoalsTab } from '../components/GoalsTab';
 import { MeTab } from '../components/MeTab';
-import { VoiceCreateOverlay, VoiceCreateOutput } from '../components/VoiceCreateOverlay';
+import { VoiceCreateOutput } from '../components/VoiceCreateOverlay';
 import { VoiceCreateParsed, VoiceCreateService, VoiceCreateResult } from '../services/VoiceCreateService';
 import { VoiceRecognitionService } from '../services/VoiceRecognitionService';
 import { QuotaService, SpendResult } from '../services/QuotaService';
@@ -24,8 +24,8 @@ import { AppIcon } from '../ui/base/AppIcon';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 import { BOTTOM_BAR_HEIGHT, FAB_SIZE, NAV_ICON_SIZE } from '../foundation/tokens/PageDensityTokens';
-import { RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
-import { CONTENT_GAP, PANEL_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM } from '../foundation/tokens/SpacingTokens';
+import { RADIUS_LG, RADIUS_PILL, RADIUS_XL } from '../foundation/tokens/RadiusTokens';
+import { CONTENT_GAP, PANEL_GAP, SPACE_2XS, SPACE_CARD, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { ICON_SIZE_SM, ICON_SIZE_XL } from '../foundation/tokens/IconTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { TOUCH_TARGET_LG } from '../foundation/tokens/VisualTokens';
@@ -680,25 +680,23 @@ struct MainPage {
       Row({ space: SPACE_SM }) {
         // 左侧容器：固定 navBackground + 阴影，宽度动画
         Stack({ alignContent: Alignment.Start }) {
-          // 4 tab 视图（默认态）
-          Row() {
-            this.NavItem(0, '今日')
-            this.NavItem(1, '行动')
-            this.NavItem(2, '目标')
-            this.NavItem(3, '我的')
+          if (this.showVoiceOnly) {
+            Stack() {
+              this.CollapsedNavIcon()
+            }
+            .width('100%')
+            .height('100%')
+          } else {
+            Row() {
+              this.NavItem(0, '今日')
+              this.NavItem(1, '行动')
+              this.NavItem(2, '目标')
+              this.NavItem(3, '我的')
+            }
+            .width('100%')
+            .height('100%')
+            .padding({ left: SPACE_MD, right: SPACE_MD })
           }
-          .width('100%')
-          .height('100%')
-          .padding({ left: SPACE_MD, right: SPACE_MD })
-          .visibility(this.showVoiceOnly ? Visibility.None : Visibility.Visible)
-
-          // 收缩 icon（语音态）
-          Stack() {
-            this.CollapsedNavIcon()
-          }
-          .width('100%')
-          .height('100%')
-          .visibility(this.showVoiceOnly ? Visibility.Visible : Visibility.None)
         }
         .width(this.showVoiceOnly ? this.bottomBarHeight - 8 : undefined)
         .height(this.bottomBarHeight - 8)
@@ -1005,8 +1003,8 @@ struct MainPage {
   @Builder
   private AddSheetItem(icon: string, title: string, desc: string, actionKey: string) {
     AppCard({
-      variant: 'raised',
-      spacing: SPACE_MD,
+      variant: 'soft',
+      spacing: SPACE_SM,
       paddingLevel: 'md',
       interactive: true,
       tapAction: () => {
@@ -1015,37 +1013,64 @@ struct MainPage {
         }
       }
     }) {
-      Row({ space: SPACE_MD }) {
-        AppIcon({ name: icon, iconSize: ICON_SIZE_XL })
+      Column({ space: SPACE_SM }) {
+        Row() {
+          Stack({ alignContent: Alignment.Center }) {
+            Row()
+              .width(48)
+              .height(48)
+              .backgroundColor(this.themeColors.surfaceRaised)
+              .borderRadius(RADIUS_LG)
+              .border({ width: BORDER_DEFAULT, color: this.themeColors.borderLight })
+
+            AppIcon({
+              name: icon,
+              iconSize: ICON_SIZE_SM + 6,
+              framed: false,
+              useSystemSymbol: false,
+              color: this.themeColors.primary
+            })
+          }
+
+          Blank()
+
+          AppIcon({
+            name: 'chevron-right',
+            iconSize: ICON_SIZE_SM,
+            framed: false,
+            color: this.themeColors.textMuted
+          })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+
         Column({ space: SPACE_2XS }) {
           Text(title)
             .fontSize(TYPE_BODY)
-            .fontWeight(FontWeight.Medium)
+            .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .width('100%')
           Text(desc)
             .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textSecondary)
             .width('100%')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
-        .layoutWeight(1)
         .alignItems(HorizontalAlign.Start)
-        AppIcon({
-          name: 'chevron-right',
-          iconSize: ICON_SIZE_XL,
-          framed: false,
-          color: this.themeColors.textMuted
-        })
       }
+      .width('100%')
+      .constraintSize({ minHeight: 126 })
+      .justifyContent(FlexAlign.SpaceBetween)
     }
   }
 
   @Builder
   private AddActionSheet() {
-    Column() {
+    Stack({ alignContent: Alignment.Bottom }) {
       Column()
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
         .backgroundColor(this.themeColors.surfaceOverlay)
         .onClick(() => {
           if (!this.voiceCloseBlocked) {
@@ -1054,26 +1079,44 @@ struct MainPage {
         })
 
       Column() {
-        AppCard({ variant: 'raised', spacing: PANEL_GAP, paddingLevel: 'lg' }) {
-          Row() {
-            Text('新建内容')
-              .fontSize(TYPE_SECTION_TITLE)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeColors.textPrimary)
+        Column({ space: PANEL_GAP }) {
+          Row()
+            .width(36)
+            .height(4)
+            .backgroundColor(this.themeColors.borderColor)
+            .borderRadius(RADIUS_PILL)
+            .opacity(0.72)
+            .alignSelf(ItemAlign.Center)
 
-            Blank()
+          Row({ space: SPACE_MD }) {
+            Column({ space: SPACE_XS }) {
+              Text('新建内容')
+                .fontSize(TYPE_SECTION_TITLE)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.themeColors.textPrimary)
+                .width('100%')
+
+              Text('快速创建目标、行动、提醒或专注入口')
+                .fontSize(TYPE_META)
+                .fontColor(this.themeColors.textSecondary)
+                .width('100%')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .layoutWeight(1)
+            .alignItems(HorizontalAlign.Start)
 
             Stack({ alignContent: Alignment.Center }) {
               Row()
-                .width(TOUCH_TARGET_LG)
-                .height(TOUCH_TARGET_LG)
+                .width(36)
+                .height(36)
                 .backgroundColor(this.themeColors.surfaceSoft)
-                .borderRadius(TOUCH_TARGET_LG / 2)
-                .border({ width: BORDER_DEFAULT, color: this.themeColors.borderColor })
+                .borderRadius(18)
+                .border({ width: BORDER_DEFAULT, color: this.themeColors.borderLight })
 
               AppIcon({
                 name: 'close',
-                iconSize: ICON_SIZE_SM,
+                iconSize: ICON_SIZE_SM - 1,
                 framed: false,
                 color: this.themeColors.textSecondary
               })
@@ -1087,35 +1130,47 @@ struct MainPage {
           .width('100%')
           .alignItems(VerticalAlign.Center)
 
-          Column({ space: CONTENT_GAP }) {
-            this.AddSheetItem('goal', '新建目标', '设定方向和阶段计划', 'goal')
-            this.AddSheetItem('task', '新建行动', '记录接下来要推进的一件事', 'task')
-            this.AddSheetItem('reminder', '新建提醒', '添加倒计时或日常提醒', 'reminder')
-            this.AddSheetItem('focus', '开始专注', '立即开启一段番茄专注', 'focus')
+          Column({ space: SPACE_SM }) {
+            Row({ space: SPACE_SM }) {
+              Column() {
+                this.AddSheetItem('goal', '新建目标', '设定方向和阶段计划', 'goal')
+              }
+              .layoutWeight(1)
+              Column() {
+                this.AddSheetItem('task', '新建行动', '记录接下来要推进的一件事', 'task')
+              }
+              .layoutWeight(1)
+            }
+            .width('100%')
+
+            Row({ space: SPACE_SM }) {
+              Column() {
+                this.AddSheetItem('reminder', '新建提醒', '添加倒计时或日常提醒', 'reminder')
+              }
+              .layoutWeight(1)
+              Column() {
+                this.AddSheetItem('focus', '开始专注', '立即开启一段番茄专注', 'focus')
+              }
+              .layoutWeight(1)
+            }
+            .width('100%')
           }
           .width('100%')
-
-          VoiceCreateOverlay({
-            hostContext: this.getHostContext(),
-            onBusyStateChange: (busy: boolean) => {
-              this.voiceCloseBlocked = busy;
-            },
-            onClose: () => {
-              this.closeAddSheet();
-            },
-            onResult: (output: VoiceCreateOutput) => {
-              this.closeAddSheet();
-              this.handleVoiceResult(output);
-            }
-          })
         }
+        .width('100%')
+        .padding({ left: SPACE_CARD, right: SPACE_CARD, top: SPACE_SM, bottom: SPACE_LG })
+        .backgroundColor(this.themeColors.navBackground)
+        .borderRadius(RADIUS_XL)
+        .border({ width: BORDER_DEFAULT, color: this.themeColors.borderLight })
+        .shadow({ radius: 22, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 8 })
       }
       .width('100%')
-      .padding({ left: SPACE_CARD, right: SPACE_CARD, top: PANEL_GAP, bottom: SPACE_CARD })
-
-      Row()
-        .width('100%')
-        .height(this.bottomBarHeight + this.fabSize / 2 + SPACE_CARD)
+      .padding({
+        left: SPACE_CARD,
+        right: SPACE_CARD,
+        top: SPACE_MD,
+        bottom: this.bottomBarHeight - SPACE_SM + SPACE_CARD
+      })
     }
     .width('100%')
     .height('100%')
