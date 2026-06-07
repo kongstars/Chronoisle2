@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronoisle Tab Bar Icon Spec V1</title>
+  <style>
+    :root {
+      --bg: #eef3fb;
+      --panel: rgba(255, 255, 255, 0.8);
+      --card: rgba(255, 255, 255, 0.95);
+      --text: #1a2435;
+      --soft: #67758a;
+      --soft-strong: #46556b;
+      --line: rgba(26, 36, 53, 0.08);
+      --brand: #2f7cff;
+      --brand-soft: rgba(47, 124, 255, 0.12);
+      --brand-soft-weak: rgba(47, 124, 255, 0.08);
+      --muted: #97a4b7;
+      --shadow: 0 18px 40px rgba(22, 35, 62, 0.08);
+      --shadow-lg: 0 26px 60px rgba(20, 33, 62, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(47, 124, 255, 0.15), transparent 24%),
+        linear-gradient(180deg, #f7f9fd 0%, var(--bg) 100%);
+      color: var(--text);
+      padding: 28px;
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      gap: 22px;
+    }
+
+    .hero, .panel {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: 28px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .hero { padding: 30px; }
+    .panel { padding: 22px; }
+
+    h1 { margin: 0 0 12px; font-size: 37px; letter-spacing: -0.05em; line-height: 1.06; }
+    h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.03em; }
+    p { margin: 0; color: var(--soft); line-height: 1.7; }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.84);
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary-card {
+      background: rgba(255,255,255,0.84);
+      border: 1px solid rgba(26, 36, 53, 0.06);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 21px;
+      letter-spacing: -0.04em;
+    }
+
+    .summary-card span {
+      color: var(--soft);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .device {
+      margin-top: 18px;
+      padding: 22px;
+      background: linear-gradient(180deg, #f6f9ff 0%, #edf2fb 100%);
+      border-radius: 32px;
+      border: 1px solid rgba(26, 36, 53, 0.05);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+    }
+
+    .tabbar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      align-items: end;
+      padding: 20px 16px 12px;
+      background: rgba(255,255,255,0.92);
+      border-radius: 26px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.7),
+        0 14px 30px rgba(20,33,62,0.05);
+    }
+
+    .tab {
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+    }
+
+    .icon-shell {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      transition: transform 160ms ease, background-color 160ms ease;
+    }
+
+    .tab.unselected .icon-shell {
+      background: rgba(26, 36, 53, 0.03);
+      color: var(--muted);
+      border-color: rgba(26, 36, 53, 0.03);
+    }
+
+    .tab.selected .icon-shell {
+      background: var(--brand-soft);
+      color: var(--brand);
+      border-color: rgba(47, 124, 255, 0.08);
+    }
+
+    .tab.voice .icon-shell {
+      background: var(--brand-soft-weak);
+      color: #4d7fd8;
+      border-color: rgba(47, 124, 255, 0.07);
+    }
+
+    .tab .label {
+      font-size: 13px;
+      color: var(--soft);
+    }
+
+    .tab.selected .label {
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .state-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .state {
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fbfdff 0%, #f7fbff 100%);
+      border: 1px solid rgba(26,36,53,0.06);
+    }
+
+    .mini {
+      width: 64px;
+      height: 64px;
+      display: grid;
+      place-items: center;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+
+    .mini.outline {
+      background: rgba(26, 36, 53, 0.04);
+      color: var(--muted);
+    }
+
+    .mini.active {
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .mini.voice-default {
+      background: var(--brand-soft-weak);
+      color: #4d7fd8;
+    }
+
+    .mini.voice-active {
+      background: linear-gradient(180deg, rgba(47,124,255,0.18) 0%, rgba(47,124,255,0.12) 100%);
+      color: var(--brand);
+    }
+
+    .state strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .voice-note {
+      margin-top: 16px;
+      padding: 15px 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(47,124,255,0.09) 0%, rgba(47,124,255,0.06) 100%);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.7;
+      border: 1px solid rgba(47,124,255,0.08);
+    }
+
+    svg {
+      width: 28px;
+      height: 28px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.85;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .fill svg .fill-shape {
+      fill: currentColor;
+      stroke: none;
+    }
+
+    @media (max-width: 1100px) {
+      .hero-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 960px) {
+      body { padding: 16px; }
+      .grid, .state-row, .tabbar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Tab Bar / Icon State</div>
+          <h1>底部 Tab 图标状态规范 V1</h1>
+          <p>本页只定义图标本体的选中与未选中差异，不涉及任何布局改动。前四个入口必须具备图形差异与颜色差异，语音按钮保持独立动作角色，但默认态不应过度抢眼。</p>
+
+          <div class="device">
+            <div class="tabbar">
+              <div class="tab selected">
+                <div class="icon-shell fill">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect class="fill-shape" x="4" y="5" width="16" height="15" rx="4"></rect>
+                    <path d="M8 4.5V8"></path>
+                    <path d="M16 4.5V8"></path>
+                    <circle cx="12" cy="13" r="2.2" fill="#ffffff" stroke="none"></circle>
+                  </svg>
+                </div>
+                <div class="label">今日</div>
+              </div>
+              <div class="tab unselected">
+                <div class="icon-shell">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6.9 8.1L8.4 9.6L10.8 7.2"></path>
+                    <path d="M13 8.4H17.1"></path>
+                    <path d="M6.9 14.7L8.4 16.2L10.8 13.8"></path>
+                    <path d="M13 15H17.1"></path>
+                  </svg>
+                </div>
+                <div class="label">行动</div>
+              </div>
+              <div class="tab unselected">
+                <div class="icon-shell">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="7.2"></circle>
+                    <circle cx="12" cy="12" r="2.3"></circle>
+                  </svg>
+                </div>
+                <div class="label">目标</div>
+              </div>
+              <div class="tab unselected">
+                <div class="icon-shell">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="8.5" r="3.2"></circle>
+                    <path d="M5.8 19.2C7 15.9 9.1 14.3 12 14.3C14.9 14.3 17 15.9 18.2 19.2"></path>
+                  </svg>
+                </div>
+                <div class="label">我的</div>
+              </div>
+              <div class="tab voice">
+                <div class="icon-shell">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="9.2" y="4.5" width="5.6" height="10.6" rx="2.8"></rect>
+                    <path d="M6.9 11.3C6.9 14.1 9.1 16.3 12 16.3C14.9 16.3 17.1 14.1 17.1 11.3"></path>
+                    <path d="M12 16.3V19.4"></path>
+                    <path d="M9.8 19.4H14.2"></path>
+                  </svg>
+                </div>
+                <div class="label">语音</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-side">
+          <div class="summary-card">
+            <strong>4 + 1</strong>
+            <span>四个标准 Tab 使用明确选中逻辑，语音按钮保留独立角色。</span>
+          </div>
+          <div class="summary-card">
+            <strong>默认弱强调</strong>
+            <span>语音按钮在未激活时只保留轻品牌感，不长期抢夺第一视觉焦点。</span>
+          </div>
+          <div class="summary-card">
+            <strong>同骨架切换</strong>
+            <span>选中态仍基于同一轮廓骨架做局部实体化，避免切换时图标跳变。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>状态策略</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>标准 Tab</h3>
+          <p>今日、行动、目标、我的在未选中时使用轮廓表达，在选中时使用同骨架下的局部或主体填充，避免只靠颜色区分。</p>
+        </div>
+        <div class="card">
+          <h3>语音按钮</h3>
+          <p>语音默认态应是弱强调，不应在未激活时长期压过四个普通 Tab。展开或进入语音态时再切到更强存在感。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>逐项说明</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>今日</h3>
+          <p>未选中强调日历轮廓；选中采用实体底板，保留内部白色日期点，记忆点明确。</p>
+          <div class="state-row">
+            <div class="state">
+              <div class="mini outline">
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="5" width="16" height="15" rx="4"></rect>
+                  <path d="M8 4.5V8"></path>
+                  <path d="M16 4.5V8"></path>
+                  <circle cx="12" cy="13" r="2.1"></circle>
+                </svg>
+              </div>
+              <strong>未选中</strong>
+              <p>线框日历，轻量中性。</p>
+            </div>
+            <div class="state">
+              <div class="mini active fill">
+                <svg viewBox="0 0 24 24">
+                  <rect class="fill-shape" x="4" y="5" width="16" height="15" rx="4"></rect>
+                  <path d="M8 4.5V8"></path>
+                  <path d="M16 4.5V8"></path>
+                  <circle cx="12" cy="13" r="2.1" fill="#ffffff" stroke="none"></circle>
+                </svg>
+              </div>
+              <strong>选中</strong>
+              <p>实体底板，内部点位保留。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>行动</h3>
+          <p>改为双行勾选清单，更贴近行动列表语义，也更适合底部 Tab 的小尺寸识别。</p>
+          <div class="state-row">
+            <div class="state">
+              <div class="mini outline">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6.9 8.1L8.4 9.6L10.8 7.2"></path>
+                  <path d="M13 8.4H17.1"></path>
+                  <path d="M6.9 14.7L8.4 16.2L10.8 13.8"></path>
+                  <path d="M13 15H17.1"></path>
+                </svg>
+              </div>
+              <strong>未选中</strong>
+              <p>线性行动清单，语义直接。</p>
+            </div>
+            <div class="state">
+              <div class="mini active fill">
+                <svg viewBox="0 0 24 24">
+                  <rect class="fill-shape" x="4.5" y="4.5" width="15" height="15" rx="4"></rect>
+                  <path d="M7.4 9L8.8 10.4L10.9 8.3" stroke="#ffffff"></path>
+                  <path d="M12.9 9.3H16.2" stroke="#ffffff"></path>
+                  <path d="M7.4 14.2L8.8 15.6L10.9 13.5" stroke="#ffffff"></path>
+                  <path d="M12.9 14.5H16.2" stroke="#ffffff"></path>
+                </svg>
+              </div>
+              <strong>选中</strong>
+              <p>实体底板内保留双行行动项，选中更稳。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>目标</h3>
+          <p>靶心比旗帜更聚焦目标完成语义，选中态强化外圈重量感。</p>
+          <div class="state-row">
+            <div class="state">
+              <div class="mini outline">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="7.2"></circle>
+                  <circle cx="12" cy="12" r="2.3"></circle>
+                </svg>
+              </div>
+              <strong>未选中</strong>
+              <p>双环靶心，轮廓清晰。</p>
+            </div>
+            <div class="state">
+              <div class="mini active fill">
+                <svg viewBox="0 0 24 24">
+                  <path class="fill-shape" d="M12 4.8A7.2 7.2 0 1 0 19.2 12A7.2 7.2 0 0 0 12 4.8ZM12 9.7A2.3 2.3 0 1 1 9.7 12A2.3 2.3 0 0 1 12 9.7Z"></path>
+                </svg>
+              </div>
+              <strong>选中</strong>
+              <p>实体外圈保留中心识别。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>我的</h3>
+          <p>默认态采用轮廓头像，选中态提升头肩体积感，增强当前页归属感。</p>
+          <div class="state-row">
+            <div class="state">
+              <div class="mini outline">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="8.5" r="3.2"></circle>
+                  <path d="M5.8 19.2C7 15.9 9.1 14.3 12 14.3C14.9 14.3 17 15.9 18.2 19.2"></path>
+                </svg>
+              </div>
+              <strong>未选中</strong>
+              <p>线框头像，更轻。</p>
+            </div>
+            <div class="state">
+              <div class="mini active fill">
+                <svg viewBox="0 0 24 24">
+                  <circle class="fill-shape" cx="12" cy="8.5" r="3.2"></circle>
+                  <path class="fill-shape" d="M12 14.3C8.9 14.3 6.5 16 5.6 19.2H18.4C17.5 16 15.1 14.3 12 14.3Z"></path>
+                </svg>
+              </div>
+              <strong>选中</strong>
+              <p>实体头肩，归属更强。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="voice-note">
+        语音按钮不改布局，只调整图标本体表现。默认态使用浅品牌色底与线性 `mic`，激活时再增强为更高对比的主动作态。
+      </div>
+
+      <div class="state-row" style="margin-top: 16px;">
+        <div class="state">
+          <div class="mini voice-default">
+            <svg viewBox="0 0 24 24">
+              <rect x="9.2" y="4.5" width="5.6" height="10.6" rx="2.8"></rect>
+              <path d="M6.9 11.3C6.9 14.1 9.1 16.3 12 16.3C14.9 16.3 17.1 14.1 17.1 11.3"></path>
+              <path d="M12 16.3V19.4"></path>
+              <path d="M9.8 19.4H14.2"></path>
+            </svg>
+          </div>
+          <strong>语音默认态</strong>
+          <p>弱强调，维持入口识别但不过度抢眼。</p>
+        </div>
+        <div class="state">
+          <div class="mini voice-active">
+            <svg viewBox="0 0 24 24">
+              <rect x="9.2" y="4.5" width="5.6" height="10.6" rx="2.8"></rect>
+              <path d="M6.9 11.3C6.9 14.1 9.1 16.3 12 16.3C14.9 16.3 17.1 14.1 17.1 11.3"></path>
+              <path d="M12 16.3V19.4"></path>
+              <path d="M9.8 19.4H14.2"></path>
+            </svg>
+          </div>
+          <strong>语音激活态</strong>
+          <p>只在展开或进入语音流程时提升存在感。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronoisle Icon Redesign Board V1</title>
+  <style>
+    :root {
+      --bg: #edf3fb;
+      --panel: rgba(255,255,255,0.82);
+      --card: #ffffff;
+      --text: #182233;
+      --soft: #67758a;
+      --line: rgba(24,34,51,0.08);
+      --brand: #2f7cff;
+      --brand-soft: rgba(47,124,255,0.12);
+      --success: #1b9b6a;
+      --warning: #e6982a;
+      --focus: #5964ff;
+      --ai: #23a0ff;
+      --shadow: 0 18px 42px rgba(20,33,58,0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      padding: 28px;
+    }
+
+    .wrap {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: grid;
+      gap: 22px;
+    }
+
+    .hero, .section {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero { padding: 28px; }
+    .section { padding: 22px; }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.88);
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    h1 { margin: 0 0 10px; font-size: 34px; letter-spacing: -0.04em; }
+    h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.03em; }
+    p { margin: 0; color: var(--soft); line-height: 1.7; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(24,34,51,0.05);
+      color: var(--soft);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(47,124,255,0.12);
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { font-size: 13px; }
+
+    .preview-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 16px 0 14px;
+    }
+
+    .preview {
+      padding: 14px 10px 10px;
+      border-radius: 18px;
+      display: grid;
+      justify-items: center;
+      gap: 10px;
+    }
+
+    .preview.light {
+      background: #f6f9fe;
+      border: 1px solid rgba(24,34,51,0.05);
+      color: var(--text);
+    }
+
+    .preview.dark {
+      background: #162133;
+      color: #e7eefb;
+    }
+
+    .preview .label {
+      font-size: 12px;
+      color: inherit;
+      opacity: 0.78;
+    }
+
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(24,34,51,0.04);
+      color: inherit;
+    }
+
+    .preview.dark .icon-box {
+      background: rgba(255,255,255,0.08);
+    }
+
+    svg {
+      width: 26px;
+      height: 26px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.85;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .meta-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      color: var(--soft);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .accent-brand { color: var(--brand); }
+    .accent-success { color: var(--success); }
+    .accent-warning { color: var(--warning); }
+    .accent-focus { color: var(--focus); }
+    .accent-ai { color: var(--ai); }
+
+    @media (max-width: 1120px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 780px) {
+      body { padding: 16px; }
+      .grid { grid-template-columns: 1fr; }
+      .preview-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">P0 + P1 Sketch Board</div>
+      <h1>完整草图板 V1</h1>
+      <p>本页聚焦第一轮最值得重绘的 18 个高频图标，用于确认形态、气质、配色层级和尺寸表现。只定义 icon，不改布局。</p>
+      <div class="meta">
+        <span class="pill">P0: 高频操作与核心业务</span>
+        <span class="pill">P1: 业务识别与场景增强</span>
+        <span class="pill">尺寸预览: 16 / 24 / 32</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>P0 图标</h2>
+          <p>优先统一全局高频操作和核心任务语义。</p>
+        </div>
+        <div class="tag">Priority 0</div>
+      </div>
+      <div class="grid" id="p0-grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>P1 图标</h2>
+          <p>增强产品识别度和场景感，但依然保持系统一致性。</p>
+        </div>
+        <div class="tag">Priority 1</div>
+      </div>
+      <div class="grid" id="p1-grid"></div>
+    </section>
+  </div>
+
+  <script>
+    const groups = {
+      p0: [
+        ["search", "操作", "镜片更紧凑，手柄更短，提升小尺寸清晰度", "neutral", iconSearch()],
+        ["close", "操作", "对角线间距更稳定，统一圆头端点", "neutral", iconClose()],
+        ["plus", "操作", "十字中心更稳，不显得过于锋利", "neutral", iconPlus()],
+        ["minus", "操作", "单横线做精确光学居中", "neutral", iconMinus()],
+        ["chevron-left", "导航", "更轻的方向轮廓，避免箭头过重", "neutral", iconChevron("left")],
+        ["chevron-right", "导航", "更轻的方向轮廓，避免箭头过重", "neutral", iconChevron("right")],
+        ["success", "状态", "勾选更圆润，整体更安心", "success", iconSuccess()],
+        ["warning", "状态", "提醒轮廓更稳定，避免尖锐攻击感", "warning", iconWarning()],
+        ["task", "业务", "从文档感转向清单感，突出完成语义", "brand", iconTask()],
+        ["today", "业务", "保留日历形态，并加一个今日识别点", "brand", iconToday()]
+      ],
+      p1: [
+        ["goal", "业务", "用靶心替代泛化旗帜，更聚焦达成感", "brand", iconGoal()],
+        ["reminder", "业务", "铃铛更克制，顶部弧线更稳", "neutral", iconReminder()],
+        ["plan", "业务", "用层级块表达规划路径", "neutral", iconPlan()],
+        ["progress", "业务", "用分段环表达推进而非结果", "brand", iconProgress()],
+        ["stats", "业务", "拉开柱体间距，避免视觉糊块", "neutral", iconStats()],
+        ["calendar", "业务", "作为普通日程图标，弱化今日点", "neutral", iconCalendar()],
+        ["focus", "场景", "聚焦 halo 细节更集中，保留少量个性", "focus", iconFocus()],
+        ["ai", "场景", "从机器人风格转向灵感与计算结合", "ai", iconAi()]
+      ]
+    };
+
+    function tintClass(accent) {
+      return accent === "brand" ? "accent-brand"
+        : accent === "success" ? "accent-success"
+        : accent === "warning" ? "accent-warning"
+        : accent === "focus" ? "accent-focus"
+        : accent === "ai" ? "accent-ai"
+        : "";
+    }
+
+    function renderCard([name, type, note, accent, svg]) {
+      return `
+        <article class="card">
+          <h3>${name}</h3>
+          <p>${type}</p>
+          <div class="preview-row">
+            ${renderPreview("16", svg, accent, "light")}
+            ${renderPreview("24", svg, accent, "light")}
+            ${renderPreview("32", svg, accent, "dark")}
+          </div>
+          <div class="meta-list">
+            <div><strong>重绘方向:</strong> ${note}</div>
+            <div><strong>配色策略:</strong> <span class="${tintClass(accent)}">${colorText(accent)}</span></div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderPreview(size, svg, accent, theme) {
+      const klass = tintClass(accent);
+      return `
+        <div class="preview ${theme}">
+          <div class="icon-box ${klass}" style="width:${size === "16" ? "44px" : size === "24" ? "52px" : "60px"};height:${size === "16" ? "44px" : size === "24" ? "52px" : "60px"};">
+            ${svg}
+          </div>
+          <div class="label">${size}</div>
+        </div>
+      `;
+    }
+
+    function colorText(accent) {
+      return accent === "brand" ? "品牌强调"
+        : accent === "success" ? "语义绿色"
+        : accent === "warning" ? "语义琥珀"
+        : accent === "focus" ? "聚焦靛蓝"
+        : accent === "ai" ? "AI 青蓝"
+        : "中性前景";
+    }
+
+    function mount(id, items) {
+      document.getElementById(id).innerHTML = items.map(renderCard).join("");
+    }
+
+    function iconSearch() { return `<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15.2 15.2L20 20"></path></svg>`; }
+    function iconClose() { return `<svg viewBox="0 0 24 24"><path d="M6 6L18 18"></path><path d="M18 6L6 18"></path></svg>`; }
+    function iconPlus() { return `<svg viewBox="0 0 24 24"><path d="M12 5V19"></path><path d="M5 12H19"></path></svg>`; }
+    function iconMinus() { return `<svg viewBox="0 0 24 24"><path d="M5 12H19"></path></svg>`; }
+    function iconChevron(dir) { return `<svg viewBox="0 0 24 24"><path d="${dir === "left" ? "M14.8 5.8L8.6 12L14.8 18.2" : "M9.2 5.8L15.4 12L9.2 18.2"}"></path></svg>`; }
+    function iconSuccess() { return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M8.3 12.2L10.8 14.8L15.8 9.5"></path></svg>`; }
+    function iconWarning() { return `<svg viewBox="0 0 24 24"><path d="M12 4.5L19 18.5H5Z"></path><path d="M12 9V13.5"></path><path d="M12 17.1H12.01"></path></svg>`; }
+    function iconTask() { return `<svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="15" rx="3.5"></rect><path d="M8.5 9.2L9.8 10.5L12.2 8"></path><path d="M13.8 9H16"></path><path d="M8.5 14.2L9.8 15.5L12.2 13"></path><path d="M13.8 14H16"></path></svg>`; }
+    function iconToday() { return `<svg viewBox="0 0 24 24"><rect x="4.5" y="5.5" width="15" height="14" rx="3.8"></rect><path d="M8 4.5V8"></path><path d="M16 4.5V8"></path><circle cx="12" cy="13.2" r="2"></circle></svg>`; }
+    function iconGoal() { return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.3"></circle><circle cx="12" cy="12" r="3.3"></circle><circle cx="12" cy="12" r="1"></circle></svg>`; }
+    function iconReminder() { return `<svg viewBox="0 0 24 24"><path d="M8 16.5H16"></path><path d="M8.4 16.5C8.8 14.8 8.8 13 8.8 11.6C8.8 9 10.2 7.2 12 7.2C13.8 7.2 15.2 9 15.2 11.6C15.2 13 15.2 14.8 15.6 16.5"></path><path d="M10.4 18.5C10.8 19.5 11.2 20 12 20C12.8 20 13.2 19.5 13.6 18.5"></path></svg>`; }
+    function iconPlan() { return `<svg viewBox="0 0 24 24"><rect x="5" y="6" width="5.2" height="5.2" rx="1.6"></rect><rect x="13.8" y="6" width="5.2" height="5.2" rx="1.6"></rect><rect x="9.4" y="12.8" width="5.2" height="5.2" rx="1.6"></rect><path d="M10.2 8.6H13.8"></path><path d="M12 11.2V12.8"></path></svg>`; }
+    function iconProgress() { return `<svg viewBox="0 0 24 24"><path d="M19 12A7 7 0 1 1 12 5"></path><path d="M12 3.8V8"></path><path d="M16.9 7.1L14 10"></path></svg>`; }
+    function iconStats() { return `<svg viewBox="0 0 24 24"><path d="M5 18.5H19"></path><rect x="6" y="12.1" width="2.3" height="6.4" rx="1.15"></rect><rect x="10.85" y="8.9" width="2.3" height="9.6" rx="1.15"></rect><rect x="15.7" y="5.7" width="2.3" height="12.8" rx="1.15"></rect></svg>`; }
+    function iconCalendar() { return `<svg viewBox="0 0 24 24"><rect x="4.5" y="5.5" width="15" height="14" rx="3.8"></rect><path d="M8 4.5V8"></path><path d="M16 4.5V8"></path><path d="M8 11.3H16"></path></svg>`; }
+    function iconFocus() { return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6"></circle><path d="M12 4.5V7"></path><path d="M12 17V19.5"></path><path d="M4.5 12H7"></path><path d="M17 12H19.5"></path><circle cx="12" cy="12" r="6.8"></circle></svg>`; }
+    function iconAi() { return `<svg viewBox="0 0 24 24"><path d="M12 4.5L13.6 8.4L17.5 10L13.6 11.6L12 15.5L10.4 11.6L6.5 10L10.4 8.4Z"></path><path d="M17 15.5L17.8 17.2L19.5 18L17.8 18.8L17 20.5L16.2 18.8L14.5 18L16.2 17.2Z"></path></svg>`; }
+
+    mount("p0-grid", groups.p0);
+    mount("p1-grid", groups.p1);
+  </script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronoisle 图标规范汇总预览 V1</title>
+  <style>
+    :root {
+      --bg: #eef3f9;
+      --panel: rgba(255, 255, 255, 0.78);
+      --panel-strong: #ffffff;
+      --text: #182233;
+      --text-soft: #617086;
+      --line: rgba(24, 34, 51, 0.08);
+      --brand: #2f7cff;
+      --brand-soft: rgba(47, 124, 255, 0.12);
+      --success: #1b9b6a;
+      --warning: #e6982a;
+      --focus: #5964ff;
+      --joy: #d96b9e;
+      --tomato: #ef6b51;
+      --neutral: #233043;
+      --shadow-lg: 0 28px 60px rgba(28, 42, 68, 0.12);
+      --shadow-md: 0 14px 28px rgba(28, 42, 68, 0.08);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(47, 124, 255, 0.14), transparent 28%),
+        linear-gradient(180deg, #f7f9fd 0%, var(--bg) 100%);
+      padding: 28px;
+    }
+
+    .page {
+      max-width: 1520px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sidebar,
+    .content {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow-lg);
+      border-radius: var(--radius-xl);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 28px;
+      padding: 28px;
+    }
+
+    .content {
+      padding: 22px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-size: 34px;
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .toc,
+    .quick-cards,
+    .link-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .toc a,
+    .quick-card,
+    .link-card {
+      display: block;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(24, 34, 51, 0.07);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .toc a:hover,
+    .link-card:hover {
+      border-color: rgba(47, 124, 255, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .card-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .card-text {
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .sidebar-note {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(24, 34, 51, 0.08);
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .section {
+      margin-bottom: 26px;
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+
+    .section-desc {
+      margin: 8px 0 0;
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .section-tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(24, 34, 51, 0.06);
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill.brand { background: rgba(47, 124, 255, 0.12); color: var(--brand); }
+    .pill.success { background: rgba(27, 155, 106, 0.12); color: var(--success); }
+    .pill.warning { background: rgba(230, 152, 42, 0.14); color: var(--warning); }
+    .pill.focus { background: rgba(89, 100, 255, 0.12); color: var(--focus); }
+    .pill.joy { background: rgba(217, 107, 158, 0.14); color: var(--joy); }
+    .pill.tomato { background: rgba(239, 107, 81, 0.14); color: var(--tomato); }
+    .pill.neutral { background: rgba(24, 34, 51, 0.06); color: var(--neutral); }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .info-card,
+    .family-card,
+    .doc-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+    }
+
+    .info-card h3,
+    .family-card h3,
+    .doc-card h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .info-card p,
+    .family-card p,
+    .doc-card p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .token-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      box-shadow: var(--shadow-md);
+    }
+
+    .token-table th,
+    .token-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(24, 34, 51, 0.08);
+      font-size: 14px;
+    }
+
+    .token-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .token-table th {
+      color: var(--text);
+      background: rgba(24, 34, 51, 0.04);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .token-table td {
+      color: var(--text-soft);
+    }
+
+    .tab-state {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+    }
+
+    .tab-state h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .tab-state p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .doc-links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .doc-card a {
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    @media (max-width: 1220px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+
+    @media (max-width: 960px) {
+      body {
+        padding: 16px;
+      }
+
+      .sidebar,
+      .content {
+        padding: 18px;
+      }
+
+      .grid-4,
+      .grid-3,
+      .grid-2,
+      .doc-links {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <div class="eyebrow">Chronoisle / Icon Summary</div>
+      <h1>图标规范汇总预览 V1</h1>
+      <p class="lead">
+        这是一页面向评审和交付的汇总预览，把图标系统的核心原则、底部 Tab 规则、分组范围和关联产物集中展示。
+      </p>
+
+      <div class="quick-cards">
+        <div class="quick-card">
+          <span class="card-label">核心原则</span>
+          <div class="card-text">形态统一，颜色分层，少量场景个性。</div>
+        </div>
+        <div class="quick-card">
+          <span class="card-label">实施边界</span>
+          <div class="card-text">只改 icon，不改布局，不借容器结构补效果。</div>
+        </div>
+        <div class="quick-card">
+          <span class="card-label">落地方向</span>
+          <div class="card-text">继续以 `AppIcon` 为唯一入口，避免页面层继续分散。</div>
+        </div>
+      </div>
+
+      <div class="toc">
+        <a href="#direction">设计方向</a>
+        <a href="#tokens">尺寸与描边</a>
+        <a href="#colors">颜色体系</a>
+        <a href="#states">状态规则</a>
+        <a href="#tabbar">底部 Tab 规范</a>
+        <a href="#families">图标分组</a>
+        <a href="#resources">位图资源策略</a>
+        <a href="#deliverables">关联文档与预览</a>
+      </div>
+
+      <div class="sidebar-note">
+        如果要继续推进到开发实现，这页可以作为设计和开发的共同入口页，再配合 Markdown 规范和草图板一起使用。
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="section" id="direction">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">设计方向</h2>
+            <p class="section-desc">先对齐图标系统的审美方向和边界，避免后续细节失焦。</p>
+          </div>
+          <div class="section-tag">Core</div>
+        </div>
+
+        <div class="grid-3">
+          <div class="info-card">
+            <h3>总体原则</h3>
+            <p>统一网格、描边、转角和留白规则；通过少量场景化图标保留产品记忆点。</p>
+          </div>
+          <div class="info-card">
+            <h3>视觉边界</h3>
+            <p>不做 3D、不做厚重发光、不做写实拟物，保持线性骨架为主，必要时局部实体化。</p>
+          </div>
+          <div class="info-card">
+            <h3>实施边界</h3>
+            <p>严格遵守“只改 icon，不改布局”，不通过位置、尺寸或容器变化掩盖图形问题。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="tokens">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">尺寸与描边</h2>
+            <p class="section-desc">控制尺寸层级和线条粗细，是统一感最重要的基础。</p>
+          </div>
+          <div class="section-tag">Token</div>
+        </div>
+
+        <table class="token-table">
+          <thead>
+            <tr>
+              <th>层级</th>
+              <th>尺寸</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>微状态</td>
+              <td><code>12</code></td>
+              <td>点标、极小提示、优先级</td>
+            </tr>
+            <tr>
+              <td>行内状态</td>
+              <td><code>16</code></td>
+              <td>勾选、列表状态、小反馈</td>
+            </tr>
+            <tr>
+              <td>小控件</td>
+              <td><code>20</code></td>
+              <td>工具按钮、次级入口</td>
+            </tr>
+            <tr>
+              <td>标准操作</td>
+              <td><code>24</code></td>
+              <td>导航、按钮 icon、Tab icon</td>
+            </tr>
+            <tr>
+              <td>卡片主图标</td>
+              <td><code>32</code></td>
+              <td>业务主语义、卡片头部</td>
+            </tr>
+            <tr>
+              <td>空态 / Hero</td>
+              <td><code>40 / 48</code></td>
+              <td>引导、空态、品牌强化</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="grid-3" style="margin-top: 14px;">
+          <div class="info-card">
+            <h3>小尺寸描边</h3>
+            <p><code>1.5 - 1.65</code>，优先保清晰，不追求复杂轮廓。</p>
+          </div>
+          <div class="info-card">
+            <h3>标准描边</h3>
+            <p><code>1.75 - 1.9</code>，覆盖大部分 `20 / 24` 的操作与导航 icon。</p>
+          </div>
+          <div class="info-card">
+            <h3>大尺寸描边</h3>
+            <p><code>2</code>，用于 `32` 及以上的大图标、卡片主语义和空态。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="colors">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">颜色体系</h2>
+            <p class="section-desc">不是所有 icon 都统一色，而是“统一骨架 + 分层配色”。</p>
+          </div>
+          <div class="section-tag">Color</div>
+        </div>
+
+        <div class="pill-row">
+          <span class="pill neutral">Neutral Ink</span>
+          <span class="pill brand">Brand Cyan</span>
+          <span class="pill success">Growth Green</span>
+          <span class="pill warning">Warning Amber</span>
+          <span class="pill focus">Focus Indigo</span>
+          <span class="pill tomato">Tomato Coral</span>
+          <span class="pill joy">Joy Rose</span>
+        </div>
+
+        <div class="grid-4" style="margin-top: 14px;">
+          <div class="info-card">
+            <h3>统一比例</h3>
+            <p><code>80%</code> 统一，<code>20%</code> 个性。高频操作优先统一色。</p>
+          </div>
+          <div class="info-card">
+            <h3>状态反馈</h3>
+            <p>成功、提醒、信息类走固定语义色，不跟着页面随意漂移。</p>
+          </div>
+          <div class="info-card">
+            <h3>场景个性</h3>
+            <p>`ai`、`focus`、`voice`、`tomato`、`joy` 允许保留少量识别色。</p>
+          </div>
+          <div class="info-card">
+            <h3>用色红线</h3>
+            <p>不能让每个业务 icon 都独立上色，否则整体会重新失控。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="states">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">状态规则</h2>
+            <p class="section-desc">激活态不能只靠颜色，默认态也不能太重。</p>
+          </div>
+          <div class="section-tag">State</div>
+        </div>
+
+        <div class="grid-3">
+          <div class="info-card">
+            <h3>默认态</h3>
+            <p>轮廓型、较轻、语义清晰，是大多数 icon 的常态。</p>
+          </div>
+          <div class="info-card">
+            <h3>激活态</h3>
+            <p>同骨架下强化，优先采用局部实体化、局部填充、核心形体强化。</p>
+          </div>
+          <div class="info-card">
+            <h3>不推荐</h3>
+            <p>只换颜色、完全换另一枚图标、或激活时整体变粗一整级。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="tabbar">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">底部 Tab 规范</h2>
+            <p class="section-desc">底栏图标必须有明确的选中 / 未选中图形差异，且不改变布局。</p>
+          </div>
+          <div class="section-tag">Tab Bar</div>
+        </div>
+
+        <div class="grid-2">
+          <div class="tab-state">
+            <h3>今日 / 行动 / 目标 / 我的</h3>
+            <p>前四个 Tab 必须同时具备 `图形差异 + 颜色差异`。未选中态保持线性轮廓，选中态在同骨架下做实体化或局部填充。</p>
+          </div>
+          <div class="tab-state">
+            <h3>语音按钮</h3>
+            <p>语音不参与普通 Tab 的选中逻辑。默认态应是“弱强调”，激活或展开时再进入“强强调”，避免长期抢占底栏第一视觉焦点。</p>
+          </div>
+        </div>
+
+        <table class="token-table" style="margin-top: 14px;">
+          <thead>
+            <tr>
+              <th>Tab</th>
+              <th>未选中态</th>
+              <th>选中态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>今日</td>
+              <td>线框日历</td>
+              <td>实体日历底板 + 白色今日点</td>
+            </tr>
+            <tr>
+              <td>行动</td>
+              <td>线性闪电</td>
+              <td>实体闪电</td>
+            </tr>
+            <tr>
+              <td>目标</td>
+              <td>双环靶心</td>
+              <td>实体外圈 + 保留靶心中心</td>
+            </tr>
+            <tr>
+              <td>我的</td>
+              <td>线框头像</td>
+              <td>实体头像与肩部轮廓</td>
+            </tr>
+            <tr>
+              <td>语音</td>
+              <td>独立按钮，弱强调</td>
+              <td>激活 / 展开时增强</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="families">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">图标分组</h2>
+            <p class="section-desc">当前图标命名范围与设计家族划分，用于设计和开发共识。</p>
+          </div>
+          <div class="section-tag">Families</div>
+        </div>
+
+        <div class="grid-3">
+          <div class="family-card">
+            <h3>导航与操作</h3>
+            <p>`search`、`close`、`plus`、`minus`、`edit`、`delete`、`share`、`filter`、`sort`、`copy`、`link`、`lock`、`unlock`、`eye`、`eye-off`、`chevron-*`</p>
+          </div>
+          <div class="family-card">
+            <h3>状态与反馈</h3>
+            <p>`success`、`warning`、`info`、`help`、`sync`、`archive`、`unknown`</p>
+          </div>
+          <div class="family-card">
+            <h3>业务主功能</h3>
+            <p>`today`、`goal`、`task`、`reminder`、`calendar`、`habit`、`milestone`、`counter`、`countdown`、`stats`、`wallet`、`ai`、`plan`、`progress`、`action`、`review`、`note`、`idea`</p>
+          </div>
+          <div class="family-card">
+            <h3>分类与成长主题</h3>
+            <p>`health`、`growth`、`finance`、`joy`、`focus`</p>
+          </div>
+          <div class="family-card">
+            <h3>场景与环境</h3>
+            <p>`tomato`、`voice`、`noise`、`rain`、`storm`、`wind`、`water`、`bird`、`power`、`radio`、`phone`</p>
+          </div>
+          <div class="family-card">
+            <h3>个人与系统</h3>
+            <p>`gear`、`profile`、`spark`、`star`、`star-fill`、`heart`、`flag`、`tag`、`location`、`time`、`date`</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="resources">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">位图资源策略</h2>
+            <p class="section-desc">哪些资源继续保留为品牌或物料，哪些需要逐步矢量化。</p>
+          </div>
+          <div class="section-tag">Resource</div>
+        </div>
+
+        <table class="token-table">
+          <thead>
+            <tr>
+              <th>资源</th>
+              <th>策略</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>startIcon.png</code></td>
+              <td>保留为品牌资源，不并入普通 icon 家族</td>
+            </tr>
+            <tr>
+              <td><code>huawei_login_logo_white.png</code></td>
+              <td>保留为品牌登录素材，不参与重绘</td>
+            </tr>
+            <tr>
+              <td><code>tomato.png</code></td>
+              <td>建议逐步替换为矢量图标版本</td>
+            </tr>
+            <tr>
+              <td><code>icon_appgallery_*</code></td>
+              <td>作为上架物料独立管理</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="deliverables">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">关联文档与预览</h2>
+            <p class="section-desc">本轮已经产出的说明文档、草图板和状态规范页。</p>
+          </div>
+          <div class="section-tag">Deliverables</div>
+        </div>
+
+        <div class="doc-links">
+          <div class="doc-card">
+            <h3>汇总规范</h3>
+            <p>当前这套规范的 Markdown 正式稿。</p>
+            <p style="margin-top: 10px;"><a href="icon-spec-summary-v1.md">打开 Markdown</a></p>
+          </div>
+          <div class="doc-card">
+            <h3>重绘提案</h3>
+            <p>最初的图标设计方向、分组和优先级。</p>
+            <p style="margin-top: 10px;"><a href="icon-redesign-v1.md">打开文档</a></p>
+          </div>
+          <div class="doc-card">
+            <h3>重点草图板</h3>
+            <p>P0 + P1 重点图标的可视化草图页。</p>
+            <p style="margin-top: 10px;"><a href="icon-redesign-v1-board.html">打开预览</a></p>
+          </div>
+          <div class="doc-card">
+            <h3>完整草图板</h3>
+            <p>全量图标的完整预览页与分组展示。</p>
+            <p style="margin-top: 10px;"><a href="icon-redesign-v2-board.html">打开预览</a></p>
+          </div>
+          <div class="doc-card">
+            <h3>Tab 状态规范</h3>
+            <p>底部 Tab 选中 / 未选中规则的专项页面。</p>
+            <p style="margin-top: 10px;"><a href="icon-tabbar-spec-v1.html">打开预览</a></p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

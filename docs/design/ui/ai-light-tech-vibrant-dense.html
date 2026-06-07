@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronoisle - 今日页 (灵动高密版)</title>
+    <style>
+        :root {
+            --bg-color: #F2F4F8; 
+            --surface-color: #FFFFFF;
+            --surface-pressed: #F0F2F5; 
+            --text-primary: #181920;
+            --text-secondary: #5A5D6B;
+            --text-muted: #9BA0B3;
+            
+            --primary-color: #6366F1; 
+            --primary-light: rgba(99, 102, 241, 0.1);
+            --success-color: #10B981;
+            --danger-color: #EF4444;
+            
+            --ai-gradient-line: linear-gradient(90deg, #6366F1, #00C6FF);
+            
+            --border-light: rgba(0, 0, 0, 0.04);
+            --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.02);
+            
+            --radius-lg: 14px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #E5E7EB; color: var(--text-primary);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;
+        }
+
+        .device {
+            width: 390px; height: 844px;
+            background: var(--bg-color);
+            background-image: radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 20px 20px; background-position: center top;
+            border-radius: 40px; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.1);
+            overflow: hidden; position: relative; display: flex; flex-direction: column;
+            border: 8px solid #FFFFFF;
+        }
+
+        /* 紧凑顶栏 */
+        .header {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 44px 16px 10px;
+            background: linear-gradient(to bottom, rgba(242,244,248,0.95) 70%, rgba(242,244,248,0));
+            display: flex; justify-content: space-between; align-items: center; z-index: 10;
+        }
+        .header-left { display: flex; align-items: baseline; gap: 8px; }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-date { font-size: 12px; color: var(--text-muted); font-weight: 500; font-family: monospace; }
+        .header-icon { 
+            width: 32px; height: 32px; border-radius: 16px; 
+            background: var(--surface-color); color: var(--text-secondary); 
+            display: flex; align-items: center; justify-content: center; transition: 0.1s;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
+        }
+        .header-icon:active { transform: scale(0.9); }
+
+        /* 内容区 (压缩全局 Gap) */
+        .content { flex: 1; overflow-y: auto; padding: 94px 14px 80px; display: flex; flex-direction: column; gap: 16px; }
+        .content::-webkit-scrollbar { display: none; }
+
+        .section-header { margin-bottom: 8px; padding-left: 2px; }
+        .section-title { font-size: 14px; font-weight: 600; color: var(--text-primary); letter-spacing: 0.5px; }
+
+        /* 快速操作栏 (高密度) */
+        .quick-actions { display: flex; justify-content: space-between; padding: 0 4px; }
+        .action-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .action-icon {
+            width: 40px; height: 40px; border-radius: 20px;
+            background: var(--surface-color); color: var(--primary-color);
+            display: flex; justify-content: center; align-items: center;
+            transition: 0.1s; border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);
+        }
+        .action-icon svg { width: 18px; height: 18px; }
+        .action-icon:active { transform: scale(0.9); background: var(--surface-pressed); }
+        .action-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+
+        /* 目标进度 (紧凑网格) */
+        .goals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .goal-card {
+            background: var(--surface-color); border-radius: var(--radius-md); padding: 12px;
+            display: flex; flex-direction: column; gap: 10px;
+            transition: 0.1s; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
+            position: relative; overflow: hidden;
+        }
+        .goal-card:active { transform: scale(0.96); background: var(--surface-pressed); }
+        .goal-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--ai-gradient-line); opacity: 0.8; }
+        
+        .goal-card-header { display: flex; justify-content: space-between; align-items: center; }
+        .progress-ring {
+            width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--border-light);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 10px; font-weight: 700; color: var(--primary-color); position: relative;
+        }
+        .progress-ring::after {
+            content: ''; position: absolute; top: -2.5px; left: -2.5px; right: -2.5px; bottom: -2.5px;
+            border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--primary-color); border-right-color: var(--primary-color); transform: rotate(45deg);
+        }
+        .goal-title { font-size: 13px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* 今日提醒 (紧凑滚动) */
+        .reminders-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; margin-right: -14px; padding-right: 14px; scroll-snap-type: x mandatory; }
+        .reminders-scroll::-webkit-scrollbar { display: none; }
+        .reminder-card {
+            min-width: 190px; background: var(--surface-color); border-radius: var(--radius-md);
+            padding: 12px; display: flex; flex-direction: column; gap: 8px; scroll-snap-align: start;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light); transition: 0.1s;
+        }
+        .reminder-card:active { transform: scale(0.96); background: var(--surface-pressed); }
+        .reminder-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+        
+        .tag-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); padding: 3px 6px; border-radius: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .tag-muted { background: var(--surface-pressed); color: var(--text-secondary); padding: 3px 6px; border-radius: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        
+        .reminder-time { color: var(--text-muted); font-family: monospace; font-size: 11px; }
+        .reminder-title { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); }
+        .check-btn { 
+            align-self: flex-start; margin-top: 2px;
+            font-size: 11px; font-weight: 600; color: var(--primary-color); 
+            padding: 4px 12px; border-radius: 12px; background: var(--primary-light);
+            border: none; transition: 0.1s;
+        }
+        .check-btn:active { transform: scale(0.9); }
+
+        /* 今日计划 (无内边距的白底容器) */
+        .list-container {
+            background: var(--surface-color); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);
+            overflow: hidden; /* 切除内部列表的圆角 */
+        }
+        .list-row {
+            padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;
+            border-bottom: 1px solid var(--border-light); transition: 0.1s;
+        }
+        .list-row:last-child { border-bottom: none; }
+        .list-row:active { background: var(--surface-pressed); }
+        
+        .checkbox { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid #D1D3D8; flex-shrink: 0; margin-top: 1px; transition: 0.1s; }
+        .checkbox:active { transform: scale(0.9); border-color: var(--primary-color); background: var(--primary-light); }
+        
+        .row-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .row-title { font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--text-primary); }
+        
+        /* 彩色分类标签，缩小内边距 */
+        .row-meta-area { display: flex; gap: 8px; align-items: center; font-size: 11px; }
+        .category-tag { padding: 2px 6px; border-radius: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .cat-design { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; } 
+        .cat-dev { background: rgba(245, 158, 11, 0.1); color: #F59E0B; } 
+        .time-tag { color: var(--text-muted); display: flex; align-items: center; gap: 4px; font-family: monospace; }
+
+        /* 紧凑底栏 */
+        .tabbar {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; justify-content: space-between; padding: 0 24px 10px; z-index: 10;
+            border-top: 1px solid var(--border-light);
+        }
+        .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); transition: 0.1s; gap: 2px; }
+        .tab-item.active { color: var(--text-primary); }
+        .tab-item svg { width: 22px; height: 22px; }
+        .tab-item span { font-size: 10px; font-weight: 600; }
+        .tab-item:active { transform: scale(0.9); }
+        
+        /* 居中语音按钮 */
+        .ai-fab-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20; }
+        .ai-fab {
+            width: 48px; height: 48px; border-radius: 24px; 
+            background: var(--text-primary); 
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); transition: transform 0.1s;
+        }
+        .ai-fab:active { transform: scale(0.92); }
+        .ai-fab svg { width: 22px; height: 22px; color: #FFFFFF; }
+        .ai-fab-dot { position: absolute; top: 10px; right: 10px; width: 5px; height: 5px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #00C6FF); border: 2px solid var(--text-primary); }
+    </style>
+</head>
+<body>
+    <div class="device">
+        <header class="header">
+            <div class="header-left">
+                <div class="header-title">早安，天辰</div>
+                <div class="header-date">10/24 星期四</div>
+            </div>
+            <div class="header-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+        </header>
+
+        <main class="content">
+            <!-- 快速操作栏 (压缩尺寸) -->
+            <div class="quick-actions">
+                <div class="action-item">
+                    <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12h6"/><path d="M12 9v6"/></svg></div>
+                    <span class="action-label">新建任务</span>
+                </div>
+                <div class="action-item">
+                    <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M2 12h20"/></svg></div>
+                    <span class="action-label">新建目标</span>
+                </div>
+                <div class="action-item">
+                    <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                    <span class="action-label">新建提醒</span>
+                </div>
+                <div class="action-item">
+                    <div class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <span class="action-label">开始专注</span>
+                </div>
+            </div>
+
+            <!-- 目标进度 (紧凑化) -->
+            <div>
+                <div class="section-header">
+                    <span class="section-title">目标进度</span>
+                </div>
+                <div class="goals-grid">
+                    <div class="goal-card">
+                        <div class="goal-card-header">
+                            <div class="progress-ring">65%</div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><path d="M9 18l6-6-6-6"/></svg>
+                        </div>
+                        <div class="goal-title">掌握 HarmonyOS ArkUI 开发</div>
+                    </div>
+                    <div class="goal-card">
+                        <div class="goal-card-header">
+                            <div class="progress-ring" style="color: var(--text-primary); border-color: rgba(0,0,0,0.08);">
+                                <div style="position: absolute; top:-2.5px; left:-2.5px; right:-2.5px; bottom:-2.5px; border-radius:50%; border: 2.5px solid transparent; border-top-color: var(--text-primary); transform: rotate(15deg);"></div>
+                                20%
+                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><path d="M9 18l6-6-6-6"/></svg>
+                        </div>
+                        <div class="goal-title">产品 V2 迭代与设计规范落地</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日提醒 (紧凑化) -->
+            <div>
+                <div class="section-header">
+                    <span class="section-title">今日提醒</span>
+                </div>
+                <div class="reminders-scroll">
+                    <div class="reminder-card">
+                        <div class="reminder-header">
+                            <span class="tag-danger">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                尽快处理
+                            </span>
+                            <span class="reminder-time">16:30</span>
+                        </div>
+                        <div class="reminder-title">准备团队周会汇报材料</div>
+                        <button class="check-btn">打卡</button>
+                    </div>
+                    
+                    <div class="reminder-card">
+                        <div class="reminder-header">
+                            <span class="tag-muted">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                待处理
+                            </span>
+                            <span class="reminder-time">20:00</span>
+                        </div>
+                        <div class="reminder-title">阅读《设计心理学》第3章</div>
+                        <button class="check-btn">打卡</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日计划 (无内边距的高密列表容器) -->
+            <div>
+                <div class="section-header">
+                    <span class="section-title">今日计划</span>
+                </div>
+                <div class="list-container">
+                    <div class="list-row">
+                        <div class="checkbox"></div>
+                        <div class="row-content">
+                            <div class="row-title">梳理轻科技感 UI 设计语言，完成组件样式的全局替换</div>
+                            <div class="row-meta-area">
+                                <div class="category-tag cat-design">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <span>UI 优化</span>
+                                </div>
+                                <div class="time-tag">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    <span>45m</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="list-row">
+                        <div class="checkbox"></div>
+                        <div class="row-content">
+                            <div class="row-title">同步后端 API 接口文档</div>
+                            <div class="row-meta-area">
+                                <div class="category-tag cat-dev">
+                                    <span>研发</span>
+                                </div>
+                                <div class="time-tag">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    <span>14:00 - 15:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="list-row">
+                        <div class="checkbox"></div>
+                        <div class="row-content">
+                            <div class="row-title">回复核心用户反馈邮件</div>
+                            <div class="row-meta-area">
+                                <div class="category-tag" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
+                                    <span>运营</span>
+                                </div>
+                                <div class="time-tag">
+                                    <span>10m</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="ai-fab-container">
+            <div class="ai-fab">
+                <div class="ai-fab-dot"></div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+            </div>
+        </div>
+
+        <nav class="tabbar">
+            <div class="tab-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                <span>今日</span>
+            </div>
+            <div class="tab-item" style="margin-right: 30px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>行动</span>
+            </div>
+            <div class="tab-item" style="margin-left: 30px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                <span>目标</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>我的</span>
+            </div>
+        </nav>
+    </div>
+</body>
+</html>
