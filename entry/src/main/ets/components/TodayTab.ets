@@ -799,19 +799,22 @@ export struct TodayTab {
 
   @Builder
   private PlanTaskCheckbox(item: SavedPlanTaskItem) {
-    Text(this.isPlanTaskCompleted(item) ? '\u2713' : '')
-      .fontSize(TYPE_META)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(this.themeColors.success)
-      .textAlign(TextAlign.Center)
+    Stack({ alignContent: Alignment.Center }) {
+      Row()
+        .width(CHECKBOX_SIZE_LG)
+        .height(CHECKBOX_SIZE_LG)
+        .border({
+          width: 1.5,
+          color: this.isPlanTaskCompleted(item) ? this.themeColors.success : this.themeColors.borderColor
+        })
+        .borderRadius(RADIUS_PILL)
+        .backgroundColor(this.themeColors.surface)
+      if (this.isPlanTaskCompleted(item)) {
+        AppIcon({ name: 'success', iconSize: 14, framed: false, color: this.themeColors.success, useSystemSymbol: false })
+      }
+    }
       .width(CHECKBOX_SIZE_LG)
       .height(CHECKBOX_SIZE_LG)
-      .border({
-        width: 1.5,
-        color: this.isPlanTaskCompleted(item) ? this.themeColors.success : this.themeColors.borderColor
-      })
-      .borderRadius(RADIUS_PILL)
-      .backgroundColor(this.themeColors.surface)
       .onClick(() => {
         void this.togglePlanTaskCompletion(item.id);
       })

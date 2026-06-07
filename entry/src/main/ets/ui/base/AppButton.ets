@@ -24,6 +24,7 @@ export struct AppButton {
   @Prop iconName: string = '';
   @Prop fullWidth: boolean = false;
   @State isFocused: boolean = false;
+  @State isPressed: boolean = false;
   tapAction?: () => void;
 
   private effectiveVariant(): AppButtonVariant {
@@ -32,18 +33,64 @@ export struct AppButton {
     return this.variant;
   }
 
-  private effectiveSize(): AppButtonSize {
-    if (this.emphasis === 'strong') return 'lg';
-    if (this.emphasis === 'subtle') return 'sm';
-    return this.buttonSize;
+  private getBackgroundColor(): string {
+    if (this.disabled) {
+      return this.themeColors.surfaceSoft;
+    }
+    const variant = this.effectiveVariant();
+    
+    if (this.isPressed) {
+      switch (variant) {
+        case 'primary': return this.themeColors.primaryDark;
+        case 'secondary': return this.themeColors.surfacePressed;
+        case 'ghost': return this.themeColors.surfacePressed;
+        case 'danger': return this.themeColors.dangerSubtle;
+        case 'premium': return this.themeColors.premiumBorder;
+      }
+    }
+
+    switch (variant) {
+      case 'primary':
+        return this.themeColors.brandPrimary;
+      case 'secondary':
+        return this.themeColors.brandLight;
+      case 'ghost':
+        return this.themeColors.transparent;
+      case 'danger':
+        return this.themeColors.riskSurface;
+      case 'premium':
+        return this.themeColors.premium;
+    }
   }
 
-  private isEnabled(): boolean {
-    return !this.disabled && !this.loading;
+  private getTextColor(): string {
+    if (this.disabled) {
+      return this.themeColors.textMuted;
+    }
+    const variant = this.effectiveVariant();
+    switch (variant) {
+      case 'primary':
+      case 'premium':
+        return this.themeColors.textOnPrimary;
+      case 'danger':
+        return this.themeColors.semanticDanger;
+      case 'secondary':
+      case 'ghost':
+        return this.themeColors.brandPrimary;
+      default:
+        return this.themeColors.textPrimary;
+    }
+  }
+
+  private getBorderColor(): string {
+    if (this.isFocused) {
+      return this.themeColors.brandPrimary;
+    }
+    return this.themeColors.transparent;
   }
 
   private getHeight(): number {
-    switch (this.effectiveSize()) {
+    switch (this.buttonSize) {
       case 'sm':
         return BUTTON_HEIGHT_SM;
       case 'lg':
@@ -53,127 +100,58 @@ export struct AppButton {
     }
   }
 
-  private getFontSize(): number {
-    return this.effectiveSize() === 'sm' ? TYPE_META : TYPE_BODY;
-  }
-
-  private getIconSize(): number {
-    if (this.text.length === 0 && this.iconName.length > 0) {
-      return ICON_SIZE_SM;
-    }
-    return this.effectiveSize() === 'sm' ? ICON_SIZE_XS : ICON_SIZE_SM;
-  }
-
-  private getPadding(): Padding {
-    if (this.text.length === 0 && this.iconName.length > 0) {
-      return { left: 0, right: 0, top: 0, bottom: 0 };
-    }
-    return {
-      left: this.effectiveSize() === 'sm' ? SPACE_MD : SPACE_CARD,
-      right: this.effectiveSize() === 'sm' ? SPACE_MD : SPACE_CARD,
-      top: 0,
-      bottom: 0
-    };
-  }
-
-  private getBackgroundColor(): string {
-    if (!this.isEnabled()) {
-      return this.themeColors.surfaceSoft;
-    }
-    switch (this.effectiveVariant()) {
-      case 'secondary':
-        return this.themeColors.surfaceSoft;
-      case 'ghost':
-        return this.themeColors.transparent;
-      case 'danger':
-        return this.themeColors.danger;
-      case 'premium':
-        return this.themeColors.premium;
-      default:
-        return this.themeColors.primary;
-    }
-  }
-
-  private getTextColor(): string {
-    if (!this.isEnabled()) {
-      return this.themeColors.textMuted;
-    }
-    switch (this.effectiveVariant()) {
-      case 'secondary':
-      case 'ghost':
-        return this.themeColors.textPrimary;
-      case 'premium':
-        return this.themeColors.premiumText;
-      default:
-        return this.themeColors.textOnPrimary;
-    }
-  }
-
-  private getBorderWidth(): number {
-    if (this.isFocused && this.isEnabled()) {
-      return BORDER_DEFAULT;
-    }
-    return this.effectiveVariant() === 'secondary' ? BORDER_DEFAULT : 0;
-  }
-
-  private getBorderColor(): string {
-    if (this.isFocused && this.isEnabled()) {
-      return this.themeColors.primaryLight;
-    }
-    return this.effectiveVariant() === 'secondary' ? this.themeColors.borderColor : this.themeColors.transparent;
-  }
-
   build() {
-    Stack({ alignContent: Alignment.Center }) {
-      Row() {
-        if (this.loading) {
-          LoadingProgress()
-            .width(ICON_SIZE_XS)
-            .height(ICON_SIZE_XS)
-            .color(this.getTextColor())
-        } else if (this.iconName.length > 0) {
-          AppIcon({
-            name: this.iconName,
-            iconSize: this.getIconSize(),
-            color: this.getTextColor(),
-            framed: false,
-            muted: !this.isEnabled()
-          })
-        }
-        if (this.loading || (this.iconName.length > 0 && this.text.length > 0)) {
-          Blank().width(SPACE_XS)
-        }
-        if (this.loading || this.text.length > 0) {
-          Text(this.loading ? '加载中...' : this.text)
-            .fontSize(this.getFontSize())
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.getTextColor())
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
+    Row({ space: SPACE_XS }) {
+      if (this.loading) {
+        LoadingProgress()
+          .width(ICON_SIZE_SM)
+          .height(ICON_SIZE_SM)
+          .color(this.getTextColor())
+      } else if (this.iconName) {
+        AppIcon({
+          name: this.iconName,
+          iconSize: this.buttonSize === 'sm' ? ICON_SIZE_XS : ICON_SIZE_SM,
+          color: this.getTextColor(),
+          framed: false
+        })
       }
-      .alignItems(VerticalAlign.Center)
-      .justifyContent(FlexAlign.Center)
-      .height(this.getHeight())
+
+      if (this.text) {
+        Text(this.text)
+          .fontSize(this.buttonSize === 'sm' ? TYPE_META : TYPE_BODY)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getTextColor())
+      }
     }
     .width(this.fullWidth ? '100%' : undefined)
     .height(this.getHeight())
-    .padding(this.getPadding())
+    .padding({ left: SPACE_MD, right: SPACE_MD })
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
     .backgroundColor(this.getBackgroundColor())
     .borderRadius(RADIUS_XL)
-    .border({ width: this.getBorderWidth(), color: this.getBorderColor() })
-    .opacity(this.isEnabled() ? 1 : DISABLED_OPACITY)
-    .useEffect(this.isEnabled())
-    .hoverEffect(HoverEffect.Auto)
-    .focusable(this.isEnabled())
+    .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
+    .opacity(this.disabled ? DISABLED_OPACITY : 1)
+    .scale({ x: this.isPressed && !this.disabled ? 0.96 : 1, y: this.isPressed && !this.disabled ? 0.96 : 1 })
+    .animation({ duration: 100, curve: Curve.Friction })
+    .focusable(!this.disabled)
     .onFocus(() => {
-      this.isFocused = true;
+      if (!this.disabled) this.isFocused = true;
     })
     .onBlur(() => {
       this.isFocused = false;
     })
+    .onTouch((event: TouchEvent) => {
+      if (!this.disabled) {
+        if (event.type === TouchType.Down) {
+          this.isPressed = true;
+        } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+          this.isPressed = false;
+        }
+      }
+    })
     .onClick(() => {
-      if (this.isEnabled() && this.tapAction) {
+      if (!this.disabled && !this.loading && this.tapAction) {
         this.tapAction();
       }
     })

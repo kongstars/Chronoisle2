@@ -25,7 +25,7 @@ const PROD_SERVER = {
   password: readServerPassword('CHRONOISLE_PROD_SERVER_PASSWORD'),
   appDir: '/opt/chronoisle-server',
   backupDir: '/opt/chronoisle-backups',
-  pm2Name: 'sishiqingdan-server-prod',
+  pm2Name: 'chronoisle-server-prod',
   healthPort: 3000,
   mongoDb: 'sishiqingdan_prod'
 };

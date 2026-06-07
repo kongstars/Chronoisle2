@@ -24,6 +24,11 @@ const logger = Logger.create('GoalInfoPage');
 
 const GOAL_INFO_REMINDER_DRAFT_KEY = 'goalInfoReminderDraft';
 
+interface ReminderTimeParts {
+  hour: number;
+  minute: number;
+}
+
 @Entry
 @Component
 struct GoalInfoPage {
@@ -249,20 +254,23 @@ struct GoalInfoPage {
     return event.toJSON();
   }
 
-  private parseReminderTime(rawValue?: string): { hour: number; minute: number } {
+  private parseReminderTime(rawValue?: string): ReminderTimeParts {
     const safeValue = (rawValue || '').trim();
     const matched = safeValue.match(/^(\d{1,2}):(\d{1,2})$/);
     if (!matched) {
-      return { hour: 9, minute: 0 };
+      const defaultTime: ReminderTimeParts = { hour: 9, minute: 0 };
+      return defaultTime;
     }
 
     const hour = parseInt(matched[1], 10);
     const minute = parseInt(matched[2], 10);
     if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      return { hour: 9, minute: 0 };
+      const defaultTime: ReminderTimeParts = { hour: 9, minute: 0 };
+      return defaultTime;
     }
 
-    return { hour, minute };
+    const parsedTime: ReminderTimeParts = { hour, minute };
+    return parsedTime;
   }
 
   private resolveReminderDraftStartDate(reminder: ReminderItem, rule: ReminderRule, hour: number, minute: number): number {

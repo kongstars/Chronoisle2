@@ -11,6 +11,7 @@ function buildRemoteEnvPatchCommand() {
     NODE_ENV: 'production',
     PORT: String(TEST_SERVER.healthPort),
     MONGODB_URI: `mongodb://127.0.0.1:27017/${TEST_SERVER.mongoDb}`,
+    CORS_ORIGIN: 'https://sishiqingdan.cn,https://www.sishiqingdan.cn,https://api.sishiqingdan.cn,https://test-api.sishiqingdan.cn',
     GOAL_PLANNING_HTTP_TIMEOUT_MS: '900000',
     GOAL_PLANNING_TIMEOUT_MS: '300000',
     GOAL_PLANNING_PROGRESS_CRITIC_TIMEOUT_MS: '60000',
@@ -41,6 +42,14 @@ for (const [key, value] of Object.entries(updates)) {
 fs.writeFileSync(file, lines.join('\\n') + '\\n', 'utf8');
 `;
   return `cd "${TEST_SERVER.appDir}" && node <<'NODE_ENV_PATCH'\n${patchScript}\nNODE_ENV_PATCH`;
+}
+
+function buildNginxInstallCommand() {
+  return [
+    `install -m 644 "${TEST_SERVER.appDir}/nginx_test.conf" "/etc/nginx/conf.d/chronoisle-test.conf"`,
+    'nginx -t',
+    '(systemctl reload nginx || nginx -s reload)'
+  ].join(' && ');
 }
 
 async function execStep(ssh, label, command) {
@@ -127,6 +136,7 @@ async function main() {
     await execStep(ssh, 'cleanup-zip', `rm -f "${remoteZip}"`);
     await execStep(ssh, 'patch-env', buildRemoteEnvPatchCommand());
     await execStep(ssh, 'npm-ci', `cd "${TEST_SERVER.appDir}" && npm ci --omit=dev`);
+    await execStep(ssh, 'install-nginx', buildNginxInstallCommand());
     await execStep(
       ssh,
       'pm2-restart',

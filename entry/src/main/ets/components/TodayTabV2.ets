@@ -23,23 +23,12 @@ import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { db } from '../storage/Database';
 import { dataSyncService } from '../services/DataSyncService';
 import { AppIcon } from '../ui/base/AppIcon';
+import { PAGE_PADDING, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS, SPACE_2XS } from '../foundation/tokens/SpacingTokens';
+import { RADIUS_LG, RADIUS_MD, RADIUS_SM } from '../foundation/tokens/RadiusTokens';
+import { TYPE_HERO_TITLE, TYPE_SECTION_TITLE, TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_NUMERIC_MD } from '../foundation/tokens/TypographyTokens';
+import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 
 // ========== 设计 Token（V2 规范） ==========
-
-const V2_PAGE_PADDING: number = 16;
-const V2_SECTION_GAP: number = 16;
-const V2_CARD_RADIUS: number = 14;
-const V2_CARD_PADDING: number = 16;
-const V2_INNER_CARD_RADIUS: number = 10;
-
-const V2_FONT_DISPLAY: number = 24;
-const V2_FONT_TITLE: number = 18;
-const V2_FONT_SUBTITLE: number = 14;
-const V2_FONT_BODY: number = 14;
-const V2_FONT_CAPTION: number = 12;
-const V2_FONT_MICRO: number = 11;
-const V2_FONT_NUMERIC: number = 22;
-
 const V2_QUICK_ACTION_SIZE: number = 44;
 const V2_PROGRESS_RING_SIZE: number = 38;
 
@@ -284,14 +273,14 @@ export struct TodayTabV2 {
       Row({ space: 8 }) {
         Column({ space: 2 }) {
           Text(`${this.getGreeting()}${this.getDisplayName() ? '，' + this.getDisplayName() : ''}`)
-            .fontSize(V2_FONT_DISPLAY)
+            .fontSize(TYPE_HERO_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
 
           Text(this.getDateText())
-            .fontSize(V2_FONT_BODY)
+            .fontSize(TYPE_BODY)
             .fontColor(this.themeColors.textSecondary)
         }
         .layoutWeight(1)
@@ -339,7 +328,7 @@ export struct TodayTabV2 {
           .height(V2_QUICK_ACTION_SIZE)
 
           Text(item.label)
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textSecondary)
             .textAlign(TextAlign.Center)
         }
@@ -360,11 +349,11 @@ export struct TodayTabV2 {
       Row() {
         Column({ space: 2 }) {
           Text('今日计划')
-            .fontSize(V2_FONT_TITLE)
+            .fontSize(TYPE_SECTION_TITLE)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.themeColors.textPrimary)
           Text(this.hasActionableTodayPlan() ? '把今天最重要的事收在一张焦点卡里' : '先收拢今天的重点，再开始推进')
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textSecondary)
         }
         .layoutWeight(1)
@@ -372,7 +361,7 @@ export struct TodayTabV2 {
 
         if (this.hasActionableTodayPlan()) {
           Text(`${this.getActionablePlanTaskCount()} 项`)
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.themeColors.primary)
             .padding({ left: 7, right: 7, top: 2, bottom: 2 })
@@ -386,10 +375,10 @@ export struct TodayTabV2 {
       if (!this.hasActionableTodayPlan()) {
         Column({ space: 6 }) {
           Text('还没有今日计划')
-            .fontSize(V2_FONT_BODY)
+            .fontSize(TYPE_BODY)
             .fontColor(this.themeColors.textSecondary)
           Text('点击生成 AI 计划，或手动选择今天要做的事')
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
         }
         .width('100%')
@@ -405,7 +394,7 @@ export struct TodayTabV2 {
 
         if (this.getPlanFocusTasks().length > 7) {
           Text(`还有 ${this.getPlanFocusTasks().length - 7} 项`)
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
             .width('100%')
         }
@@ -414,7 +403,7 @@ export struct TodayTabV2 {
       // 底部操作
       Row({ space: 8 }) {
         Text(this.hasActionableTodayPlan() ? '查看完整计划' : '生成 AI 计划')
-          .fontSize(V2_FONT_BODY)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeColors.primary)
           .onClick(() => {
@@ -424,10 +413,10 @@ export struct TodayTabV2 {
       .width('100%')
     }
     .width('100%')
-    .padding(V2_CARD_PADDING)
+    .padding(SPACE_MD)
     .backgroundColor(this.themeColors.announcementSurface)
-    .borderRadius(V2_CARD_RADIUS)
-    .border({ width: 1, color: this.themeColors.primaryLight })
+    .borderRadius(RADIUS_LG)
+    .border({ width: BORDER_DEFAULT, color: this.themeColors.primaryLight })
     .shadow({ radius: 8, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
   }
 
@@ -469,7 +458,7 @@ export struct TodayTabV2 {
         Row({ space: 6 }) {
           if (item.type !== 'reminder' && this.getTaskCategory(item.id) !== null) {
             Text(this.getTaskCategory(item.id)!.label)
-              .fontSize(V2_FONT_MICRO)
+              .fontSize(TYPE_META)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getTaskCategory(item.id)!.color)
               .padding({ left: 6, right: 6, top: 2, bottom: 2 })
@@ -479,7 +468,7 @@ export struct TodayTabV2 {
 
           if (item.type === 'reminder') {
             Text('提醒')
-              .fontSize(V2_FONT_MICRO)
+              .fontSize(TYPE_META)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.themeColors.primary)
               .padding({ left: 6, right: 6, top: 2, bottom: 2 })
@@ -490,7 +479,7 @@ export struct TodayTabV2 {
         .width('100%')
 
         Text(item.title)
-          .fontSize(V2_FONT_BODY)
+          .fontSize(TYPE_BODY)
           .fontColor(item.completed ? this.themeColors.textMuted : this.themeColors.textPrimary)
           .decoration({ type: item.completed ? TextDecorationType.LineThrough : TextDecorationType.None })
           .width('100%')
@@ -503,7 +492,7 @@ export struct TodayTabV2 {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
           if (item.goalTitle && item.goalTitle.length > 0) {
             Text(item.goalTitle)
-              .fontSize(V2_FONT_CAPTION)
+              .fontSize(TYPE_CAPTION)
               .fontColor(this.themeColors.textMuted)
               .margin({ right: 8, bottom: 4 })
               .maxLines(1)
@@ -511,13 +500,13 @@ export struct TodayTabV2 {
           }
           if (item.reminderTime && item.reminderTime.length > 0) {
             Text(item.reminderTime)
-              .fontSize(V2_FONT_CAPTION)
+              .fontSize(TYPE_CAPTION)
               .fontColor(this.themeColors.textSecondary)
               .margin({ right: 8, bottom: 4 })
           }
           if (item.estimatedMinutes && !item.completed) {
             Text(this.formatEstimatedHours(item.estimatedMinutes))
-              .fontSize(V2_FONT_CAPTION)
+              .fontSize(TYPE_CAPTION)
               .fontColor(this.themeColors.textMuted)
               .margin({ right: 8, bottom: 4 })
           }
@@ -556,13 +545,13 @@ export struct TodayTabV2 {
     Column({ space: 8 }) {
       Row() {
         Text('今日提醒')
-          .fontSize(V2_FONT_TITLE)
+          .fontSize(TYPE_SECTION_TITLE)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .layoutWeight(1)
 
         Text('全部')
-          .fontSize(V2_FONT_CAPTION)
+          .fontSize(TYPE_CAPTION)
           .fontColor(this.themeColors.primary)
           .onClick(() => {
             if (this.onOpenReminderCenter) this.onOpenReminderCenter();
@@ -572,7 +561,7 @@ export struct TodayTabV2 {
 
       if (this.getTodayReminders().length === 0) {
         Text('今天没有待处理的提醒')
-          .fontSize(V2_FONT_BODY)
+          .fontSize(TYPE_BODY)
           .fontColor(this.themeColors.textMuted)
           .padding({ top: 4, bottom: 4 })
       } else {
@@ -591,7 +580,7 @@ export struct TodayTabV2 {
   private ReminderRow(item: ReminderSnapshot) {
     Column({ space: 8 }) {
       Text(item.title)
-        .fontSize(V2_FONT_BODY)
+        .fontSize(TYPE_BODY)
         .fontColor(item.completedToday ? this.themeColors.textMuted : this.themeColors.textPrimary)
         .decoration({ type: item.completedToday ? TextDecorationType.LineThrough : TextDecorationType.None })
         .width('100%')
@@ -600,7 +589,7 @@ export struct TodayTabV2 {
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         Text(item.typeLabel)
-          .fontSize(V2_FONT_CAPTION)
+          .fontSize(TYPE_CAPTION)
           .fontColor(this.themeColors.primary)
           .padding({ left: 6, right: 6, top: 2, bottom: 2 })
           .backgroundColor(this.themeColors.primarySubtle)
@@ -608,12 +597,12 @@ export struct TodayTabV2 {
           .margin({ right: 8, bottom: 4 })
 
         Text(item.timeText)
-          .fontSize(V2_FONT_CAPTION)
+          .fontSize(TYPE_CAPTION)
           .fontColor(item.completedToday ? this.themeColors.success : (item.isDueNow ? this.themeColors.danger : this.themeColors.textSecondary))
           .margin({ right: 8, bottom: 4 })
 
         Text(this.getReminderStatusText(item))
-          .fontSize(V2_FONT_CAPTION)
+          .fontSize(TYPE_CAPTION)
           .fontColor(this.getReminderStatusColor(item))
           .margin({ right: 8, bottom: 4 })
       }
@@ -622,7 +611,7 @@ export struct TodayTabV2 {
       Row() {
         if (!item.completedToday) {
           Text('标记完成')
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.primary)
             .fontWeight(FontWeight.Medium)
             .padding({ left: 8, right: 8, top: 5, bottom: 5 })
@@ -635,7 +624,7 @@ export struct TodayTabV2 {
           Row({ space: 4 }) {
             AppIcon({ name: 'success', iconSize: 14, framed: false, color: this.themeColors.success })
             Text('已完成')
-              .fontSize(V2_FONT_CAPTION)
+              .fontSize(TYPE_CAPTION)
               .fontColor(this.themeColors.success)
           }
         }
@@ -646,22 +635,22 @@ export struct TodayTabV2 {
     .width('100%')
     .padding({ left: 12, right: 12, top: 12, bottom: 12 })
     .backgroundColor(this.themeColors.surfaceRaised)
-    .borderRadius(V2_CARD_RADIUS)
-    .border({ width: 1, color: this.themeColors.borderColor })
+    .borderRadius(RADIUS_MD)
+    .border({ width: BORDER_DEFAULT, color: this.themeColors.borderColor })
   }
 
   @Builder
   private GoalsSection() {
     Column({ space: 6 }) {
       Text('目标进度')
-        .fontSize(V2_FONT_TITLE)
+        .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
 
       if (this.getFeaturedGoals().length === 0) {
         Text('还没有进行中的目标')
-          .fontSize(V2_FONT_BODY)
+          .fontSize(TYPE_BODY)
           .fontColor(this.themeColors.textMuted)
           .padding({ top: 4, bottom: 4 })
       } else {
@@ -689,7 +678,7 @@ export struct TodayTabV2 {
           .strokeWidth(3.5)
 
         Text(`${this.getGoalProgress(goal)}%`)
-          .fontSize(V2_FONT_MICRO)
+          .fontSize(TYPE_CAPTION)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getGoalProgress(goal) >= 80 ? this.themeColors.success : this.themeColors.primary)
       }
@@ -698,7 +687,7 @@ export struct TodayTabV2 {
 
       Column({ space: 3 }) {
         Text(goal.title)
-          .fontSize(V2_FONT_SUBTITLE)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeColors.textPrimary)
           .maxLines(2)
@@ -707,12 +696,12 @@ export struct TodayTabV2 {
 
         Row({ space: 6 }) {
           Text(`${goal.keyResults?.length || 0} 个关键结果`)
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
 
           if (goal.isPriority) {
             Text('优先')
-              .fontSize(V2_FONT_CAPTION - 1)
+              .fontSize(TYPE_CAPTION)
               .fontColor(this.themeColors.warning)
               .padding({ left: 5, right: 5, top: 1, bottom: 1 })
               .backgroundColor(this.themeColors.warningSubtle)
@@ -729,7 +718,7 @@ export struct TodayTabV2 {
     .width('100%')
     .padding({ left: 14, right: 14, top: 12, bottom: 12 })
     .backgroundColor(this.themeColors.surface)
-    .borderRadius(V2_CARD_RADIUS)
+    .borderRadius(RADIUS_LG)
     .shadow({ radius: 6, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
     .onClick(() => {
       if (this.onOpenGoalDetail) this.onOpenGoalDetail(goal.id);
@@ -744,12 +733,12 @@ export struct TodayTabV2 {
 
         Column({ space: 1 }) {
           Text(`${this.getOverdueTasks().length} 项任务已逾期`)
-            .fontSize(V2_FONT_BODY)
+            .fontSize(TYPE_BODY)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.themeColors.danger)
 
           Text('点击查看 AI 重排建议')
-            .fontSize(V2_FONT_CAPTION)
+            .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textSecondary)
         }
         .layoutWeight(1)
@@ -760,8 +749,8 @@ export struct TodayTabV2 {
       .width('100%')
       .padding({ left: 12, right: 12, top: 10, bottom: 10 })
       .backgroundColor(this.themeColors.riskSurface)
-      .borderRadius(V2_INNER_CARD_RADIUS)
-      .border({ width: 1, color: this.themeColors.borderColor })
+      .borderRadius(RADIUS_MD)
+      .border({ width: BORDER_DEFAULT, color: this.themeColors.borderColor })
       .onClick(() => {
         if (this.onOpenReschedule) this.onOpenReschedule();
       })
@@ -772,7 +761,7 @@ export struct TodayTabV2 {
 
   build() {
     Scroll() {
-      Column({ space: V2_SECTION_GAP }) {
+      Column({ space: SPACE_MD }) {
         this.GreetingSection()
         this.QuickActionsBar()
         this.OverdueAlert()
@@ -784,7 +773,7 @@ export struct TodayTabV2 {
         Blank().height(50)
       }
       .width('100%')
-      .padding({ left: V2_PAGE_PADDING, right: V2_PAGE_PADDING, top: 8, bottom: 10 })
+      .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: 10 })
     }
     .align(Alignment.Top)
     .scrollBar(BarState.Off)

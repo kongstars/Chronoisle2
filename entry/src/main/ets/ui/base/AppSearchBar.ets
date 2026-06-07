@@ -19,7 +19,7 @@ export struct AppSearchBar {
   @Prop disabled: boolean = false;
   @Prop insetHorizontal: number = PAGE_PADDING;
   @State isFocused: boolean = false;
-  @State isHovered: boolean = false;
+  @State isPressed: boolean = false;
   tapAction?: () => void;
   onChange?: (value: string) => void;
   onClear?: () => void;
@@ -32,9 +32,6 @@ export struct AppSearchBar {
     if (this.disabled) {
       return this.themeColors.surfaceSoft;
     }
-    if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.surface;
-    }
     return this.themeColors.inputBackground;
   }
 
@@ -44,9 +41,6 @@ export struct AppSearchBar {
     }
     if (this.isFocused) {
       return this.themeColors.primaryLight;
-    }
-    if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }
@@ -111,8 +105,6 @@ export struct AppSearchBar {
         .padding({ left: 0, right: 0, top: 0, bottom: 0 })
         .backgroundColor(this.themeColors.transparent)
         .enabled(!this.disabled)
-        .useEffect(!this.disabled)
-        .hoverEffect(HoverEffect.Auto)
         .focusable(!this.disabled)
         .onClick(() => {
           if (this.disabled) {
@@ -147,6 +139,11 @@ export struct AppSearchBar {
     .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
     .margin({ left: this.insetHorizontal, right: this.insetHorizontal })
     .opacity(this.disabled ? DISABLED_OPACITY : 1)
+    .scale({
+      x: this.isPressed ? 0.98 : 1,
+      y: this.isPressed ? 0.98 : 1
+    })
+    .animation({ duration: 100, curve: Curve.Friction })
     .focusable(!this.editable && this.isInteractive())
     .onFocus(() => {
       this.isFocused = true;
@@ -154,8 +151,13 @@ export struct AppSearchBar {
     .onBlur(() => {
       this.isFocused = false;
     })
-    .onHover((isHover: boolean) => {
-      this.isHovered = isHover;
+    .onTouch((event: TouchEvent) => {
+      if (this.disabled || this.editable || !this.tapAction) return;
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
+      }
     })
     .onClick(() => {
       if (!this.disabled && !this.editable && this.tapAction) {

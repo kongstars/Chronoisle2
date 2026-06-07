@@ -30,6 +30,7 @@ export struct MeTab {
   @State archivedGoalCount: number = 0;
   @State creditBalance: number = 0;
   @State creditFrozen: boolean = false;
+  @State logoutPressed: boolean = false;
 
   aboutToAppear(): void {
     void this.initializeData();
@@ -41,8 +42,17 @@ export struct MeTab {
       await db.initialize(context);
       await authService.initialize(context);
       await themeService.initialize(context);
-      await authService.refreshUserFromServer();
+      const refreshedUser = await authService.refreshUserFromServer();
       this.currentThemeMode = themeService.getThemeMode();
+      if (refreshedUser) {
+        this.localUser = refreshedUser;
+        if (typeof refreshedUser.creditBalance === 'number') {
+          this.creditBalance = refreshedUser.creditBalance;
+        }
+        if (typeof refreshedUser.creditFrozen === 'boolean') {
+          this.creditFrozen = refreshedUser.creditFrozen;
+        }
+      }
       await this.loadUserData();
       await this.loadCreditBalance();
       this.loadArchivedGoalCount();
@@ -53,9 +63,21 @@ export struct MeTab {
 
   private async loadUserData(): Promise<void> {
     this.localUser = this.user;
+    if (this.user && typeof this.user.creditBalance === 'number') {
+      this.creditBalance = this.user.creditBalance;
+    }
+    if (this.user && typeof this.user.creditFrozen === 'boolean') {
+      this.creditFrozen = this.user.creditFrozen;
+    }
     const freshUser = await authService.getCurrentUser();
     if (freshUser) {
       this.localUser = freshUser;
+      if (typeof freshUser.creditBalance === 'number') {
+        this.creditBalance = freshUser.creditBalance;
+      }
+      if (typeof freshUser.creditFrozen === 'boolean') {
+        this.creditFrozen = freshUser.creditFrozen;
+      }
     }
   }
 
@@ -109,6 +131,14 @@ export struct MeTab {
     return `ID: ${this.getDisplayId()}`;
   }
 
+  private getAvatarUrl(): string {
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.avatar && currentUser.avatar.length > 0) {
+      return currentUser.avatar;
+    }
+    return '';
+  }
+
   private getMembershipTitle(): string {
     if (!this.isPremiumActive()) {
       return '基础版';
@@ -150,8 +180,9 @@ export struct MeTab {
     try {
       const token = await authService.getToken();
       if (!token) {
-        this.creditBalance = 0;
-        this.creditFrozen = false;
+        const fallbackUser = this.getCurrentUser();
+        this.creditBalance = typeof fallbackUser?.creditBalance === 'number' ? fallbackUser.creditBalance : 0;
+        this.creditFrozen = typeof fallbackUser?.creditFrozen === 'boolean' ? fallbackUser.creditFrozen : false;
         return;
       }
 
@@ -173,7 +204,15 @@ export struct MeTab {
           const data = raw['data'] as Record<string, Object>;
           this.creditBalance = (data['balance'] as number) || 0;
           this.creditFrozen = (data['isFrozen'] as boolean) || false;
+          return;
         }
+      }
+      const fallbackUser = this.getCurrentUser();
+      if (fallbackUser && typeof fallbackUser.creditBalance === 'number') {
+        this.creditBalance = fallbackUser.creditBalance;
+      }
+      if (fallbackUser && typeof fallbackUser.creditFrozen === 'boolean') {
+        this.creditFrozen = fallbackUser.creditFrozen;
       }
     } catch (error) {
       logger.warn('MeTab loadCreditBalance failed, using fallback', error as Object);
@@ -181,15 +220,10 @@ export struct MeTab {
       if (fallbackUser && typeof fallbackUser.creditBalance === 'number') {
         this.creditBalance = fallbackUser.creditBalance;
       }
+      if (fallbackUser && typeof fallbackUser.creditFrozen === 'boolean') {
+        this.creditFrozen = fallbackUser.creditFrozen;
+      }
     }
-  }
-
-  private getAvatarSource(): ResourceStr | string {
-    const currentUser = this.getCurrentUser();
-    if (currentUser?.avatar && currentUser.avatar.length > 0) {
-      return currentUser.avatar;
-    }
-    return $r('app.media.startIcon');
   }
 
   private isThemeSelected(mode: ThemeMode): boolean {
@@ -265,11 +299,30 @@ export struct MeTab {
   private ProfileCard() {
     AppCard({ variant: 'raised', spacing: SPACE_MD, paddingLevel: 'md' }) {
       Row({ space: SPACE_MD }) {
-        Image(this.getAvatarSource())
+        if (this.getAvatarUrl().length > 0) {
+          Image(this.getAvatarUrl())
+            .width(AVATAR_SIZE_MD)
+            .height(AVATAR_SIZE_MD)
+            .borderRadius(AVATAR_RADIUS_MD)
+            .backgroundColor(this.themeColors.surfaceSoft)
+        } else {
+          Stack({ alignContent: Alignment.Center }) {
+            Row()
+              .width(AVATAR_SIZE_MD)
+              .height(AVATAR_SIZE_MD)
+              .borderRadius(AVATAR_RADIUS_MD)
+              .backgroundColor(this.themeColors.surfaceSoft)
+            AppIcon({
+              name: 'profile',
+              iconSize: 28,
+              tone: 'info',
+              framed: false,
+              useSystemSymbol: false
+            })
+          }
           .width(AVATAR_SIZE_MD)
           .height(AVATAR_SIZE_MD)
-          .borderRadius(AVATAR_RADIUS_MD)
-          .backgroundColor(this.themeColors.surfaceSoft)
+        }
 
         Column({ space: SPACE_XS }) {
           Row({ space: SPACE_SM }) {
@@ -508,6 +561,15 @@ export struct MeTab {
         .backgroundColor(this.themeColors.dangerSubtle)
         .borderRadius(22)
         .border({ width: 1, color: this.themeColors.borderColor })
+        .scale({ x: this.logoutPressed ? 0.96 : 1, y: this.logoutPressed ? 0.96 : 1 })
+        .animation({ duration: 100, curve: Curve.Friction })
+        .onTouch((event: TouchEvent) => {
+          if (event.type === TouchType.Down) {
+            this.logoutPressed = true;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.logoutPressed = false;
+          }
+        })
         .onClick(() => { void this.handleLogout(); })
       }
       .width('100%')

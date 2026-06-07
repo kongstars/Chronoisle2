@@ -6,7 +6,6 @@ import { DayEvent, DayEventType, getEventTypeIcon } from '../models/DayEvent';
 import { getDayEventMetricText } from '../common/DayEventUtils';
 import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
 import { AppCard } from '../ui/base/AppCard';
-import { AppEmptyState } from '../ui/base/AppEmptyState';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppButton } from '../ui/base/AppButton';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
@@ -95,13 +94,17 @@ struct SearchPage {
     return this.normalize(this.keyword);
   }
 
+  private hasQuery(): boolean {
+    return this.getQuery().length > 0;
+  }
+
   private getFilteredGoals(): Goal[] {
     const query = this.getQuery();
     if (this.filteredGoalsCacheSource === this.goals && this.filteredGoalsCacheQuery === query) {
       return this.filteredGoalsCache;
     }
     if (!query) {
-      this.filteredGoalsCache = this.goals.slice(0, 6);
+      this.filteredGoalsCache = [];
       this.filteredGoalsCacheSource = this.goals;
       this.filteredGoalsCacheQuery = query;
       return this.filteredGoalsCache;
@@ -122,7 +125,7 @@ struct SearchPage {
       return this.filteredEventsCache;
     }
     if (!query) {
-      this.filteredEventsCache = this.events.slice(0, 6);
+      this.filteredEventsCache = [];
       this.filteredEventsCacheSource = this.events;
       this.filteredEventsCacheQuery = query;
       return this.filteredEventsCache;
@@ -141,7 +144,7 @@ struct SearchPage {
       return this.filteredTasksCache;
     }
     if (!query) {
-      this.filteredTasksCache = this.tasks.slice(0, 10);
+      this.filteredTasksCache = [];
       this.filteredTasksCacheSource = this.tasks;
       this.filteredTasksCacheQuery = query;
       return this.filteredTasksCache;
@@ -458,21 +461,7 @@ struct SearchPage {
       } else {
         Scroll() {
           Column({ space: SECTION_GAP }) {
-            if (this.getTotalResultCount() === 0) {
-              AppEmptyState({
-                title: this.keyword.trim().length > 0 ? '没有找到匹配内容' : '还没有可搜索的内容',
-                description: this.keyword.trim().length > 0
-                  ? '换一个更短的关键词，或者直接搜索目标标题、任务标题、提醒名称。'
-                  : '先创建一些目标、提醒或任务，之后就可以从这里快速定位和跳转。',
-                actionText: this.keyword.trim().length > 0 ? '清空关键词' : '',
-                actionIconName: 'search',
-                iconName: 'search',
-                iconTone: 'info',
-                onAction: () => {
-                  this.clearKeyword();
-                }
-              })
-            } else {
+            if (this.getTotalResultCount() > 0) {
               if (this.getFilteredGoals().length > 0) {
                 Column({ space: SPACE_SM }) {
                   this.SectionHeader('目标', this.getFilteredGoals().length)

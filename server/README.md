@@ -9,7 +9,7 @@ Chronoisle 的服务端代码，负责账号、同步、积分、会员、AI 规
 | 环境 | 地址 | MongoDB | PM2 进程 |
 | --- | --- | --- | --- |
 | 测试 | `http://114.55.135.35:3000` | `chronoisle_prod` | `chronoisle-server-prod` |
-| 正式 | `http://116.62.6.179:3000` | `sishiqingdan_prod` | `sishiqingdan-server-prod` |
+| 正式 | `http://116.62.6.179:3000` | `sishiqingdan_prod` | `chronoisle-server-prod` |
 
 说明：
 
@@ -63,10 +63,16 @@ npm start
 - `ALIBABA_CLOUD_ACCESS_KEY_SECRET`
 - `ALIBABA_CLOUD_SPEECH_APP_KEY`
 - `ALIBABA_CLOUD_REGION`
-- `ALIBABA_CLOUD_BAILIAN_API_KEY`
-- `ALIBABA_CLOUD_BAILIAN_APP_ID`
 - `DEEPSEEK_API_KEY`
+- `DEEPSEEK_BASE_URL`
 - `DEEPSEEK_MODEL`
+- `DEEPSEEK_FAST_MODEL`（可选）
+- `VOICE_CREATE_MODEL`（可选）
+- `VOICE_CLASSIFY_MODEL`（可选）
+- `VOICE_PARSE_MODEL`（可选）
+- `AGENT_RESCHEDULE_MODEL`（可选）
+- `TODAY_PLAN_MODEL`（可选）
+- `AGENT_COMPLETION_MODEL`（可选）
 - `HUAWEI_CLIENT_ID`
 - `HUAWEI_CLIENT_SECRET`
 - `HUAWEI_REDIRECT_URI`
@@ -95,6 +101,7 @@ npm start
 - 本地示例变量见 `.env.example`。
 - 仓库里的 `.env.development` 和 `.env.production` 反映的是当前测试/正式配置口径。
 - 部署脚本打包时会忽略 `.env`、`.env.*`，远端服务器上的环境文件不会被本地脚本覆盖。
+- 当前服务端 AI 文本链路统一走 DeepSeek 的 OpenAI 兼容接口，默认模型为 `deepseek-v4-pro`。
 
 ## 部署
 

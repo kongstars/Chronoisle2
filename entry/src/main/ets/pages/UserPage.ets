@@ -9,6 +9,7 @@ import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppChip } from '../ui/base/AppChip';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
+import { AppIcon } from '../ui/base/AppIcon';
 import { AppListRow } from '../ui/base/AppListRow';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
@@ -278,14 +279,25 @@ struct UserPage {
               this.openAvatarPicker();
             })
         } else {
-          Image($r('app.media.startIcon'))
-            .width(60)
-            .height(60)
-            .borderRadius(30)
-            .backgroundColor(this.themeColors.surfaceSoft)
-            .onClick(() => {
-              this.openAvatarPicker();
+          Stack({ alignContent: Alignment.Center }) {
+            Row()
+              .width(60)
+              .height(60)
+              .borderRadius(30)
+              .backgroundColor(this.themeColors.surfaceSoft)
+            AppIcon({
+              name: 'profile',
+              iconSize: 30,
+              tone: 'info',
+              framed: false,
+              useSystemSymbol: false
             })
+          }
+          .width(60)
+          .height(60)
+          .onClick(() => {
+            this.openAvatarPicker();
+          })
         }
 
         Column({ space: 6 }) {

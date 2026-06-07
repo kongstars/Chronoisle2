@@ -17,14 +17,13 @@ export struct AppPageHeader {
   @Prop actionIconName: string = '';
   @Prop insetHorizontal: number = PAGE_PADDING;
   @State backFocused: boolean = false;
-  @State backHovered: boolean = false;
   @State actionFocused: boolean = false;
-  @State actionHovered: boolean = false;
+  @State actionPressed: boolean = false;
   onBack?: () => void;
   onAction?: () => void;
 
   private getBackBackgroundColor(): string {
-    if (this.backFocused || this.backHovered) {
+    if (this.backFocused) {
       return this.themeColors.surfaceSoft;
     }
     return this.themeColors.transparent;
@@ -34,14 +33,11 @@ export struct AppPageHeader {
     if (this.backFocused) {
       return this.themeColors.primaryLight;
     }
-    if (this.backHovered) {
-      return this.themeColors.divider;
-    }
     return this.themeColors.transparent;
   }
 
   private getActionBackgroundColor(): string {
-    if (this.actionFocused || this.actionHovered) {
+    if (this.actionFocused) {
       return this.themeColors.surfaceSoft;
     }
     return this.themeColors.transparent;
@@ -50,9 +46,6 @@ export struct AppPageHeader {
   private getActionBorderColor(): string {
     if (this.actionFocused) {
       return this.themeColors.primaryLight;
-    }
-    if (this.actionHovered) {
-      return this.themeColors.divider;
     }
     return this.themeColors.transparent;
   }
@@ -71,14 +64,21 @@ export struct AppPageHeader {
           }
           .width('100%')
           .height('100%')
+          
+          Row()
+            .width('100%')
+            .height('100%')
+            .border({ width: 1, color: this.themeColors.borderHighlight })
+            .borderRadius(RADIUS_XL)
+            .hitTestBehavior(HitTestMode.None)
         }
         .width(TOUCH_TARGET_SM)
         .height(TOUCH_TARGET_SM)
         .backgroundColor(this.getBackBackgroundColor())
         .borderRadius(RADIUS_XL)
         .border({ width: BORDER_DEFAULT, color: this.getBackBorderColor() })
-        .useEffect(true)
-        .hoverEffect(HoverEffect.Auto)
+        .scale({ x: this.backFocused ? 0.96 : 1, y: this.backFocused ? 0.96 : 1 })
+        .animation({ duration: 100, curve: Curve.Friction })
         .focusable(true)
         .onFocus(() => {
           this.backFocused = true;
@@ -86,8 +86,12 @@ export struct AppPageHeader {
         .onBlur(() => {
           this.backFocused = false;
         })
-        .onHover((isHover: boolean) => {
-          this.backHovered = isHover;
+        .onTouch((event: TouchEvent) => {
+          if (event.type === TouchType.Down) {
+            this.backFocused = true;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.backFocused = false;
+          }
         })
         .onClick(() => {
           if (this.onBack) {
@@ -145,8 +149,8 @@ export struct AppPageHeader {
         .backgroundColor(this.getActionBackgroundColor())
         .borderRadius(RADIUS_PILL)
         .border({ width: BORDER_DEFAULT, color: this.getActionBorderColor() })
-        .useEffect(true)
-        .hoverEffect(HoverEffect.Auto)
+        .scale({ x: this.actionPressed ? 0.96 : 1, y: this.actionPressed ? 0.96 : 1 })
+        .animation({ duration: 100, curve: Curve.Friction })
         .focusable(true)
         .onFocus(() => {
           this.actionFocused = true;
@@ -154,8 +158,12 @@ export struct AppPageHeader {
         .onBlur(() => {
           this.actionFocused = false;
         })
-        .onHover((isHover: boolean) => {
-          this.actionHovered = isHover;
+        .onTouch((event: TouchEvent) => {
+          if (event.type === TouchType.Down) {
+            this.actionPressed = true;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.actionPressed = false;
+          }
         })
         .onClick(() => {
           if (this.onAction) {
@@ -180,8 +188,8 @@ export struct AppPageHeader {
         }
         .width(40)
         .height(40)
-        .useEffect(true)
-        .hoverEffect(HoverEffect.Auto)
+        .scale({ x: this.actionPressed ? 0.96 : 1, y: this.actionPressed ? 0.96 : 1 })
+        .animation({ duration: 100, curve: Curve.Friction })
         .focusable(true)
         .onFocus(() => {
           this.actionFocused = true;
@@ -189,8 +197,12 @@ export struct AppPageHeader {
         .onBlur(() => {
           this.actionFocused = false;
         })
-        .onHover((isHover: boolean) => {
-          this.actionHovered = isHover;
+        .onTouch((event: TouchEvent) => {
+          if (event.type === TouchType.Down) {
+            this.actionPressed = true;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.actionPressed = false;
+          }
         })
         .onClick(() => {
           if (this.onAction) {

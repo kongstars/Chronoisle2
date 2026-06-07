@@ -1,12 +1,12 @@
+import { ICON_SIZE_XL } from '../../foundation/tokens/IconTokens';
+import { SPACE_XS } from '../../foundation/tokens/SpacingTokens';
+import { TYPE_META, TYPE_SECTION_TITLE } from '../../foundation/tokens/TypographyTokens';
+import { LINE_HEIGHT_TIGHT } from '../../foundation/tokens/VisualTokens';
 import { ThemeColors, LightTheme } from '../../theme/AppTheme';
 import { type AppTone } from '../../theme/ThemeSemantics';
 import { AppButton } from './AppButton';
 import { AppCard } from './AppCard';
 import { AppIcon } from './AppIcon';
-import { ICON_SIZE_XL } from '../../foundation/tokens/IconTokens';
-import { SPACE_XS } from '../../foundation/tokens/SpacingTokens';
-import { TYPE_META, TYPE_SECTION_TITLE } from '../../foundation/tokens/TypographyTokens';
-import { LINE_HEIGHT_TIGHT } from '../../foundation/tokens/VisualTokens';
 
 @Component
 export struct AppEmptyState {

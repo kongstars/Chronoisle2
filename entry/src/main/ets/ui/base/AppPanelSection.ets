@@ -18,6 +18,7 @@ export struct AppPanelSection {
   @Prop actionText: string = '';
   @Prop actionIconName: string = '';
   @Prop insetHorizontal: number = PAGE_PADDING;
+  @State actionPressed: boolean = false;
   onAction?: () => void;
   @BuilderParam content: () => void = EmptySectionBuilder;
 
@@ -70,8 +71,15 @@ export struct AppPanelSection {
           .padding({ left: SPACE_SM, right: SPACE_SM, top: 0, bottom: 0 })
           .backgroundColor(this.themeColors.transparent)
           .borderRadius(RADIUS_PILL)
-          .useEffect(true)
-          .hoverEffect(HoverEffect.Auto)
+          .scale({ x: this.actionPressed ? 0.96 : 1, y: this.actionPressed ? 0.96 : 1 })
+          .animation({ duration: 100, curve: Curve.Friction })
+          .onTouch((event: TouchEvent) => {
+            if (event.type === TouchType.Down) {
+              this.actionPressed = true;
+            } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+              this.actionPressed = false;
+            }
+          })
           .onClick(() => {
             if (this.onAction) {
               this.onAction();

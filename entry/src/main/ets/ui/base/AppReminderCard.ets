@@ -20,7 +20,7 @@ export struct AppReminderCard {
   @Prop iconName: string = '';
   @Prop disabled: boolean = false;
   @State isFocused: boolean = false;
-  @State isHovered: boolean = false;
+  @State isPressed: boolean = false;
   tapAction?: () => void;
 
   private isInteractive(): boolean {
@@ -30,9 +30,6 @@ export struct AppReminderCard {
   private getBackgroundColor(): string {
     if (this.disabled) {
       return this.themeColors.surfaceSoft;
-    }
-    if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.surfaceRaised;
     }
     return this.themeColors.cardBackground;
   }
@@ -44,67 +41,80 @@ export struct AppReminderCard {
     if (this.isFocused) {
       return this.themeColors.primaryLight;
     }
-    if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.divider;
-    }
     return this.themeColors.borderColor;
   }
 
   build() {
-    Row({ space: SPACE_SM }) {
-      Column()
-        .width(STATUS_STRIP_WIDTH_SM)
-        .height(STATUS_STRIP_HEIGHT)
-        .backgroundColor(getToneBorderColor(this.themeColors, this.tone))
-        .borderRadius(RADIUS_PILL)
+    Stack() {
+      Row({ space: SPACE_SM }) {
+        Column()
+          .width(STATUS_STRIP_WIDTH_SM)
+          .height(STATUS_STRIP_HEIGHT)
+          .backgroundColor(getToneBorderColor(this.themeColors, this.tone))
+          .borderRadius(RADIUS_PILL)
 
-      if (this.iconName.length > 0) {
-        AppIcon({
-          name: this.iconName,
-          iconSize: ICON_SIZE_LG,
-          tone: this.tone
-        })
-      }
-
-      Column({ space: SPACE_XS }) {
-        Text(this.title)
-          .fontSize(TYPE_BODY)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textPrimary)
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .width('100%')
-
-        if (this.subtitle.length > 0) {
-          Text(this.subtitle)
-            .fontSize(TYPE_META)
-            .fontColor(this.themeColors.textSecondary)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .width('100%')
+        if (this.iconName.length > 0) {
+          AppIcon({
+            name: this.iconName,
+            iconSize: ICON_SIZE_LG,
+            tone: this.tone
+          })
         }
 
-        if (this.meta.length > 0) {
-          Text(this.meta)
-            .fontSize(TYPE_CAPTION)
-            .fontColor(this.themeColors.textMuted)
-            .maxLines(1)
+        Column({ space: SPACE_XS }) {
+          Text(this.title)
+            .fontSize(TYPE_BODY)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.textPrimary)
+            .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .width('100%')
+
+          if (this.subtitle.length > 0) {
+            Text(this.subtitle)
+              .fontSize(TYPE_META)
+              .fontColor(this.themeColors.textSecondary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+          }
+
+          if (this.meta.length > 0) {
+            Text(this.meta)
+              .fontSize(TYPE_CAPTION)
+              .fontColor(this.themeColors.textMuted)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+          }
         }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
+      .width(REMINDER_CARD_MIN_WIDTH)
+      .height(REMINDER_CARD_HEIGHT)
+      .alignItems(VerticalAlign.Top)
+      .justifyContent(FlexAlign.Start)
+      .padding(SPACE_MD)
+      
+      Row()
+        .width('100%')
+        .height('100%')
+        .borderRadius(RADIUS_MD)
+        .border({ width: 1, color: this.themeColors.borderHighlight })
+        .hitTestBehavior(HitTestMode.None)
     }
     .width(REMINDER_CARD_MIN_WIDTH)
     .height(REMINDER_CARD_HEIGHT)
-    .alignItems(VerticalAlign.Top)
-    .justifyContent(FlexAlign.Start)
-    .padding(SPACE_MD)
     .backgroundColor(this.getBackgroundColor())
     .borderRadius(RADIUS_MD)
     .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
     .opacity(this.disabled ? DISABLED_OPACITY : 1)
+    .scale({
+      x: this.isPressed ? 0.96 : 1,
+      y: this.isPressed ? 0.96 : 1
+    })
+    .animation({ duration: 100, curve: Curve.Friction })
     .focusable(this.isInteractive())
     .onFocus(() => {
       this.isFocused = true;
@@ -112,8 +122,13 @@ export struct AppReminderCard {
     .onBlur(() => {
       this.isFocused = false;
     })
-    .onHover((isHover: boolean) => {
-      this.isHovered = isHover;
+    .onTouch((event: TouchEvent) => {
+      if (!this.isInteractive()) return;
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
+      }
     })
     .onClick(() => {
       if (this.isInteractive() && this.tapAction) {

@@ -13,7 +13,6 @@ if (fs.existsSync(envPath)) {
 }
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 
@@ -33,6 +32,7 @@ const PlanScheduler = require('./services/PlanScheduler');
 const UsageRecord = require('./models/UsageRecord');
 const UsageSummary = require('./models/UsageSummary');
 const { attachTraceId, sendError } = require('./utils/apiResponse');
+const { createChatCompletion, getDeepSeekModel } = require('./utils/deepseekClient');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,15 +49,48 @@ function maskMongoUri(uri) {
 
 function buildAllowedOrigins() {
   const raw = String(process.env.CORS_ORIGIN || '').trim();
+  const defaultOrigins = process.env.NODE_ENV === 'production'
+    ? [
+        'https://sishiqingdan.cn',
+        'https://www.sishiqingdan.cn',
+        'https://api.sishiqingdan.cn',
+        'https://test-api.sishiqingdan.cn'
+      ]
+    : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000', 'http://127.0.0.1:3000'];
   if (!raw) {
-    return process.env.NODE_ENV === 'production'
-      ? []
-      : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+    return defaultOrigins;
   }
-  return raw.split(',').map(item => item.trim()).filter(Boolean);
+  return Array.from(new Set([
+    ...defaultOrigins,
+    ...raw.split(',').map(item => item.trim()).filter(Boolean)
+  ]));
 }
 
 const allowedOrigins = buildAllowedOrigins();
+
+// #region debug-point A:ai-403-report
+function reportDebugEvent(hypothesisId, location, msg, data = {}, req) {
+  try {
+    const envText = fs.readFileSync(path.resolve(__dirname, '../.dbg/ai-403-repeat.env'), 'utf8');
+    const debugUrl = envText.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || 'http://127.0.0.1:7777/event';
+    const sessionId = envText.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || 'ai-403-repeat';
+    fetch(debugUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        runId: 'pre-fix',
+        hypothesisId,
+        location,
+        msg,
+        data,
+        traceId: req?.traceId || '',
+        ts: Date.now()
+      })
+    }).catch(() => {});
+  } catch (_) {}
+}
+// #endregion
 
 mongoose.connect(MONGODB_URI, {
   maxPoolSize: 50,
@@ -97,6 +130,9 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
+    // #region debug-point B:cors-denied
+    reportDebugEvent('B', 'server/index.js:cors-origin', '[DEBUG] CORS origin denied', { origin, allowedOrigins }, undefined);
+    // #endregion
     return callback(new Error('CORS origin denied'));
   },
   methods: ['GET', 'POST'],
@@ -249,6 +285,15 @@ function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // #region debug-point C:auth-missing
+    reportDebugEvent('C', 'server/index.js:authenticate-missing', '[DEBUG] Missing bearer token', {
+      path: req.originalUrl || req.url,
+      method: req.method,
+      host: req.headers.host || '',
+      origin: req.headers.origin || '',
+      hasAuthorization: !!authHeader
+    }, req);
+    // #endregion
     return sendError(res, 401, 'AUTH_REQUIRED', '请求未携带Token，请先登录');
   }
   
@@ -258,6 +303,15 @@ function authenticate(req, res, next) {
     req.user = decoded; // 挂载解码后的用户信息
     next();
   } catch(err) {
+    // #region debug-point D:auth-invalid
+    reportDebugEvent('D', 'server/index.js:authenticate-invalid', '[DEBUG] Bearer token invalid', {
+      path: req.originalUrl || req.url,
+      method: req.method,
+      host: req.headers.host || '',
+      origin: req.headers.origin || '',
+      error: err && err.message ? err.message : 'unknown'
+    }, req);
+    // #endregion
     return sendError(res, 401, 'AUTH_TOKEN_INVALID', 'Token无效或已过期');
   }
 }
@@ -309,6 +363,19 @@ app.use('/api/iap', (req, res, next) => {
   return authenticate(req, res, next);
 }, iapRoutes);
 // AI计划预生成路由
+// #region debug-point E:cloud-entry
+app.use(['/api/credit', '/api/plan', '/api/goal-planning', '/api/voice-create', '/api/agent'], (req, _res, next) => {
+  reportDebugEvent('E', 'server/index.js:cloud-entry', '[DEBUG] Cloud capability request entry', {
+    path: req.originalUrl || req.url,
+    method: req.method,
+    host: req.headers.host || '',
+    origin: req.headers.origin || '',
+    referer: req.headers.referer || '',
+    userAgent: req.headers['user-agent'] || ''
+  }, req);
+  next();
+});
+// #endregion
 app.use('/api/plan', authenticate, planRoutes);
 
 // AI 目标规划工作台路由
@@ -382,41 +449,62 @@ app.use('/api/agent/reschedule', authenticate, agentRateLimiter, agentReschedule
 
 app.post('/api/agent/completion', authenticate, agentRateLimiter, async (req, res) => {
   try {
-    const { input, parameters, debug, session_id, app_id } = req.body;
-    const appId = app_id || process.env.ALIBABA_CLOUD_BAILIAN_APP_ID;
-    const apiKey = process.env.ALIBABA_CLOUD_BAILIAN_API_KEY;
-    
-    if (!appId || !apiKey) {
-      return res.status(500).json({ success: false, message: '百炼 API Key 或 App ID 未配置' });
+    const { input, session_id, app_id, model } = req.body;
+    const prompt = typeof input?.prompt === 'string' ? input.prompt : '';
+    if (!prompt) {
+      return res.status(400).json({ success: false, message: '缺少有效的 prompt' });
     }
 
-    const requestBody = {
-      input
-    };
-    if (parameters) requestBody.parameters = parameters;
-    if (debug) requestBody.debug = debug;
-    if (session_id) requestBody.session_id = session_id;
+    const resolvedModel = getDeepSeekModel(model || process.env.AGENT_COMPLETION_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro');
+    console.log(`正在转发请求至 DeepSeek model=${resolvedModel}${app_id ? ` legacy_app_id=${app_id}` : ''}${session_id ? ` session_id=${session_id}` : ''}`);
 
-    console.log(`正在转发请求至百炼 APP_ID: ${appId}`);
-
-    const response = await axios.post(
-      `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`,
-      requestBody,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
+    const completion = await createChatCompletion({
+      model: resolvedModel,
+      timeoutMs: 120000,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content: '你是四时清单的 AI 助手。只输出用户所要求的结果，不要附加额外解释。'
         },
-        timeout: 120000
-      }
-    );
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
 
-    res.json(response.data);
+    const content = completion.content || '';
+    const usage = completion.data?.usage || {};
+    const responsePayload = {
+      success: true,
+      output: {
+        text: content,
+        choices: [
+          {
+            message: {
+              content
+            }
+          }
+        ]
+      },
+      usage: {
+        models: [
+          {
+            input_tokens: usage.prompt_tokens || usage.input_tokens || 0,
+            output_tokens: usage.completion_tokens || usage.output_tokens || 0,
+            model_id: completion.data?.model || resolvedModel
+          }
+        ]
+      },
+      session_id: session_id || ''
+    };
+
+    res.json(responsePayload);
 
     // === 自动记录 Token 用量 ===
     try {
-      // 百炼 API 响应结构: { usage: { models: [{ input_tokens, output_tokens, model_id }] } }
-      const usageData = response.data?.usage;
+      const usageData = responsePayload.usage;
       const modelUsage = usageData?.models?.[0];
       const authHeader = req.headers.authorization;
       if (modelUsage && authHeader && authHeader.startsWith('Bearer ')) {
@@ -453,12 +541,12 @@ app.post('/api/agent/completion', authenticate, agentRateLimiter, async (req, re
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data || {};
-      console.error('百炼 Agent API HTTP请求报错:', status, data);
+      console.error('DeepSeek Agent API HTTP请求报错:', status, data);
 
       // 捕获欠费/并发限制等错误 (兜底降级处理)
       if (status === 402 || status === 429 || 
           (data.code && (data.code.includes('QuotaExceeded') || data.code.includes('Throttling') || data.code.includes('OutOfBalance') || data.code.includes('Forbidden')))) {
-        console.warn('[高危阻断] 阿里云欠费或全量限流触发，启动优雅降级兜底响应');
+        console.warn('[高危阻断] DeepSeek 限流或额度异常，启动优雅降级兜底响应');
         return res.status(200).json({  
           success: true, 
           output: {
@@ -470,14 +558,14 @@ app.post('/api/agent/completion', authenticate, agentRateLimiter, async (req, re
       res.status(status).json({
         success: false,
         error: data,
-        message: '百炼接口模型拒绝或发生业务错误'
+        message: 'DeepSeek 接口模型拒绝或发生业务错误'
       });
     } else {
-      console.error('百炼 Agent API 网络或超时报错:', error.message);
+      console.error('DeepSeek Agent API 网络或超时报错:', error.message);
       res.status(504).json({
         success: false,
         error: error.message,
-        message: '百炼接口网络超时或未能响应'
+        message: 'DeepSeek 接口网络超时或未能响应'
       });
     }
   }
@@ -498,6 +586,14 @@ app.get('/api/speech/token/protected', authenticate, async (req, res) => {
 // 错误处理中间件
 app.use((err, req, res, next) => {
   if (err && err.message === 'CORS origin denied') {
+    // #region debug-point B:cors-response
+    reportDebugEvent('B', 'server/index.js:error-handler', '[DEBUG] Returning 403 for CORS denial', {
+      path: req.originalUrl || req.url,
+      method: req.method,
+      host: req.headers.host || '',
+      origin: req.headers.origin || ''
+    }, req);
+    // #endregion
     return sendError(res, 403, 'CORS_ORIGIN_DENIED', '当前来源未被服务器允许访问');
   }
 

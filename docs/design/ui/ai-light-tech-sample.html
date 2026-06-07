@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronoisle AI 任务清单 - 移动端触控版</title>
+    <style>
+        :root {
+            /* 岛屿晨曦 基础色板延伸 */
+            --bg-color: #F8F9FA;
+            --surface-color: #FFFFFF;
+            --surface-pressed: #F0F2F5; /* 移动端按压态底色 */
+            --text-primary: #1D1E2C;
+            --text-secondary: #636674;
+            --text-muted: #A0A3B1;
+            
+            --primary-color: #7679F5;
+            --primary-light: rgba(118, 121, 245, 0.12);
+            
+            /* AI 专属流光 */
+            --ai-gradient: linear-gradient(135deg, #7679F5, #00C6FF, #7679F5);
+            
+            --border-light: rgba(0, 0, 0, 0.04);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.02); /* 减弱常驻阴影，更贴合屏幕 */
+            
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent; /* 去除移动端默认点击高亮 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: radial-gradient(var(--text-muted) 1px, transparent 1px);
+            background-size: 24px 24px;
+            background-position: center top;
+        }
+
+        /* 模拟手机屏幕 */
+        .device {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-color);
+            border-radius: 40px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border: 8px solid #FFFFFF;
+        }
+
+        /* 顶部毛玻璃导航 */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 48px 24px 16px;
+            background: rgba(248, 249, 250, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .header-date {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 4px;
+        }
+
+        .header-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--surface-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            color: var(--text-primary);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* 移动端图标点击反馈 */
+        .header-icon:active {
+            transform: scale(0.9);
+            background: var(--surface-pressed);
+        }
+
+        /* 滚动内容区 */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 120px 20px 100px;
+        }
+
+        /* AI 推荐焦点卡 */
+        .hero-card {
+            background: var(--surface-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+        }
+        
+        /* 卡片按压态缩放 */
+        .hero-card:active {
+            transform: scale(0.98);
+            background: var(--surface-pressed);
+        }
+
+        /* 静态渐变暗示，替代强动画 */
+        .hero-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--ai-gradient);
+            opacity: 0.8;
+        }
+
+        .hero-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .hero-label svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .hero-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .hero-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--primary-light);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 65%;
+            background: var(--ai-gradient);
+            border-radius: 3px;
+        }
+
+        /* 列表部分 */
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 移动端任务行：去除 hover 浮起，增加 active 下压 */
+        .task-row {
+            background: var(--surface-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border: 1px solid var(--border-light);
+            /* 使用贝塞尔曲线模拟真实物理弹簧手感 */
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+        }
+        /* 移动端按压反馈 */
+        .task-row:active {
+            transform: scale(0.97);
+            background: var(--surface-pressed);
+        }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--border-light);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        /* 点击复选框时的即时反馈 */
+        .checkbox:active {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+
+        .task-content {
+            flex: 1;
+            /* 阻止文字在按压时被选中 */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .task-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .task-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 12px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .task-tag {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: sans-serif;
+            font-weight: 600;
+        }
+
+        /* 底部毛玻璃导航 */
+        .tabbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 90px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            display: flex;
+            justify-content: space-around;
+            padding: 0 24px;
+            border-top: 1px solid var(--border-light);
+            z-index: 10;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: 20px;
+            color: var(--text-muted);
+            gap: 4px;
+            transition: color 0.2s;
+        }
+        .tab-item.active {
+            color: var(--text-primary); /* 原生感更强的选中色 */
+        }
+        .tab-item svg {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Tab 点击下压 */
+        .tab-item:active svg {
+            transform: scale(0.85);
+        }
+        .tab-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* 中心的 AI 悬浮按钮 - 改为静态质感，点击时才收缩 */
+        .ai-fab-container {
+            position: absolute;
+            bottom: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+        }
+
+        .ai-fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--surface-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 24px rgba(118, 121, 245, 0.2); /* 固定的柔和阴影，不再闪烁 */
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s;
+        }
+        
+        /* 点击时 FAB 缩小，阴影收拢，模拟真实按压按键 */
+        .ai-fab:active {
+            transform: scale(0.92);
+            box-shadow: 0 4px 12px rgba(118, 121, 245, 0.15);
+        }
+
+        /* 静态的科技感渐变描边 */
+        .ai-fab::after {
+            content: '';
+            position: absolute;
+            top: -2px; bottom: -2px; left: -2px; right: -2px;
+            background: var(--ai-gradient);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        .ai-fab svg {
+            width: 24px;
+            height: 24px;
+            color: var(--primary-color);
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="device">
+        <!-- 顶部悬浮毛玻璃 -->
+        <header class="header">
+            <div>
+                <div class="header-title">早安，天辰</div>
+                <div class="header-date">Oct 24, 星期四</div>
+            </div>
+            <div class="header-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="content">
+            <!-- AI 推荐焦点卡 -->
+            <div class="hero-card">
+                <div class="hero-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    AI 智能聚焦
+                </div>
+                <div class="hero-title">完成产品 V2 迭代规划</div>
+                <div class="hero-desc">AI 已为你拆解为 4 个子任务，预计还需 2.5 小时。</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- 清爽列表 -->
+            <div class="section-title">
+                <span>今日待办</span>
+                <span style="color: var(--text-muted); font-size: 14px; font-weight: normal;">3 项</span>
+            </div>
+            
+            <div class="task-list">
+                <!-- 任务 1 -->
+                <div class="task-row">
+                    <div class="checkbox"></div>
+                    <div class="task-content">
+                        <div class="task-title">梳理轻科技感 UI 设计语言</div>
+                        <div class="task-meta">
+                            <span class="task-tag">设计</span>
+                            <span>10:00 - 11:30</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 任务 2 -->
+                <div class="task-row">
+                    <div class="checkbox"></div>
+                    <div class="task-content">
+                        <div class="task-title">同步后端 API 接口文档</div>
+                        <div class="task-meta">
+                            <span class="task-tag" style="background: rgba(255,160,0,0.1); color: #FFA000;">研发</span>
+                            <span>14:00 - 15:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 任务 3 -->
+                <div class="task-row">
+                    <div class="checkbox"></div>
+                    <div class="task-content">
+                        <div class="task-title">准备团队周会汇报材料</div>
+                        <div class="task-meta">
+                            <span class="task-tag" style="background: rgba(0,200,83,0.1); color: #00C853;">管理</span>
+                            <span>16:30</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 悬浮 AI 按钮 (移动端静态触控版) -->
+        <div class="ai-fab-container">
+            <div class="ai-fab">
+                <!-- 科技感 AI 语音图标 -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#7679F5" />
+                            <stop offset="100%" stop-color="#00C6FF" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 底部毛玻璃导航 -->
+        <nav class="tabbar">
+            <div class="tab-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                <span class="tab-label">今日</span>
+            </div>
+            <div class="tab-item" style="margin-right: 30px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span class="tab-label">日程</span>
+            </div>
+            <div class="tab-item" style="margin-left: 30px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span class="tab-label">对话</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="tab-label">我的</span>
+            </div>
+        </nav>
+    </div>
+
+</body>
+</html>

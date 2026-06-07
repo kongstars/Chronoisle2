@@ -33,17 +33,17 @@ export function getTextColor(theme: ThemeColors, emphasis: AppTextEmphasis): str
 export function getToneTextColor(theme: ThemeColors, tone: AppTone): string {
   switch (tone) {
     case 'primary':
-      return theme.primary;
+      return theme.brandPrimary;
     case 'success':
-      return theme.success;
+      return theme.semanticSuccess;
     case 'warning':
-      return theme.warning;
+      return theme.semanticWarning;
     case 'danger':
-      return theme.danger;
+      return theme.semanticDanger;
     case 'premium':
       return theme.premiumText;
     case 'info':
-      return theme.info;
+      return theme.brandPrimary;
     default:
       return theme.textPrimary;
   }
@@ -52,9 +52,9 @@ export function getToneTextColor(theme: ThemeColors, tone: AppTone): string {
 export function getToneSurfaceColor(theme: ThemeColors, tone: AppTone): string {
   switch (tone) {
     case 'primary':
-      return theme.primarySubtle;
+      return theme.brandLight;
     case 'success':
-      return theme.successSubtle;
+      return theme.successSubtle; // Using old ones mapped to new ones for now, or just directly return the semantic color with opacity? Let's use subtle colors from theme, which we updated.
     case 'warning':
       return theme.warningSubtle;
     case 'danger':
@@ -62,27 +62,27 @@ export function getToneSurfaceColor(theme: ThemeColors, tone: AppTone): string {
     case 'premium':
       return theme.premiumSurface;
     case 'info':
-      return theme.announcementSurface;
+      return theme.brandLight;
     default:
-      return theme.surfaceSoft;
+      return theme.surfaceBase;
   }
 }
 
 export function getToneBorderColor(theme: ThemeColors, tone: AppTone): string {
   switch (tone) {
     case 'primary':
-      return theme.primaryLight;
+      return theme.brandLight;
     case 'success':
-      return theme.success;
+      return theme.successSubtle;
     case 'warning':
-      return theme.warning;
+      return theme.warningSubtle;
     case 'danger':
-      return theme.danger;
+      return theme.dangerSubtle;
     case 'premium':
       return theme.premiumBorder;
     case 'info':
-      return theme.info;
+      return theme.brandLight;
     default:
-      return theme.borderColor;
+      return theme.borderLight;
   }
 }

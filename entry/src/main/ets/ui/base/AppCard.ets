@@ -19,7 +19,7 @@ export struct AppCard {
   @Prop spacing: number = SPACE_SM;
   @Prop interactive: boolean = false;
   @State isFocused: boolean = false;
-  @State isHovered: boolean = false;
+  @State isPressed: boolean = false;
   tapAction?: () => void;
   @BuilderParam content: () => void = EmptyCardBuilder;
 
@@ -28,6 +28,9 @@ export struct AppCard {
   }
 
   private getBackgroundColor(): string {
+    if (this.isPressed && this.isInteractive()) {
+      return this.themeColors.surfacePressed;
+    }
     switch (this.variant) {
       case 'soft':
         return this.themeColors.surfaceSoft;
@@ -40,16 +43,13 @@ export struct AppCard {
       case 'danger':
         return this.themeColors.riskSurface;
       default:
-        return this.themeColors.cardBackground;
+        return this.themeColors.surfaceBase;
     }
   }
 
   private getBorderColor(): string {
     if (this.isInteractive() && this.isFocused) {
       return this.themeColors.primaryLight;
-    }
-    if (this.isInteractive() && this.isHovered) {
-      return this.themeColors.divider;
     }
     switch (this.variant) {
       case 'accent':
@@ -59,9 +59,9 @@ export struct AppCard {
       case 'danger':
         return this.themeColors.borderColor;
       case 'raised':
-        return this.themeColors.divider;
+        return this.themeColors.borderLight;
       default:
-        return this.themeColors.borderColor;
+        return this.themeColors.borderLight;
     }
   }
 
@@ -87,6 +87,8 @@ export struct AppCard {
     .borderRadius(RADIUS_LG)
     .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
     .shadow(this.variant === 'raised' ? getRaisedCardShadow(this.themeColors) : getCardShadow(this.themeColors))
+    .scale({ x: this.isPressed && this.isInteractive() ? 0.98 : 1, y: this.isPressed && this.isInteractive() ? 0.98 : 1 })
+    .animation({ duration: 100, curve: Curve.Friction })
     .focusable(this.isInteractive())
     .onFocus(() => {
       this.isFocused = true;
@@ -94,8 +96,14 @@ export struct AppCard {
     .onBlur(() => {
       this.isFocused = false;
     })
-    .onHover((isHover: boolean) => {
-      this.isHovered = isHover;
+    .onTouch((event: TouchEvent) => {
+      if (this.isInteractive()) {
+        if (event.type === TouchType.Down) {
+          this.isPressed = true;
+        } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+          this.isPressed = false;
+        }
+      }
     })
     .onClick(() => {
       if (this.tapAction) {

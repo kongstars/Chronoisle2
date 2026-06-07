@@ -11,7 +11,10 @@
 
 import { Goal, GoalCategory, KeyResult } from '../models/Goal';
 import { Task, TaskStatus } from '../models/Task';
+import type { GoalReschedulePrompt } from '../services/GoalReschedulePromptService';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
+import { AppButton } from '../ui/base/AppButton';
+import { AppCard } from '../ui/base/AppCard';
 import { AppGoalCard } from '../ui/base/AppGoalCard';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
 import { AppIcon } from '../ui/base/AppIcon';
@@ -32,16 +35,58 @@ import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 import { getCardShadow, getRaisedCardShadow } from '../foundation/tokens/ElevationTokens';
 
 @Component
+struct GoalsTabHeaderButton {
+  @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
+  @Prop iconName: string = '';
+  @State isPressed: boolean = false;
+  onTap?: () => void;
+
+  build() {
+    Stack({ alignContent: Alignment.Center }) {
+      Row()
+        .width(40)
+        .height(40)
+        .backgroundColor(this.themeColors.primarySubtle)
+        .borderRadius(20)
+
+      AppIcon({
+        name: this.iconName,
+        iconSize: 22,
+        framed: false,
+        color: this.themeColors.primary
+      })
+    }
+    .width(40)
+    .height(40)
+    .scale({ x: this.isPressed ? 0.96 : 1, y: this.isPressed ? 0.96 : 1 })
+    .animation({ duration: 100, curve: Curve.Friction })
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
+      }
+    })
+    .onClick(() => {
+      if (this.onTap) this.onTap();
+    })
+  }
+}
+
+@Component
 export struct GoalsTab {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
   @Prop goals: Goal[] = [];
   @Prop tasks: Task[] = [];
+  @Prop goalReschedulePrompt: GoalReschedulePrompt | null = null;
 
   // 0 进行中  1 已完成  2 全部
   @State statusIndex: number = 0;
 
   onCreate?: () => void;
   onOpenGoalDetail?: (goalId: string) => void;
+  onOpenGoalReschedule?: (goalId: string) => void;
+  onDismissGoalReschedulePrompt?: (goalId: string) => void;
 
   // ========== 数据 ==========
 
@@ -234,27 +279,6 @@ export struct GoalsTab {
   // ========== Builders ==========
 
   @Builder
-  private HeaderActionButton(iconName: string, onTap: () => void) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(40)
-        .height(40)
-        .backgroundColor(this.themeColors.primarySubtle)
-        .borderRadius(20)
-
-      AppIcon({
-        name: iconName,
-        iconSize: 22,
-        framed: false,
-        color: this.themeColors.primary
-      })
-    }
-    .width(40)
-    .height(40)
-    .onClick(() => { onTap(); })
-  }
-
-  @Builder
   private Header() {
     Row({ space: SPACE_SM }) {
       Column({ space: 2 }) {
@@ -269,9 +293,12 @@ export struct GoalsTab {
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
 
-      this.HeaderActionButton('plus', () => {
-        if (this.onCreate) {
-          this.onCreate();
+      GoalsTabHeaderButton({
+        iconName: 'plus',
+        onTap: () => {
+          if (this.onCreate) {
+            this.onCreate();
+          }
         }
       })
     }
@@ -490,6 +517,76 @@ export struct GoalsTab {
   }
 
   @Builder
+  private GoalReschedulePromptCard() {
+    if (this.goalReschedulePrompt) {
+    AppCard({ variant: 'danger', spacing: SPACE_SM }) {
+      Row({ space: SPACE_XS }) {
+        AppIcon({
+          name: 'warning',
+          iconSize: 18,
+          framed: false,
+          color: this.themeColors.warning
+        })
+        Text('目标恢复提醒')
+          .fontSize(TYPE_BODY)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.themeColors.textPrimary)
+        Blank()
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+
+      Text(this.goalReschedulePrompt.goalTitle)
+        .fontSize(TYPE_SECTION_TITLE)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.themeColors.textPrimary)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .width('100%')
+
+      Text(this.goalReschedulePrompt.message)
+        .fontSize(TYPE_BODY)
+        .fontColor(this.themeColors.textSecondary)
+        .lineHeight(22)
+        .width('100%')
+
+      Text(
+        `剩余 ${this.goalReschedulePrompt.remainingTaskCount} 项 · 逾期 ${this.goalReschedulePrompt.overdueTaskCount} 项 · 已停滞 ${this.goalReschedulePrompt.stalledDays} 天`
+      )
+        .fontSize(TYPE_CAPTION)
+        .fontColor(this.themeColors.textMuted)
+        .width('100%')
+
+      Row({ space: SPACE_SM }) {
+        AppButton({
+          text: '稍后处理',
+          variant: 'secondary',
+          buttonSize: 'sm',
+          tapAction: () => {
+            if (this.onDismissGoalReschedulePrompt) {
+              this.onDismissGoalReschedulePrompt(this.goalReschedulePrompt!.goalId);
+            }
+          }
+        })
+
+        AppButton({
+          text: '去重排',
+          variant: 'primary',
+          buttonSize: 'sm',
+          iconName: 'plan',
+          tapAction: () => {
+            if (this.onOpenGoalReschedule) {
+              this.onOpenGoalReschedule(this.goalReschedulePrompt!.goalId);
+            }
+          }
+        })
+      }
+      .width('100%')
+    }
+    }
+  }
+
+  @Builder
   private EmptyState() {
     AppEmptyState({
       iconName: 'goal',
@@ -514,6 +611,10 @@ export struct GoalsTab {
 
       Scroll() {
         Column({ space: SPACE_MD }) {
+          if (this.statusIndex === 0 && this.goalReschedulePrompt !== null) {
+            this.GoalReschedulePromptCard()
+          }
+
           // Hero（仅在"进行中"且有焦点目标时显示）
           if (this.statusIndex === 0 && this.getFocusGoal() !== null) {
             this.FocusHero(this.getFocusGoal()!)

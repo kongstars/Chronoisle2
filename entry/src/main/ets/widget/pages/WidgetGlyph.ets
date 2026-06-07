@@ -7,198 +7,96 @@ export struct WidgetGlyph {
   @Prop color: string = WIDGET_COLOR_PRIMARY;
   @Prop surfaceColor: string = WIDGET_COLOR_PRIMARY_SOFT;
 
-  private getStroke(): number {
-    return Math.max(1.2, this.glyphSize * 0.08);
+  private getTintMatrix(color: string): number[] {
+    const rgba = this.parseColor(color);
+    return [
+      0, 0, 0, 0, rgba[0] / 255,
+      0, 0, 0, 0, rgba[1] / 255,
+      0, 0, 0, 0, rgba[2] / 255,
+      0, 0, 0, 1, 0
+    ];
   }
 
-  @Builder
-  private Bar(width: number, height: number, color: string) {
-    Row()
-      .width(width)
-      .height(height)
-      .backgroundColor(color)
-      .borderRadius(height / 2)
+  private parseColor(color: string): number[] {
+    const value = color.trim();
+    if (value.startsWith('#')) {
+      if (value.length === 7) {
+        return [
+          parseInt(value.slice(1, 3), 16),
+          parseInt(value.slice(3, 5), 16),
+          parseInt(value.slice(5, 7), 16),
+          255
+        ];
+      }
+      if (value.length === 9) {
+        return [
+          parseInt(value.slice(3, 5), 16),
+          parseInt(value.slice(5, 7), 16),
+          parseInt(value.slice(7, 9), 16),
+          parseInt(value.slice(1, 3), 16)
+        ];
+      }
+    }
+
+    const rgbaMatch = value.match(/rgba?\(([^)]+)\)/i);
+    if (rgbaMatch && rgbaMatch[1]) {
+      const parts = rgbaMatch[1].split(',').map((part: string) => part.trim());
+      const red = Number(parts[0] ?? '0');
+      const green = Number(parts[1] ?? '0');
+      const blue = Number(parts[2] ?? '0');
+      const alpha = parts.length > 3 ? Math.round(Number(parts[3]) * 255) : 255;
+      return [red, green, blue, alpha];
+    }
+
+    return [118, 121, 245, 255];
   }
 
-  @Builder
-  private RotatedBar(width: number, height: number, color: string, angle: number, x: number, y: number) {
-    Row()
-      .width(width)
-      .height(height)
-      .backgroundColor(color)
-      .borderRadius(height / 2)
-      .rotate({ angle: angle })
-      .position({ x: x, y: y })
-  }
-
-  @Builder
-  private PositionedBar(width: number, height: number, color: string, x: number, y: number) {
-    Row()
-      .width(width)
-      .height(height)
-      .backgroundColor(color)
-      .borderRadius(height / 2)
-      .position({ x: x, y: y })
-  }
-
-  @Builder
-  private DotMark(color: string) {
-    Row()
-      .width(this.glyphSize * 0.42)
-      .height(this.glyphSize * 0.42)
-      .borderRadius(this.glyphSize * 0.21)
-      .border({ width: this.getStroke(), color: color })
-  }
-
-  @Builder
-  private FocusMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.glyphSize * 0.54)
-        .height(this.glyphSize * 0.54)
-        .borderRadius(this.glyphSize * 0.27)
-        .border({ width: this.getStroke(), color: color })
-      this.Bar(this.getStroke(), this.glyphSize * 0.2, color)
+  private getResource(): Resource {
+    switch (this.name) {
+      case 'focus':
+        return $r('app.media.app_icon_focus');
+      case 'task':
+        return $r('app.media.app_icon_task');
+      case 'streak':
+        return $r('app.media.app_icon_stats');
+      case 'ai':
+        return $r('app.media.app_icon_ai');
+      case 'pin':
+        return $r('app.media.app_icon_flag');
+      case 'warning':
+        return $r('app.media.app_icon_warning');
+      case 'calendar':
+        return $r('app.media.app_icon_calendar');
+      case 'heart':
+        return $r('app.media.app_icon_heart');
+      case 'voice':
+        return $r('app.media.app_icon_voice');
+      case 'dot':
+        return $r('app.media.app_icon_radio');
+      default:
+        return $r('app.media.app_icon_unknown');
     }
   }
 
-  @Builder
-  private TaskMark(color: string) {
-    Stack() {
-      this.RotatedBar(this.glyphSize * 0.22, this.getStroke() * 1.25, color, 45, this.glyphSize * 0.26,
-        this.glyphSize * 0.52)
-      this.RotatedBar(this.glyphSize * 0.44, this.getStroke() * 1.25, color, -45, this.glyphSize * 0.4,
-        this.glyphSize * 0.44)
+  private getIconSize(): number {
+    switch (this.name) {
+      case 'dot':
+        return this.glyphSize * 0.72;
+      default:
+        return this.glyphSize;
     }
-    .width(this.glyphSize)
-    .height(this.glyphSize)
-  }
-
-  @Builder
-  private StreakMark(color: string) {
-    Row({ space: this.glyphSize * 0.08 }) {
-      this.Bar(this.getStroke() * 1.1, this.glyphSize * 0.3, color)
-      this.Bar(this.getStroke() * 1.1, this.glyphSize * 0.48, color)
-      this.Bar(this.getStroke() * 1.1, this.glyphSize * 0.22, color)
-    }
-    .alignItems(VerticalAlign.Bottom)
-    .height(this.glyphSize * 0.58)
-  }
-
-  @Builder
-  private AiMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      this.Bar(this.glyphSize * 0.44, this.getStroke(), color)
-      this.Bar(this.getStroke(), this.glyphSize * 0.44, color)
-      Row()
-        .width(this.glyphSize * 0.12)
-        .height(this.glyphSize * 0.12)
-        .borderRadius(this.glyphSize * 0.06)
-        .backgroundColor(color)
-        .position({ x: this.glyphSize * 0.68, y: this.glyphSize * 0.2 })
-    }
-    .width(this.glyphSize)
-    .height(this.glyphSize)
-  }
-
-  @Builder
-  private PinMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.glyphSize * 0.36)
-        .height(this.glyphSize * 0.36)
-        .borderRadius(this.glyphSize * 0.18)
-        .border({ width: this.getStroke(), color: color })
-      this.PositionedBar(this.getStroke(), this.glyphSize * 0.34, color, this.glyphSize * 0.49,
-        this.glyphSize * 0.48)
-    }
-    .width(this.glyphSize)
-    .height(this.glyphSize)
-  }
-
-  @Builder
-  private WarningMark(color: string) {
-    Column({ space: this.glyphSize * 0.08 }) {
-      this.Bar(this.getStroke() * 1.25, this.glyphSize * 0.34, color)
-      Row()
-        .width(this.getStroke() * 1.25)
-        .height(this.getStroke() * 1.25)
-        .borderRadius(this.getStroke())
-        .backgroundColor(color)
-    }
-    .alignItems(HorizontalAlign.Center)
-  }
-
-  @Builder
-  private CalendarMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.glyphSize * 0.56)
-        .height(this.glyphSize * 0.48)
-        .borderRadius(this.glyphSize * 0.08)
-        .border({ width: this.getStroke(), color: color })
-      this.PositionedBar(this.glyphSize * 0.56, this.getStroke(), color, this.glyphSize * 0.22,
-        this.glyphSize * 0.34)
-    }
-    .width(this.glyphSize)
-    .height(this.glyphSize)
-  }
-
-  @Builder
-  private HeartMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.glyphSize * 0.22)
-        .height(this.glyphSize * 0.22)
-        .borderRadius(this.glyphSize * 0.11)
-        .backgroundColor(color)
-        .position({ x: this.glyphSize * 0.32, y: this.glyphSize * 0.3 })
-      Row()
-        .width(this.glyphSize * 0.22)
-        .height(this.glyphSize * 0.22)
-        .borderRadius(this.glyphSize * 0.11)
-        .backgroundColor(color)
-        .position({ x: this.glyphSize * 0.48, y: this.glyphSize * 0.3 })
-      this.RotatedBar(this.glyphSize * 0.3, this.glyphSize * 0.3, color, 45, this.glyphSize * 0.36,
-        this.glyphSize * 0.42)
-    }
-    .width(this.glyphSize)
-    .height(this.glyphSize)
-  }
-
-  @Builder
-  private VoiceMark(color: string) {
-    Row({ space: this.glyphSize * 0.07 }) {
-      this.Bar(this.getStroke(), this.glyphSize * 0.26, color)
-      this.Bar(this.getStroke(), this.glyphSize * 0.44, color)
-      this.Bar(this.getStroke(), this.glyphSize * 0.32, color)
-    }
-    .alignItems(VerticalAlign.Center)
   }
 
   @Builder
   private GlyphMark(color: string) {
-    if (this.name === 'focus') {
-      this.FocusMark(color)
-    } else if (this.name === 'task') {
-      this.TaskMark(color)
-    } else if (this.name === 'streak') {
-      this.StreakMark(color)
-    } else if (this.name === 'ai') {
-      this.AiMark(color)
-    } else if (this.name === 'pin') {
-      this.PinMark(color)
-    } else if (this.name === 'warning') {
-      this.WarningMark(color)
-    } else if (this.name === 'calendar') {
-      this.CalendarMark(color)
-    } else if (this.name === 'heart') {
-      this.HeartMark(color)
-    } else if (this.name === 'voice') {
-      this.VoiceMark(color)
-    } else {
-      this.DotMark(color)
-    }
+    Image(this.getResource())
+      .width(this.getIconSize())
+      .height(this.getIconSize())
+      .objectFit(ImageFit.Contain)
+      .interpolation(ImageInterpolation.High)
+      .draggable(false)
+      .syncLoad(true)
+      .colorFilter(this.getTintMatrix(color))
   }
 
   build() {

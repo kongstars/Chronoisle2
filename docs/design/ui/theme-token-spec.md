@@ -1,385 +1,75 @@
-# Chronoisle 深浅色主题 Token 规范
-
-更新时间：2026-06-05
-
-适用对象：设计、前端、测试
-
-关联文档：
-
-- [精致效率 UI 风格规范](</docs/design/ui/ui-style-guide-efficiency.md>)
-- [视觉 Token 与组件外观规范](</docs/design/ui/ui-visual-token-spec.md>)
-
-## 1. 文档目标
-
-本文档用于把 Chronoisle 的浅色模式与深色模式主题规范单独沉淀出来，作为后续设计稿、组件开发、视觉走查和真机测试的共同基线。
-
-这份文档解决四个问题：
-
-- 设计知道哪些颜色和层级是“语义 token”，哪些只是业务内容。
-- 前端知道哪些颜色可以直接使用，哪些必须通过主题映射间接使用。
-- 测试知道深色模式和浅色模式该验什么，而不是只看“能不能切换”。
-- 后续新页面不会继续把主题做成“页面自己拼颜色”。
-
-## 2. 适用范围
-
-本规范覆盖：
-
-- 主端 Harmony 页面
-- 底部 Tab
-- 顶部状态条
-- 卡片、按钮、输入框、列表
-- AI 生成与结果预览态
-- 会员、积分、公告、同步等系统模块
-
-本规范不覆盖：
-
-- App 图标和市场物料
-- 后台 Web
-- 品牌宣传图
-
-## 3. 基本原则
-
-### 3.1 双模式是正式交付，不是后补项
-
-- 浅色模式和深色模式都属于正式交付范围。
-- 所有 P0 页面必须在两种模式下都能通过评审和测试。
-- 所有基础组件必须具备双模式能力后才能进入可复用层。
-
-### 3.2 使用语义 token，不直接使用页面私色
-
-页面和组件应该优先表达“语义”，例如：
-
-- `primary`
-- `surface`
-- `surfaceRaised`
-- `textPrimary`
-- `danger`
-- `premium`
-
-而不是直接表达某个具体十六进制颜色。
-
-### 3.3 深色模式不是颜色反相
-
-深色模式必须重新校准以下要素：
-
-- 背景亮度层级
-- 表面层级
-- 边框和分隔线强度
-- 文字对比
-- 图标激活与未激活对比
-- 阴影和高亮透明度
-
-### 3.4 小尺寸优先
-
-底部 Tab、badge、弱图标、分隔线、输入框边框等元素，必须按小尺寸真实场景来定义 token，而不是只看放大设计稿。
-
-## 4. 当前实现基线
-
-当前代码中的主题主入口位于：
-
-- [AppTheme.ets](</D:/code/Chronoisle2/entry/src/main/ets/theme/AppTheme.ets:1>)
-- [ThemeService.ets](</D:/code/Chronoisle2/entry/src/main/ets/services/ThemeService.ets:1>)
-
-当前主题实现已经落到：
-
-- `primary`
-- `primaryLight`
-- `primaryDark`
-- `accent`
-- `background`
-- `surface`
-- `surfaceLight`
-- `textPrimary`
-- `textSecondary`
-- `textMuted`
-- `divider`
-- `success`
-- `warning`
-- `danger`
-- `info`
-- `cardShadow`
-- `navBackground`
-- `cardBackground`
-- `inputBackground`
-- `borderColor`
-
-这套字段已经覆盖当前版本所需的主主题、语义状态、风险面板、公告面板和会员权益层，不再是“只够凑浅深色”的最低限实现。
-
-## 5. Token 分类
-
-建议按 7 大类组织主题 token。
-
-### 5.1 Brand Token
-
-品牌与主系统色。
-
-| Token | 用途 | Light | Dark |
-| --- | --- | --- | --- |
-| `primary` | 主动作、主激活态、底部 Tab 激活态 | `#7679F5` | `#9A96FF` |
-| `primaryLight` | 主色弱描边、选中边界、轻强调 | `#9A96FF` | `#BEB6FF` |
-| `primaryDark` | 主色深层强调、pressed/active | `#5F62DA` | `#817BEA` |
-| `info` | 信息提示、轻提示组件 | `#9A96FF` | `#BEB6FF` |
-
-### 5.2 Surface Token
-
-背景和层级表面。
-
-| Token | 用途 | Light | Dark |
-| --- | --- | --- | --- |
-| `background` | 页面主背景 | `#FBF4E9` | `#17121D` |
-| `surface` | 一级表面，如标准卡片与面板 | `#FFFDF9` | `#211827` |
-| `surfaceLight` | 次级表面、弱背景 | `#FFFBF6` | `#2A1F30` |
-| `surfaceRaised` | 强调卡片、悬浮表面 | `#FFFFFF` | `#2D2234` |
-| `surfaceSoft` | Segment 容器、输入区、弱面板 | `#F7EFE6` | `#261D2D` |
-| `cardBackground` | 标准卡片背景 | `#FFFFFF` | `#211827` |
-| `inputBackground` | 输入框、搜索框背景 | `#FFF9F3` | `#2A1F30` |
-| `navBackground` | 导航背景 | `#FFFDF9` | `#231A2A` |
-
-### 5.3 Text Token
-
-文字与图标通用中性色。
-
-| Token | 用途 | Light | Dark |
-| --- | --- | --- | --- |
-| `textPrimary` | 主标题、正文主信息 | `#2B2233` | `#F5EDF7` |
-| `textSecondary` | 次级说明、模块描述 | `#786C7D` | `#B8A8BF` |
-| `textMuted` | 占位、未激活、弱提示、底部 Tab 未选中图标 | `#B2A7B1` | `#8F7F97` |
-
-### 5.4 Border & Divider Token
-
-边框和分隔层级。
-
-| Token | 用途 | Light | Dark |
-| --- | --- | --- | --- |
-| `borderColor` | 输入框、卡片、底栏、chip 描边 | `#E7DDD1` | `#3A2D43` |
-| `divider` | 分隔线、列表弱分界 | `#EEE5DA` | `rgba(255, 255, 255, 0.08)` |
-
-### 5.5 Feedback Token
-
-状态色。
-
-| Token | 用途 | Light | Dark |
-| --- | --- | --- | --- |
-| `success` | 成功、已完成、会员有效 | `#42A483` | `#59B294` |
-| `warning` | 风险提醒、轻警告 | `#D69041` | `#F1A765` |
-| `danger` | 错误、逾期、破坏性动作 | `#DD7A72` | `#D98C86` |
-
-### 5.6 Effect Token
-
-阴影与氛围效果。
-
-| Token | 用途 | Light | Dark |
-| --- | --- | --- | --- |
-| `cardShadow` | 卡片阴影 | `rgba(91, 68, 52, 0.10)` | `rgba(7, 5, 10, 0.32)` |
-
-### 5.7 Business Semantic Token
-
-这类 token 当前代码里还没有完整拆开，但规范上建议新增。
-
-| 推荐 Token | 用途 | 说明 |
-| --- | --- | --- |
-| `premium` | 会员权益主色 | 已实现，保持独立于 `primary` |
-| `premiumSurface` | 会员卡背景层 | 已实现 |
-| `riskSurface` | 风险卡弱背景 | 已实现，不再拿 `danger` 直接降透明度凑 |
-| `announcementSurface` | 公告 / AI / 焦点弱强调背景 | 已实现 |
-| `syncSuccessSurface` | 同步成功弱背景 | 已实现 |
-| `syncErrorSurface` | 同步失败弱背景 | 已实现 |
-
-## 6. 目标语义层级
-
-为了让设计和前端对“背景层级”理解一致，建议再补一个抽象层。
-
-### 6.1 Surface Level
-
-| 语义层级 | 说明 | Light 推荐映射 | Dark 推荐映射 |
-| --- | --- | --- | --- |
-| `background` | 页面大背景 | `background` | `background` |
-| `surfaceBase` | 一级容器背景 | `surface` | `surface` |
-| `surfaceRaised` | 强调卡片、悬浮区域 | `cardBackground` | `surfaceLight` |
-| `surfaceSoft` | 搜索框、轻分区、弱面板 | `surfaceLight` | `inputBackground` |
-| `surfaceOverlay` | 弹层、底部 Sheet 背板 | `surface` | `surface` |
-
-### 6.2 Text Emphasis
-
-| 语义层级 | 用途 | 推荐映射 |
-| --- | --- | --- |
-| `high` | 主标题、关键数字、主按钮文字 | `textPrimary` |
-| `medium` | 描述、标签说明、二级导航 | `textSecondary` |
-| `low` | 占位、提示、未选中图标与标签 | `textMuted` |
-
-## 7. 组件取色规则
-
-### 7.1 页面背景
-
-- 页面根背景优先使用 `background`
-- 二级页头背景优先使用 `surface` 或 `background`，不要混乱
-
-### 7.2 标准卡片
-
-- 默认卡片背景：`cardBackground`
-- 默认卡片边框：`borderColor`
-- 默认卡片阴影：`cardShadow`
-- 弱卡片背景：`surfaceLight`
-
-### 7.3 输入框与搜索框
-
-- 背景：`inputBackground`
-- 文本：`textPrimary`
-- 占位：`textMuted`
-- 边框：`borderColor`
-- 激活态：边框和高亮使用 `primary`
-
-### 7.4 按钮
-
-| 按钮类型 | 背景 | 文字 | 边框 |
-| --- | --- | --- | --- |
-| 主按钮 | `primary` | 浅色/深色都需高对比白字 | 无或弱描边 |
-| 次按钮 | `surfaceLight` / `surface` | `textPrimary` | `borderColor` |
-| 危险按钮 | `danger` 或 `riskSurface` | 高对比文字 | 按危险态规范 |
-| 会员按钮 | `premium` | 高对比文字 | 不使用 `primary` |
-
-### 7.5 底部 Tab
-
-底部 Tab 是本次必须重点约束的组件。
-
-规则：
-
-- 背景：`navBackground`
-- 顶部分隔：无需单独描边，靠胶囊阴影与底色区分
-- 选中图标：`primary`
-- 未选中图标：`textMuted`
-- 选中文字：`primary`
-- 未选中文字：`textSecondary`
-- 不允许在底部 Tab 上使用重阴影、重发光、厚渐变
-- 底栏语音胶囊和导航胶囊必须共享同一 `navBackground`
-
-### 7.6 Badge / Chip
-
-- 默认文字：`textSecondary`
-- 默认描边：`borderColor`
-- 选中态文字：`primary`
-- 选中态背景：`primaryLight` 的弱化表面，不直接写死蓝底
-- 风险 Chip 不直接使用鲜红底，优先弱背景 + 危险文字
-
-### 7.7 公告 Banner
-
-- 不使用危险红或会员金，避免语义混淆
-- 建议采用独立 `announcementSurface`
-- 文案主色使用 `textPrimary`
-- 次级说明使用 `textSecondary`
-
-### 7.8 会员权益卡
-
-- 必须独立于主系统蓝
-- 建议增加 `premium / premiumSurface / premiumBorder`
-- 深色模式下禁止继续使用浅色金渐变直接套用
-
-### 7.9 风险卡与逾期卡
-
-- 主色：`danger`
-- 弱背景建议使用 `riskSurface`
-- 深色模式下要避免红底过暗导致文字沉没
-
-## 8. 底部 Tab 与图标专项规范
-
-### 8.1 图标原则
-
-- 统一使用极简线性语言
-- 优先保证 24x24 和 28x28 下的识别度
-- 每个图标只保留 1 个主轮廓 + 1 个识别特征
-
-### 8.2 图标状态
-
-| 状态 | 图标色 | 标签色 | 说明 |
-| --- | --- | --- | --- |
-| default | `textMuted` | `textSecondary` | 未选中 |
-| active | `primary` | `primary` | 当前页 |
-| disabled | 弱于 `textMuted` | 弱于 `textMuted` | 尽量少用于 Tab |
-| pressed | `primaryDark` 或轻透明覆盖 | `primary` | 短暂交互态 |
-
-### 8.3 深色模式要求
-
-- 未选中图标不能陷入背景
-- 激活态图标不能过亮到抢正文
-- 标签与图标层级要统一
-- 底栏分隔线必须可见但不刺眼
-
-## 9. 设计交付约束
-
-### 9.1 设计师必须输出
-
-- 浅色模式 token 表
-- 深色模式 token 表
-- 语义层级说明
-- 关键组件双模式稿
-- 重点页面双模式稿
-
-### 9.2 设计稿标注必须包含
-
-- token 名称
-- 组件所在 surface level
-- 文字层级 high/medium/low
-- 激活态与未激活态差异
-- 深色模式下如有单独透明度修正，必须标出来
-
-## 10. 前端实现约束
-
-### 10.1 可以做的
-
-- 通过 `themeColors` 和语义 token 派生颜色
-- 使用统一方法计算激活态与未激活态
-- 通过 token 控制深色模式下的表面、描边和文本对比
-
-### 10.2 不可以做的
-
-- 在页面组件里继续写大量 hex 颜色
-- 使用“浅色模式颜色 + 统一降透明度”伪造深色模式
-- 不经 token 体系直接为业务卡片手调颜色
-- 让图标、边框、分隔线在深色模式下靠肉眼猜测可见度
-
-### 10.3 建议新增代码层
-
-建议在 `foundation/tokens/` 下补：
-
-- `ColorTokens.ets`
-- `SurfaceTokens.ets`
-- `TextTokens.ets`
-- `StateTokens.ets`
-
-建议在 `theme/` 下补：
-
-- `ThemeSemanticMap.ets`
-
-## 11. 双模式验收清单
-
-### 11.1 页面级
-
-- Today 首页在浅色和深色下都能清晰分出背景、卡片、Hero、风险区
-- Goals / Calendar / Me 在两种模式下都保持清晰层级
-- Overlay、Sheet、底栏在两种模式下都不突兀
-
-### 11.2 组件级
-
-- 按钮在两种模式下对比足够
-- 输入框边框在深色模式下不丢失
-- badge / chip 在两种模式下仍有明显选中态
-- 会员卡与风险卡语义不混淆
-- 底部 Tab 激活和未激活一眼可分
-- 分类色仅作为标签和微强调使用，不能主导整张目标卡
-- 焦点卡优先使用 `announcementSurface` + `primaryLight` 弱边界，而不是高饱和整底
-
-### 11.3 真机级
-
-- 室内暗光下深色模式可读
-- 强光下浅色模式不发灰
-- OLED 设备上深色模式不会因为纯黑/近黑层级错误导致结构消失
-- 低亮度下底栏图标和标签仍可辨认
-
-## 12. 推荐后续动作
-
-建议按以下顺序继续：
-
-1. 继续把 `primary + 透明度拼接` 收口到语义表面 token
-2. 优先改 Onboarding / Pomodoro / Voice Overlay / 创建流程四类高权重页面
-3. 把分类色从“卡片主色”收敛成“标签点缀”
-4. 真机截图沉淀一套浅色/深色对照基线
+# Chronoisle UI System V2 Theme Token 映射规范
+
+> 本文档用于指导如何将 V2 (高密精工版) 的设计语言转化为具体的 ArkUI Theme Token 代码。开发者应严格遵守此表。
+
+## 1. 颜色 Token (Color Tokens)
+
+在 ArkTS 中，我们将提供一套完整的主题色彩，所有 UI 组件必须且只能从 `themeColors` 中获取颜色。
+
+| Token 名称 | 浅色模式 (Light) | 深色模式 (Dark) | 用途说明 |
+| :--- | :--- | :--- | :--- |
+| `bgBase` | `#F0F2F7` | `#0D0E12` | 页面最底层背景 (深色下偏深蓝黑) |
+| `bgPattern` | `rgba(0,0,0,0.03)` | `rgba(255,255,255,0.04)` | 点阵网格底纹颜色 (20vp 间距) |
+| `surfaceBase` | `#FFFFFF` | `#1A1B23` | 卡片、弹窗的默认背景色 |
+| `surfacePressed` | `#F4F5F8` | `#22242E` | 列表项、按钮按压时的底色 |
+| `surfaceGradient` | `Linear(180deg, #FFFFFF, #FAFBFC)` | `Linear(180deg, #1E1F29, #15161D)` | 高级卡片使用的微渐变背景 |
+| `textPrimary` | `#14151A` | `#F3F4F8` | 主标题、重要正文 |
+| `textSecondary` | `#525666` | `#A0A4B8` | 副标题、说明文本 |
+| `textMuted` | `#8E93A6` | `#6B6F85` | 极弱文本 (如日期、时间标签) |
+| `brandPrimary` | `#5B5CE6` | `#7A7CFF` | 主品牌色 (深色下提高亮度以发光) |
+| `brandLight` | `rgba(91,92,230,0.08)` | `rgba(122,124,255,0.15)` | 主色底板 (用于选中的 Tag、打卡按钮背景) |
+| `semanticSuccess`| `#05A660` | `#05C973` | 成功态、完成态、运营类标签 |
+| `semanticDanger` | `#E63946` | `#FF4D5E` | 危险操作、过期提醒、高优提示 |
+| `semanticWarning`| `#D97706` | `#FBBF24` | 警告态、研发类标签 |
+| `aiGradient` | `Linear(135deg, #5B5CE6, #00C6FF)` | `Linear(135deg, #7A7CFF, #00D4FF)` | AI 专属渐变 (用于进度条高亮、呼吸灯) |
+| `borderLight` | `rgba(0,0,0,0.05)` | `rgba(255,255,255,0.06)` | 极细的普通边框线 |
+| `borderHighlight` | `(无)` | `rgba(255,255,255,0.12)` | 深色模式下特殊的组件高亮边缘 |
+
+## 2. 阴影 Token (Shadow Tokens)
+
+ArkUI 的默认阴影过于生硬，V2 规范要求使用复杂的自定义 `box-shadow`。在 ArkTS 中，我们将使用 `ShadowOptions` 组合实现。
+
+### 浅色阴影
+- **`shadowCardLight`**:
+  - 外投影: `offsetX: 0, offsetY: 2, radius: 8, color: rgba(0,0,0,0.02)`
+  - 核心质感: 必须通过叠加内阴影实现高光边缘 (由于 ArkUI 限制，可通过给卡片加 1px 的纯白上边框模拟)。
+- **`shadowBtnLight`**:
+  - 彩色投影: `offsetX: 0, offsetY: 2, radius: 4, color: rgba(91,92,230,0.15)`
+
+### 深色阴影
+- **`shadowCardDark`**:
+  - 沉重外投影: `offsetX: 0, offsetY: 8, radius: 16, color: rgba(0,0,0,0.4)`
+  - 边缘微光 (Rim Light): 极度重要！深色模式下，卡片必须带有一层 `rgba(255,255,255,0.06)` 的微光描边，以从背景中浮现。
+- **`shadowBtnDark`**:
+  - 霓虹发光: `offsetX: 0, offsetY: 4, radius: 12, color: rgba(122,124,255,0.3)`
+
+## 3. 尺寸与间距 Token (Dimension Tokens)
+
+V2 是“高密版”，严格控制留白。
+
+| Token 名称 | 数值 | 用途说明 |
+| :--- | :--- | :--- |
+| `pagePadding` | `14vp` | 页面左右侧安全距离 (取代原 16/20vp) |
+| `sectionGap` | `16vp` | 大模块之间的纵向间距 (取代原 24vp) |
+| `cardPadding` | `12vp` | 卡片内部留白 (取代原 16vp) |
+| `itemGap` | `10vp` | 卡片内相邻元素的间距 |
+| `radiusLg` | `14vp` | 最外层大容器圆角 (如“今日计划”的大白板) |
+| `radiusMd` | `10vp` | 独立卡片圆角 (如“今日提醒”卡片) |
+| `radiusSm` | `6vp` | 极小元素 (复选框、小标签) |
+
+## 4. 排版 Token (Typography Tokens)
+
+为了避免开发时字号和字重随意散落，必须严格使用以下常量映射。
+
+| Token 名称 | ArkTS 字号 (`fp`) | 字重 (`FontWeight`) | 用途说明 |
+| :--- | :--- | :--- | :--- |
+| `TYPE_HERO_TITLE` | `20fp` | `Bold (700)` | 页面最顶部大标题 (如“早安，天辰”) |
+| `TYPE_SECTION_TITLE`| `14fp` | `Medium (500)` 或 `SemiBold (600)` | 模块小标题 (如“今日计划”) |
+| `TYPE_BODY` | `14fp` | `Regular (400)` 或 `Medium (500)` | 列表正文、任务标题、输入框 |
+| `TYPE_META` | `13fp` | `Medium (500)` | 次要文本、卡片描述 |
+| `TYPE_CAPTION` | `11fp` | `Medium (500)` | 极小标签、分类 Tag 文字 |
+| `TYPE_NUMERIC_LG` | `32fp` | `Bold (700)` | 数据面板大数字 (必须应用等宽特性) |
+| `TYPE_NUMERIC_MD` | `11fp` | `Medium (500)` | 时间、日期、提醒 (必须应用等宽特性) |
+
+**等宽字体在 ArkTS 中的实现方式：**
+由于鸿蒙默认可能不包含 `SF Mono`，请使用 `.fontFamily('HarmonyOS Sans')` 并开启字体特性，或者在数字文本上使用类似 `Text('16:30').fontFeature("\"tnum\" 1")` 确保数字等宽对齐。

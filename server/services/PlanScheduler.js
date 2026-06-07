@@ -10,16 +10,15 @@
  */
 
 const cron = require('node-cron');
-const axios = require('axios');
 const User = require('../models/User');
 const SyncData = require('../models/SyncData');
 const PreGeneratedPlan = require('../models/PreGeneratedPlan');
 const { getShanghaiDateString } = require('../utils/date');
+const { createChatCompletion, getDeepSeekModel } = require('../utils/deepseekClient');
 
 class PlanScheduler {
   constructor() {
-    this.appId = process.env.ALIBABA_CLOUD_BAILIAN_APP_ID;
-    this.apiKey = process.env.ALIBABA_CLOUD_BAILIAN_API_KEY;
+    this.model = process.env.TODAY_PLAN_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
   }
 
   /**
@@ -178,11 +177,6 @@ class PlanScheduler {
    * 调用百炼 AI 生成计划
    */
   async callAI(pendingTasksSummary, pendingCount) {
-    if (!this.appId || !this.apiKey) {
-      console.error('[PlanScheduler] 百炼 API Key 或 App ID 未配置');
-      return null;
-    }
-
     const currentHour = 3; // 基于凌晨时段的默认预估
     const remainingHours = 14;
     const todayDate = getShanghaiDateString();
@@ -240,21 +234,23 @@ ${pendingTasksSummary}
 `;
 
     try {
-      const response = await axios.post(
-        `https://dashscope.aliyuncs.com/api/v1/apps/${this.appId}/completion`,
-        {
-          input: { prompt: prompt }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
+      const completion = await createChatCompletion({
+        model: getDeepSeekModel(this.model),
+        timeoutMs: 120000,
+        temperature: 0.2,
+        messages: [
+          {
+            role: 'system',
+            content: '你是四时清单的今日计划生成助手。只输出纯 JSON，不要输出 markdown 或解释。'
           },
-          timeout: 120000 // 2分钟超时
-        }
-      );
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      });
 
-      const text = response.data?.output?.text;
+      const text = completion.content;
       if (!text) return null;
 
       // 清理 markdown 代码块

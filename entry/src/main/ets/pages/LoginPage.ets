@@ -10,6 +10,7 @@ import { ThirdPartyAuthService, type OAuthResult } from '../services/ThirdPartyA
 import { AppErrorService } from '../services/AppErrorService';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { AppCard } from '../ui/base/AppCard';
+import { AppIcon } from '../ui/base/AppIcon';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
@@ -110,10 +111,12 @@ struct LoginPage {
       Scroll() {
         Column({ space: SECTION_GAP }) {
           Column({ space: SPACE_SM }) {
-            Image($r('app.media.startIcon'))
-              .width(72)
-              .height(72)
-              .borderRadius(20)
+            AppIcon({
+              name: 'today',
+              iconSize: 72,
+              tone: 'primary',
+              useSystemSymbol: false
+            })
 
             AppStatusBadge({ text: '目标驱动 · 今日执行', tone: 'info', iconName: 'today' })
 

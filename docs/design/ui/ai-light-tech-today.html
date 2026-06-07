@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronoisle - 今日页 (轻科技感真实布局)</title>
+    <style>
+        :root {
+            --bg-color: #F8F9FA;
+            --surface-color: #FFFFFF;
+            --surface-raised: #FFFFFF;
+            --surface-pressed: #F0F2F5; 
+            --surface-soft: rgba(118, 121, 245, 0.05);
+            --text-primary: #1D1E2C;
+            --text-secondary: #636674;
+            --text-muted: #A0A3B1;
+            
+            --primary-color: #7679F5;
+            --primary-light: rgba(118, 121, 245, 0.12);
+            --success-color: #00C853;
+            --danger-color: #FF3B30;
+            --warning-color: #FF9500;
+            
+            --ai-gradient: linear-gradient(135deg, #7679F5, #00C6FF);
+            
+            --border-light: rgba(0, 0, 0, 0.04);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.02); 
+            
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+            background-color: #E5E7EB;
+            color: var(--text-primary);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            gap: 40px; padding: 20px;
+        }
+
+        .device {
+            width: 390px; height: 844px;
+            background: var(--bg-color);
+            background-image: radial-gradient(var(--text-muted) 1px, transparent 1px);
+            background-size: 24px 24px; background-position: center top;
+            border-radius: 40px; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.1);
+            overflow: hidden; position: relative; display: flex; flex-direction: column;
+            border: 8px solid #FFFFFF;
+        }
+
+        .header {
+            position: absolute; top: 0; left: 0; right: 0;
+            padding: 48px 24px 16px;
+            background: rgba(248, 249, 250, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; justify-content: space-between; align-items: center; z-index: 10;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .header-title { font-size: 22px; font-weight: 600; }
+        .header-date { font-size: 13px; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
+
+        .content { flex: 1; overflow-y: auto; padding: 120px 20px 100px; display: flex; flex-direction: column; gap: 24px; }
+        .content::-webkit-scrollbar { display: none; }
+
+        .section-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+
+        /* AI 推荐卡 */
+        .hero-card {
+            background: var(--surface-raised); border-radius: var(--radius-lg); padding: 20px;
+            border: 1px solid var(--border-light); position: relative; overflow: hidden;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+        }
+        .hero-card:active { transform: scale(0.98); background: var(--surface-pressed); }
+        .hero-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--ai-gradient); opacity: 0.8;
+        }
+        .hero-label { font-size: 12px; font-weight: 600; color: var(--primary-color); display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .hero-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .hero-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+        /* 目标进度区 */
+        .goal-card {
+            background: var(--surface-raised); border-radius: var(--radius-md); padding: 16px;
+            display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-light);
+            transition: transform 0.15s; margin-bottom: 12px;
+        }
+        .goal-card:active { transform: scale(0.98); background: var(--surface-pressed); }
+        .progress-ring {
+            width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--surface-soft);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 12px; font-weight: bold; color: var(--primary-color);
+            position: relative;
+        }
+        .progress-ring::after { /* 模拟进度条 */
+            content: ''; position: absolute; top: -3px; left: -3px; right: -3px; bottom: -3px;
+            border-radius: 50%; border: 3px solid transparent; border-top-color: var(--primary-color); border-right-color: var(--primary-color);
+            transform: rotate(45deg);
+        }
+        .goal-info { flex: 1; }
+        .goal-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+        .goal-meta { font-size: 12px; color: var(--text-muted); }
+
+        /* 任务与提醒列表 */
+        .list-row {
+            background: var(--surface-raised); border-radius: var(--radius-md); padding: 16px;
+            border: 1px solid var(--border-light); margin-bottom: 10px;
+            display: flex; flex-direction: column; gap: 10px;
+            transition: transform 0.15s;
+        }
+        .list-row:active { transform: scale(0.98); background: var(--surface-pressed); }
+        .row-header { display: flex; gap: 10px; align-items: flex-start; }
+        .checkbox { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-light); flex-shrink: 0; margin-top: 2px; }
+        .checkbox:active { border-color: var(--primary-color); background: var(--primary-light); }
+        .row-content { flex: 1; }
+        .row-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .row-meta-area { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--surface-soft); color: var(--text-secondary); }
+        .tag.primary { background: var(--primary-light); color: var(--primary-color); }
+        .tag.danger { background: rgba(255, 59, 48, 0.1); color: var(--danger-color); }
+
+        /* 底部毛玻璃导航与AI按钮 */
+        .tabbar {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 90px;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            display: flex; justify-content: space-around; padding: 0 24px; border-top: 1px solid var(--border-light); z-index: 10;
+        }
+        .tab-item { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 20px; color: var(--text-muted); gap: 4px; }
+        .tab-item.active { color: var(--text-primary); }
+        .tab-item svg { width: 24px; height: 24px; transition: transform 0.15s; }
+        .tab-item:active svg { transform: scale(0.85); }
+        .tab-label { font-size: 10px; font-weight: 500; }
+
+        .ai-fab-container { position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); z-index: 20; }
+        .ai-fab {
+            width: 56px; height: 56px; border-radius: 50%; background: var(--surface-color);
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 8px 24px rgba(118, 121, 245, 0.2); border: 2px solid transparent; background-clip: padding-box;
+            position: relative; transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .ai-fab:active { transform: scale(0.92); box-shadow: 0 4px 12px rgba(118, 121, 245, 0.15); }
+        .ai-fab::after { content: ''; position: absolute; top: -2px; bottom: -2px; left: -2px; right: -2px; background: var(--ai-gradient); border-radius: 50%; z-index: -1; }
+    </style>
+</head>
+<body>
+    <div class="device">
+        <header class="header">
+            <div>
+                <div class="header-title">早安，天辰</div>
+                <div class="header-date">Oct 24, 星期四</div>
+            </div>
+            <div style="width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+        </header>
+
+        <main class="content">
+            <!-- AI 推荐焦点卡 -->
+            <div class="hero-card">
+                <div class="hero-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    智能聚焦
+                </div>
+                <div class="hero-title">完成产品 V2 迭代规划</div>
+                <div class="hero-desc">AI 已为你拆解为 4 个子任务，预计还需 2.5 小时。</div>
+            </div>
+
+            <!-- 目标进度区 -->
+            <div>
+                <div class="section-title">目标进度</div>
+                <div class="goal-card">
+                    <div class="progress-ring">65%</div>
+                    <div class="goal-info">
+                        <div class="goal-title">掌握 HarmonyOS ArkUI 开发</div>
+                        <div class="goal-meta">剩余 12 个关键结果待完成</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日计划 -->
+            <div>
+                <div class="section-title">今日计划</div>
+                <div class="list-row">
+                    <div class="row-header">
+                        <div class="checkbox"></div>
+                        <div class="row-content">
+                            <div class="row-title">梳理轻科技感 UI 设计语言，完成组件样式的全局替换</div>
+                            <div class="row-meta-area">
+                                <span class="tag primary">UI 优化</span>
+                                <span class="tag">预估 45m</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日提醒 -->
+            <div>
+                <div class="section-title">今日提醒</div>
+                <div class="list-row">
+                    <div class="row-header">
+                        <div class="row-content">
+                            <div class="row-title">准备团队周会汇报材料</div>
+                            <div class="row-meta-area" style="margin-top: 6px;">
+                                <span class="tag danger">16:30 截止</span>
+                                <span class="tag">管理工作</span>
+                            </div>
+                        </div>
+                        <div style="background:var(--primary-light); color:var(--primary-color); font-size:12px; font-weight:600; padding:6px 12px; border-radius:6px; transition:0.15s;" onclick="this.style.transform='scale(0.9)'">打卡</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 悬浮 AI 按钮 -->
+        <div class="ai-fab-container">
+            <div class="ai-fab">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7679F5" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+            </div>
+        </div>
+
+        <!-- 底部导航 -->
+        <nav class="tabbar">
+            <div class="tab-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                <span class="tab-label">今日</span>
+            </div>
+            <div class="tab-item" style="margin-right: 30px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span class="tab-label">日程</span>
+            </div>
+            <div class="tab-item" style="margin-left: 30px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span class="tab-label">对话</span>
+            </div>
+            <div class="tab-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="tab-label">我的</span>
+            </div>
+        </nav>
+    </div>
+</body>
+</html>

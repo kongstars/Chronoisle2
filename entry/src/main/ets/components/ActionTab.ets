@@ -22,6 +22,64 @@ import { SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/Sp
 import { TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META } from '../foundation/tokens/TypographyTokens';
 
 @Component
+struct ActionTabHeaderButton {
+  @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
+  @Prop iconName: string = '';
+  @Prop badge: string = '';
+  @Prop tone: 'primary' | 'neutral' = 'neutral';
+  @State isPressed: boolean = false;
+  onTap?: () => void;
+
+  build() {
+    Stack({ alignContent: Alignment.Center }) {
+      Row()
+        .width(40)
+        .height(40)
+        .backgroundColor(this.tone === 'primary' ? this.themeColors.primarySubtle : this.themeColors.surfaceSoft)
+        .borderRadius(20)
+
+      AppIcon({
+        name: this.iconName,
+        iconSize: 22,
+        framed: false,
+        color: this.tone === 'primary' ? this.themeColors.primary : this.themeColors.textSecondary
+      })
+
+      if (this.badge.length > 0) {
+        Row() {
+          Text(this.badge)
+            .fontSize(TYPE_CAPTION)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeColors.textOnPrimary)
+        }
+        .padding({ left: 4, right: 4 })
+        .height(14)
+        .constraintSize({ minWidth: 14 })
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(this.themeColors.danger)
+        .borderRadius(7)
+        .border({ width: 1, color: this.themeColors.background })
+        .position({ x: 26, y: -4 })
+      }
+    }
+    .width(40)
+    .height(40)
+    .scale({ x: this.isPressed ? 0.96 : 1, y: this.isPressed ? 0.96 : 1 })
+    .animation({ duration: 100, curve: Curve.Friction })
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
+      }
+    })
+    .onClick(() => {
+      if (this.onTap) this.onTap();
+    })
+  }
+}
+
+@Component
 export struct ActionTab {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
   @Prop tasks: Task[] = [];
@@ -83,44 +141,6 @@ export struct ActionTab {
   }
 
   @Builder
-  private HeaderActionButton(iconName: string, badge: string, tone: 'primary' | 'neutral', onTap: () => void) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(40)
-        .height(40)
-        .backgroundColor(tone === 'primary' ? this.themeColors.primarySubtle : this.themeColors.surfaceSoft)
-        .borderRadius(20)
-
-      AppIcon({
-        name: iconName,
-        iconSize: 22,
-        framed: false,
-        color: tone === 'primary' ? this.themeColors.primary : this.themeColors.textSecondary
-      })
-
-      if (badge.length > 0) {
-        Row() {
-          Text(badge)
-            .fontSize(TYPE_CAPTION)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.themeColors.textOnPrimary)
-        }
-        .padding({ left: 4, right: 4 })
-        .height(14)
-        .constraintSize({ minWidth: 14 })
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor(this.themeColors.danger)
-        .borderRadius(7)
-        .border({ width: 1, color: this.themeColors.background })
-        .position({ x: 26, y: -4 })
-      }
-    }
-    .width(40)
-    .height(40)
-    .onClick(() => { onTap(); })
-  }
-
-  @Builder
   private Header() {
     Row({ space: SPACE_SM }) {
       Column({ space: 2 }) {
@@ -136,40 +156,40 @@ export struct ActionTab {
       .alignItems(HorizontalAlign.Start)
 
       // 搜索（跳全局 SearchPage）
-      this.HeaderActionButton(
-        'search',
-        '',
-        'neutral',
-        () => {
+      ActionTabHeaderButton({
+        iconName: 'search',
+        badge: '',
+        tone: 'neutral',
+        onTap: () => {
           if (this.onOpenSearch) {
             this.onOpenSearch();
           }
         }
-      )
+      })
 
       // 提醒中心
-      this.HeaderActionButton(
-        'reminder',
-        this.getReminderBadge(),
-        'neutral',
-        () => {
+      ActionTabHeaderButton({
+        iconName: 'reminder',
+        badge: this.getReminderBadge(),
+        tone: 'neutral',
+        onTap: () => {
           if (this.onOpenReminderCenter) {
             this.onOpenReminderCenter();
           }
         }
-      )
+      })
 
       // 新建
-      this.HeaderActionButton(
-        'plus',
-        '',
-        'primary',
-        () => {
+      ActionTabHeaderButton({
+        iconName: 'plus',
+        badge: '',
+        tone: 'primary',
+        onTap: () => {
           if (this.onCreate) {
             this.onCreate();
           }
         }
-      )
+      })
     }
     .width('100%')
     .alignItems(VerticalAlign.Center)

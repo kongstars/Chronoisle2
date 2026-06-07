@@ -1,7 +1,7 @@
 const express = require('express');
-const axios = require('axios');
 const crypto = require('crypto');
 const SyncData = require('../models/SyncData');
+const { createChatCompletion, getDeepSeekModel } = require('../utils/deepseekClient');
 
 const router = express.Router();
 
@@ -13,14 +13,12 @@ function readPositiveNumberEnv(name, fallbackValue) {
   return Number.isFinite(value) && value > 0 ? value : fallbackValue;
 }
 
-const VOICE_CREATE_MODEL = process.env.VOICE_CREATE_MODEL || 'qwen-plus-latest';
+const VOICE_CREATE_MODEL = process.env.VOICE_CREATE_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
 const VOICE_CLASSIFY_MODEL = process.env.VOICE_CLASSIFY_MODEL || VOICE_CREATE_MODEL;
 const VOICE_PARSE_MODEL = process.env.VOICE_PARSE_MODEL || VOICE_CREATE_MODEL;
 const VOICE_ANALYZE_TIMEOUT_MS = readPositiveNumberEnv('VOICE_ANALYZE_TIMEOUT_MS', 15000);
 const VOICE_CLASSIFY_TIMEOUT_MS = readPositiveNumberEnv('VOICE_CLASSIFY_TIMEOUT_MS', 5000);
 const VOICE_PARSE_TIMEOUT_MS = readPositiveNumberEnv('VOICE_PARSE_TIMEOUT_MS', 10000);
-const BAILIAN_API_KEY = () => process.env.ALIBABA_CLOUD_BAILIAN_API_KEY;
-const BAILIAN_ENDPOINT = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
 // ========================
 // 简易内存缓存（parse 结果，TTL 60s）
@@ -88,34 +86,17 @@ function setCachedParse(userId, text, intent, data) {
 // 通用 Agent 调用
 // ========================
 async function callAgent(systemPrompt, userPrompt, options = {}) {
-  const apiKey = BAILIAN_API_KEY();
-  if (!apiKey) {
-    throw new Error('ALIBABA_CLOUD_BAILIAN_API_KEY 未配置');
-  }
+  const completion = await createChatCompletion({
+    model: getDeepSeekModel(options.model || VOICE_CREATE_MODEL),
+    timeoutMs: options.timeoutMs || 30000,
+    temperature: 0.15,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ]
+  });
 
-  const model = options.model || VOICE_CREATE_MODEL;
-  const timeoutMs = options.timeoutMs || 30000;
-
-  const response = await axios.post(
-    BAILIAN_ENDPOINT,
-    {
-      model,
-      temperature: 0.15,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ]
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: timeoutMs
-    }
-  );
-
-  let content = response.data?.choices?.[0]?.message?.content || '';
+  let content = completion.content || '';
   content = content.replace(/```json/gi, '').replace(/```/g, '').trim();
 
   const objStart = content.indexOf('{');

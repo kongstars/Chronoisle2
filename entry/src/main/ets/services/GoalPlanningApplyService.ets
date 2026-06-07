@@ -13,6 +13,11 @@ import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('GoalPlanningApplyService');
 
+interface ReminderTimeParts {
+  hour: number;
+  minute: number;
+}
+
 /**
  * 负责将规划好的 PlanningSession 数据转化为本地应用的数据实体 (Goal/Task/DayEvent)
  */
@@ -258,20 +263,23 @@ export class GoalPlanningApplyService {
     return value;
   }
 
-  private static parseReminderTime(rawValue?: string): { hour: number; minute: number } {
+  private static parseReminderTime(rawValue?: string): ReminderTimeParts {
     const safeValue = (rawValue || '').trim();
     const matched = safeValue.match(/^(\d{1,2}):(\d{1,2})$/);
     if (!matched) {
-      return { hour: 9, minute: 0 };
+      const defaultTime: ReminderTimeParts = { hour: 9, minute: 0 };
+      return defaultTime;
     }
 
     const hour = parseInt(matched[1], 10);
     const minute = parseInt(matched[2], 10);
     if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      return { hour: 9, minute: 0 };
+      const defaultTime: ReminderTimeParts = { hour: 9, minute: 0 };
+      return defaultTime;
     }
 
-    return { hour, minute };
+    const parsedTime: ReminderTimeParts = { hour, minute };
+    return parsedTime;
   }
 
   private static resolveRecurringEndDate(rawEndDate?: string, goalEndDate?: number): number | undefined {

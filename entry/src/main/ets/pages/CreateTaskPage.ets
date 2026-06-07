@@ -13,6 +13,7 @@ import { AppAIFillBanner } from '../ui/base/AppAIFillBanner';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
+import { AppFormCard } from '../ui/base/AppFormCard';
 import { AppListRow } from '../ui/base/AppListRow';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
@@ -513,7 +514,7 @@ struct CreateTaskPage {
 
   @Builder
   private TitleCard() {
-    AppCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
+    AppFormCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
       Row({ space: SPACE_XS }) {
         Text('任务标题')
           .layoutWeight(1)
@@ -690,7 +691,7 @@ struct CreateTaskPage {
 
   @Builder
   private ScheduleCard() {
-    AppCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
+    AppFormCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
       Text('时间与投入')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
@@ -758,7 +759,7 @@ struct CreateTaskPage {
 
   @Builder
   private SubtaskCard() {
-    AppCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
+    AppFormCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_SM }) {
       Text('子任务（可选）')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
@@ -768,7 +769,7 @@ struct CreateTaskPage {
       if (this.subtasks.length > 0) {
         Column({ space: SPACE_XS }) {
           ForEach(this.subtasks, (subtask: Subtask, index: number) => {
-            AppCard({ variant: 'soft', paddingLevel: 'md', spacing: SPACE_XS }) {
+            AppFormCard({ variant: 'soft', paddingLevel: 'md', spacing: SPACE_XS }) {
               Row({ space: SPACE_SM }) {
                 TextInput({ text: subtask.title })
                   .layoutWeight(1)
@@ -826,7 +827,7 @@ struct CreateTaskPage {
 
   @Builder
   private DescriptionCard() {
-    AppCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_XS }) {
+    AppFormCard({ variant: 'base', paddingLevel: 'md', spacing: SPACE_XS }) {
       Text('任务说明')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)

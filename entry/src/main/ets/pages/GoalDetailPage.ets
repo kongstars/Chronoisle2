@@ -162,8 +162,8 @@ struct GoalDetailPage {
   }
   
   loadGoalData(): void {
-    const allGoals = dataSyncService.getGoals();
-    const allTasks = dataSyncService.getTasks();
+    const allGoals = db.getAllGoals();
+    const allTasks = db.getAllTasks();
     const allReminders = db.getAllDayEvents();
 
     const goalData = allGoals.find(g => g.id === this.goalId);
@@ -231,6 +231,23 @@ struct GoalDetailPage {
       params: {
         goalId: this.goal.id,
         goalTitle: this.goal.title
+      }
+    });
+  }
+
+  openGoalReschedule(): void {
+    if (!this.goal) {
+      return;
+    }
+    if (this.isArchivedGoal()) {
+      this.showArchivedToast();
+      return;
+    }
+
+    this.getUIContext().getRouter().pushUrl({
+      url: 'pages/GoalReschedulePage',
+      params: {
+        goalId: this.goal.id
       }
     });
   }
@@ -729,6 +746,7 @@ struct GoalDetailPage {
         .color(this.themeColors.warning)
         .backgroundColor(this.themeColors.surfaceLight)
         .style({ strokeWidth: 6, enableSmoothEffect: true })
+
     }
     .width('100%')
     .padding(SPACE_MD)
@@ -1672,10 +1690,13 @@ struct GoalDetailPage {
               if (this.getCurrentTask(task).pomodoroCount > 0) {
                 Row() {
                 ForEach(Array.from({length: Math.min(this.getCurrentTask(task).pomodoroCount, 3)}), (_t: undefined, index: number) => {
-                    Image($r('app.media.tomato'))
-                      .width(ICON_SIZE_XS)
-                      .height(ICON_SIZE_XS)
-                      .syncLoad(true)
+                    AppIcon({
+                      name: 'tomato',
+                      iconSize: ICON_SIZE_XS,
+                      tone: 'warning',
+                      framed: false,
+                      useSystemSymbol: false
+                    })
                       .margin({ left: SPACE_2XS })
                   })
                 }

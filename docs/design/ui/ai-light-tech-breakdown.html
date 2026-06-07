@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronoisle - AI 目标规划页 (轻科技感真实布局)</title>
+    <style>
+        :root {
+            --bg-color: #F8F9FA;
+            --surface-color: #FFFFFF;
+            --surface-raised: #FFFFFF;
+            --surface-pressed: #F0F2F5;
+            --text-primary: #1D1E2C;
+            --text-secondary: #636674;
+            --text-muted: #A0A3B1;
+            
+            --primary-color: #7679F5;
+            --primary-light: rgba(118, 121, 245, 0.12);
+            --ai-gradient: linear-gradient(135deg, #7679F5, #00C6FF);
+            
+            --border-light: rgba(0, 0, 0, 0.04);
+            --border-active: rgba(118, 121, 245, 0.4);
+            
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #E5E7EB; color: var(--text-primary);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;
+        }
+
+        .device {
+            width: 390px; height: 844px; background: var(--bg-color);
+            background-image: radial-gradient(var(--text-muted) 1px, transparent 1px);
+            background-size: 24px 24px; background-position: center top;
+            border-radius: 40px; box-shadow: 0 24px 48px rgba(0,0,0,0.1);
+            overflow: hidden; position: relative; display: flex; flex-direction: column;
+            border: 8px solid #FFFFFF;
+        }
+
+        /* 沉浸式标题栏 */
+        .header {
+            padding: 48px 20px 16px; display: flex; align-items: center; gap: 12px;
+            background: rgba(248,249,250,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-light); z-index: 10;
+        }
+        .back-btn { width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; background: var(--surface-raised); border-radius: 50%; border: 1px solid var(--border-light); transition: 0.15s; }
+        .back-btn:active { transform: scale(0.9); background: var(--surface-pressed); }
+        .header-title { font-size: 18px; font-weight: 600; flex: 1; text-align: center; margin-right: 32px; }
+
+        .content { flex: 1; overflow-y: auto; padding: 24px 20px 100px; display: flex; flex-direction: column; gap: 24px; }
+        .content::-webkit-scrollbar { display: none; }
+
+        /* 顶部进度区 */
+        .stage-card {
+            background: var(--surface-raised); border-radius: var(--radius-lg); padding: 20px;
+            border: 1px solid var(--border-light); position: relative; overflow: hidden;
+        }
+        .stage-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--ai-gradient); }
+        .stage-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .stage-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+        
+        .progress-track { height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 16px; display: flex; gap: 4px; }
+        .progress-step { flex: 1; height: 100%; border-radius: 2px; background: var(--border-light); }
+        .progress-step.active { background: var(--primary-color); }
+
+        /* AI 提问卡片 */
+        .question-card { display: flex; flex-direction: column; gap: 12px; }
+        .q-header { display: flex; gap: 8px; align-items: center; }
+        .ai-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--ai-gradient); display: flex; justify-content: center; align-items: center; color: #fff; }
+        .ai-avatar svg { width: 14px; height: 14px; }
+        .q-text { font-size: 15px; font-weight: 500; line-height: 1.4; background: var(--surface-raised); padding: 12px 16px; border-radius: 16px; border-top-left-radius: 4px; border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); }
+
+        /* 用户选项 */
+        .options-grid { display: flex; flex-direction: column; gap: 10px; margin-left: 36px; }
+        .option-btn {
+            background: var(--surface-raised); border: 1px solid var(--border-light);
+            padding: 14px 16px; border-radius: var(--radius-md); font-size: 14px; color: var(--text-primary);
+            text-align: left; transition: transform 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .option-btn:active { transform: scale(0.98); background: var(--surface-pressed); }
+        .option-btn.selected { background: var(--primary-light); border-color: var(--primary-color); font-weight: 500; }
+
+        /* 底部居中操作区 */
+        .bottom-action {
+            position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 24px 32px;
+            background: linear-gradient(to top, rgba(248,249,250,1) 60%, rgba(248,249,250,0));
+            display: flex; justify-content: center; /* 解决你提到的未居中问题 */
+        }
+        .primary-btn {
+            width: 100%; max-width: 300px; /* 限制最大宽度，保证在大屏/横屏下的居中体验 */
+            background: var(--text-primary); color: #fff;
+            padding: 16px; border-radius: 99px; font-size: 16px; font-weight: 600; text-align: center;
+            border: none; transition: transform 0.15s;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .primary-btn:active { transform: scale(0.96); }
+    </style>
+</head>
+<body>
+    <div class="device">
+        <header class="header">
+            <div class="back-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </div>
+            <div class="header-title">AI 目标规划</div>
+        </header>
+
+        <main class="content">
+            <!-- 顶部进度说明 -->
+            <div class="stage-card">
+                <div class="stage-title">AI 正在追问细节</div>
+                <div class="stage-desc">为了给你生成更合理的行动方案，AI 需要了解你的一些具体偏好。</div>
+                <div class="progress-track">
+                    <div class="progress-step active"></div>
+                    <div class="progress-step active"></div>
+                    <div class="progress-step"></div>
+                </div>
+            </div>
+
+            <!-- 问答 1 -->
+            <div class="question-card">
+                <div class="q-header">
+                    <div class="ai-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path></svg>
+                    </div>
+                    <div class="q-text">你希望在这个目标上，每天投入多少时间？</div>
+                </div>
+                <div class="options-grid">
+                    <button class="option-btn">15 - 30 分钟 (碎片时间)</button>
+                    <button class="option-btn selected">1 小时左右 (稳定投入)</button>
+                    <button class="option-btn">2 小时以上 (全力冲刺)</button>
+                </div>
+            </div>
+
+            <!-- 问答 2 -->
+            <div class="question-card" style="margin-top: 8px;">
+                <div class="q-header">
+                    <div class="ai-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path></svg>
+                    </div>
+                    <div class="q-text">这个目标的理想截止时间是？</div>
+                </div>
+                <div class="options-grid">
+                    <button class="option-btn">本周末之前</button>
+                    <button class="option-btn">这个月底</button>
+                    <button class="option-btn">先不设限，持续推进</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部居中操作区 -->
+        <div class="bottom-action">
+            <button class="primary-btn">下一步：生成行动方案</button>
+        </div>
+    </div>
+</body>
+</html>

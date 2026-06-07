@@ -638,9 +638,13 @@ struct TaskDetailPage {
 
       if (this.pomodoros.length === 0) {
         Column() {
-          Image($r('app.media.tomato'))
-            .width(AVATAR_SIZE_MD)
-            .height(AVATAR_SIZE_MD)
+          AppIcon({
+            name: 'tomato',
+            iconSize: AVATAR_SIZE_MD,
+            tone: 'warning',
+            framed: false,
+            useSystemSymbol: false
+          })
             .margin({ bottom: PANEL_GAP })
 
           Text('还没有记录，点击下方按钮立即开始专注')
@@ -750,9 +754,13 @@ struct TaskDetailPage {
   PomodoroItem(pomodoro: Pomodoro, index: number) {
     Row() {
       Column() {
-        Image($r('app.media.tomato'))
-          .width(ICON_SIZE_SM)
-          .height(ICON_SIZE_SM)
+        AppIcon({
+          name: 'tomato',
+          iconSize: ICON_SIZE_SM,
+          tone: 'warning',
+          framed: false,
+          useSystemSymbol: false
+        })
       }
       .width(BUTTON_HEIGHT_MD)
       .height(BUTTON_HEIGHT_SM)

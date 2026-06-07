@@ -226,6 +226,19 @@ struct EditGoalPage {
     this.getUIContext().getRouter().replaceUrl({ url: 'pages/MainPage' });
   }
 
+  private openGoalReschedule(): void {
+    if (!this.currentGoal || this.currentGoal.isArchived) {
+      this.showToast('归档目标暂不支持重排');
+      return;
+    }
+    this.getUIContext().getRouter().pushUrl({
+      url: 'pages/GoalReschedulePage',
+      params: {
+        goalId: this.currentGoal.id
+      }
+    });
+  }
+
   private applyWindowTheme(): void {
     try {
       window.getLastWindow(this.getUIContext().getHostContext() as Context).then((windowClass) => {
@@ -331,6 +344,18 @@ struct EditGoalPage {
         : `关键结果完成 ${this.getCompletedKeyResultCount()}/${this.currentGoal?.keyResults.length || 0} · 任务完成 ${this.getCompletedTaskCount()}/${this.relatedTasks.length}`
     }) {
       Column({ space: SPACE_SM }) {
+        this.ActionRow(
+          '目标重排',
+          this.currentGoal?.isArchived
+            ? '归档目标暂不支持重排。'
+            : '重新安排这个目标的剩余任务与关联提醒。',
+          'primary',
+          !this.currentGoal?.isArchived,
+          () => {
+            this.openGoalReschedule();
+          }
+        )
+
         this.ActionRow(
           '归档目标',
           this.currentGoal?.isArchived ? '当前目标已经归档。' : '仅当全部关键结果和关联任务都完成时可归档。',

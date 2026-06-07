@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronoisle - AI 目标规划页 (高信息密度版)</title>
+    <style>
+        :root {
+            --bg-color: #F8F9FA;
+            --surface-color: #FFFFFF;
+            --surface-raised: #FFFFFF;
+            --surface-pressed: #F0F2F5;
+            --text-primary: #1D1E2C;
+            --text-secondary: #636674;
+            --text-muted: #A0A3B1;
+            
+            --primary-color: #7679F5;
+            --primary-light: rgba(118, 121, 245, 0.12);
+            --ai-gradient: linear-gradient(135deg, #7679F5, #00C6FF);
+            
+            --border-light: rgba(0, 0, 0, 0.06);
+            --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.03);
+            
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #E5E7EB; color: var(--text-primary);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;
+        }
+
+        .device {
+            width: 390px; height: 844px; background: var(--bg-color);
+            background-image: radial-gradient(var(--text-muted) 1px, transparent 1px);
+            background-size: 24px 24px; background-position: center top;
+            border-radius: 40px; box-shadow: 0 24px 48px rgba(0,0,0,0.1);
+            overflow: hidden; position: relative; display: flex; flex-direction: column;
+            border: 8px solid #FFFFFF;
+        }
+
+        /* 紧凑型标题栏 */
+        .header {
+            padding: 44px 16px 12px; display: flex; align-items: center; gap: 12px;
+            background: rgba(248,249,250,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-light); z-index: 10;
+        }
+        .back-btn { width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; background: var(--surface-raised); border-radius: 50%; border: 1px solid var(--border-light); transition: 0.1s; }
+        .back-btn:active { transform: scale(0.9); background: var(--surface-pressed); }
+        .header-title { font-size: 16px; font-weight: 600; flex: 1; text-align: center; margin-right: 28px; }
+
+        .content { flex: 1; overflow-y: auto; padding: 16px 14px 80px; display: flex; flex-direction: column; gap: 16px; }
+        .content::-webkit-scrollbar { display: none; }
+
+        /* 顶部进度区 */
+        .stage-card {
+            background: var(--surface-raised); border-radius: var(--radius-lg); padding: 14px 16px;
+            border: 1px solid var(--border-light); position: relative; overflow: hidden; box-shadow: var(--shadow-sm);
+        }
+        .stage-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--ai-gradient); }
+        .stage-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+        .stage-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+        
+        .progress-track { height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 12px; display: flex; gap: 4px; }
+        .progress-step { flex: 1; height: 100%; border-radius: 2px; background: var(--border-light); }
+        .progress-step.active { background: var(--primary-color); }
+
+        /* AI 提问卡片 (高密度) */
+        .question-card { display: flex; flex-direction: column; gap: 8px; }
+        .q-header { display: flex; gap: 8px; align-items: flex-end; }
+        .ai-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--ai-gradient); display: flex; justify-content: center; align-items: center; color: #fff; flex-shrink: 0; margin-bottom: 4px; }
+        .ai-avatar svg { width: 12px; height: 12px; }
+        .q-text { font-size: 14px; font-weight: 500; line-height: 1.4; background: var(--surface-raised); padding: 10px 14px; border-radius: 14px; border-bottom-left-radius: 2px; border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); }
+
+        /* 用户选项 (高密度) */
+        .options-grid { display: flex; flex-direction: column; gap: 8px; margin-left: 32px; }
+        .option-btn {
+            background: var(--surface-raised); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);
+            padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; color: var(--text-primary);
+            text-align: left; transition: transform 0.1s, border-color 0.1s, background 0.1s;
+        }
+        .option-btn:active { transform: scale(0.98); background: var(--surface-pressed); }
+        .option-btn.selected { background: var(--primary-light); border-color: var(--primary-color); font-weight: 500; }
+
+        /* 底部操作区 (压缩 padding) */
+        .bottom-action {
+            position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 20px 24px;
+            background: linear-gradient(to top, rgba(248,249,250,1) 70%, rgba(248,249,250,0));
+            display: flex; justify-content: center;
+        }
+        .primary-btn {
+            width: 100%; max-width: 300px; 
+            background: var(--text-primary); color: #fff;
+            padding: 14px; border-radius: 99px; font-size: 15px; font-weight: 600; text-align: center;
+            border: none; transition: transform 0.1s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .primary-btn:active { transform: scale(0.96); }
+    </style>
+</head>
+<body>
+    <div class="device">
+        <header class="header">
+            <div class="back-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </div>
+            <div class="header-title">AI 目标规划</div>
+        </header>
+
+        <main class="content">
+            <div class="stage-card">
+                <div class="stage-title">AI 正在追问细节</div>
+                <div class="stage-desc">为了给你生成更合理的行动方案，AI 需要了解你的一些具体偏好。</div>
+                <div class="progress-track">
+                    <div class="progress-step active"></div>
+                    <div class="progress-step active"></div>
+                    <div class="progress-step"></div>
+                </div>
+            </div>
+
+            <!-- 问答 1 -->
+            <div class="question-card">
+                <div class="q-header">
+                    <div class="ai-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path></svg>
+                    </div>
+                    <div class="q-text">你希望在这个目标上，每天投入多少时间？</div>
+                </div>
+                <div class="options-grid">
+                    <button class="option-btn">15 - 30 分钟 (碎片时间)</button>
+                    <button class="option-btn selected">1 小时左右 (稳定投入)</button>
+                    <button class="option-btn">2 小时以上 (全力冲刺)</button>
+                </div>
+            </div>
+
+            <!-- 问答 2 -->
+            <div class="question-card">
+                <div class="q-header">
+                    <div class="ai-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path></svg>
+                    </div>
+                    <div class="q-text">这个目标的理想截止时间是？</div>
+                </div>
+                <div class="options-grid">
+                    <button class="option-btn">本周末之前</button>
+                    <button class="option-btn">这个月底</button>
+                    <button class="option-btn">先不设限，持续推进</button>
+                </div>
+            </div>
+            
+            <!-- 问答 3 (高密度下可以轻松展示第3个问题) -->
+            <div class="question-card">
+                <div class="q-header">
+                    <div class="ai-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path></svg>
+                    </div>
+                    <div class="q-text">遇到困难时，你更倾向于哪种 AI 辅助方式？</div>
+                </div>
+                <div class="options-grid">
+                    <button class="option-btn">给我具体的步骤建议</button>
+                    <button class="option-btn">帮我打气，提供情绪价值</button>
+                </div>
+            </div>
+        </main>
+
+        <div class="bottom-action">
+            <button class="primary-btn">下一步：生成行动方案</button>
+        </div>
+    </div>
+</body>
+</html>

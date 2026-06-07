@@ -17,15 +17,15 @@ export struct AppChip {
   @Prop disabled: boolean = false;
   @Prop iconName: string = '';
   @State isFocused: boolean = false;
-  @State isHovered: boolean = false;
+  @State isPressed: boolean = false;
   tapAction?: () => void;
 
   private getBackgroundColor(): string {
     if (this.disabled) {
       return this.themeColors.surfaceSoft;
     }
-    if (this.isHovered && !this.active) {
-      return this.themeColors.surface;
+    if (this.isPressed) {
+      return this.themeColors.surfacePressed;
     }
     return this.active ? getToneSurfaceColor(this.themeColors, this.tone) : this.themeColors.surfaceSoft;
   }
@@ -38,13 +38,10 @@ export struct AppChip {
   }
 
   private getBorderColor(): string {
-    if (this.isFocused && !this.disabled) {
-      return this.themeColors.primaryLight;
+    if (this.isFocused) {
+      return this.themeColors.brandPrimary;
     }
-    if (this.isHovered && !this.disabled) {
-      return this.active ? getToneBorderColor(this.themeColors, this.tone) : this.themeColors.divider;
-    }
-    return this.active ? getToneBorderColor(this.themeColors, this.tone) : this.themeColors.borderColor;
+    return this.active ? getToneBorderColor(this.themeColors, this.tone) : this.themeColors.transparent;
   }
 
   build() {
@@ -69,6 +66,8 @@ export struct AppChip {
       .backgroundColor(this.getBackgroundColor())
       .borderRadius(RADIUS_SM)
       .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
+      .scale({ x: this.isPressed && !this.disabled ? 0.96 : 1, y: this.isPressed && !this.disabled ? 0.96 : 1 })
+      .animation({ duration: 100, curve: Curve.Friction })
       .opacity(this.disabled ? DISABLED_OPACITY : 1)
       .focusable(!this.disabled)
       .onFocus(() => {
@@ -77,8 +76,14 @@ export struct AppChip {
       .onBlur(() => {
         this.isFocused = false;
       })
-      .onHover((isHover: boolean) => {
-        this.isHovered = isHover;
+      .onTouch((event: TouchEvent) => {
+        if (!this.disabled) {
+          if (event.type === TouchType.Down) {
+            this.isPressed = true;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.isPressed = false;
+          }
+        }
       })
       .onClick(() => {
         if (!this.disabled && this.tapAction) {

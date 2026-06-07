@@ -11,7 +11,7 @@ export struct AppSegmentTabs {
   @Prop tabs: string[] = [];
   @Prop selectedIndex: number = 0;
   @Prop disabled: boolean = false;
-  @State hoveredIndex: number = -1;
+  @State pressedIndex: number = -1;
   @State focusedIndex: number = -1;
   onSelect?: (index: number) => void;
 
@@ -23,16 +23,13 @@ export struct AppSegmentTabs {
     return index === this.focusedIndex;
   }
 
-  private isHovered(index: number): boolean {
-    return index === this.hoveredIndex;
+  private isPressed(index: number): boolean {
+    return index === this.pressedIndex;
   }
 
   private getTabBackgroundColor(index: number): string {
     if (this.isSelected(index)) {
       return this.themeColors.surface;
-    }
-    if (!this.disabled && this.isHovered(index)) {
-      return this.themeColors.surfaceSoft;
     }
     return this.themeColors.transparent;
   }
@@ -57,18 +54,35 @@ export struct AppSegmentTabs {
   build() {
     Row({ space: SPACE_2XS }) {
       ForEach(this.tabs, (tab: string, index: number) => {
-        Row() {
-          Text(tab)
-            .fontSize(TYPE_META)
-            .fontWeight(this.isSelected(index) ? FontWeight.Medium : FontWeight.Normal)
-            .fontColor(this.getTabTextColor(index))
+        Stack() {
+          Row() {
+            Text(tab)
+              .fontSize(TYPE_META)
+              .fontWeight(this.isSelected(index) ? FontWeight.Medium : FontWeight.Normal)
+              .fontColor(this.getTabTextColor(index))
+          }
+          .width('100%')
+          .height('100%')
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(this.getTabBackgroundColor(index))
+          .borderRadius(RADIUS_SM)
+          
+          if (this.isSelected(index)) {
+            Row()
+              .width('100%')
+              .height('100%')
+              .borderRadius(RADIUS_SM)
+              .border({ width: 1, color: this.themeColors.borderHighlight })
+              .hitTestBehavior(HitTestMode.None)
+          }
         }
         .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
         .height(TOUCH_TARGET_SM)
-        .backgroundColor(this.getTabBackgroundColor(index))
-        .borderRadius(RADIUS_SM)
-        .border({ width: BORDER_DEFAULT, color: this.getTabBorderColor(index) })
+        .scale({
+          x: this.isPressed(index) ? 0.96 : 1,
+          y: this.isPressed(index) ? 0.96 : 1
+        })
+        .animation({ duration: 100, curve: Curve.Friction })
         .focusable(!this.disabled)
         .onFocus(() => {
           this.focusedIndex = index;
@@ -78,8 +92,13 @@ export struct AppSegmentTabs {
             this.focusedIndex = -1;
           }
         })
-        .onHover((isHover: boolean) => {
-          this.hoveredIndex = isHover ? index : -1;
+        .onTouch((event: TouchEvent) => {
+          if (this.disabled) return;
+          if (event.type === TouchType.Down) {
+            this.pressedIndex = index;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.pressedIndex = -1;
+          }
         })
         .onClick(() => {
           if (!this.disabled && this.onSelect) {

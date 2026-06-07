@@ -20,7 +20,7 @@ export struct AppTaskRow {
   @Prop embedded: boolean = false;
   @Prop disabled: boolean = false;
   @State isFocused: boolean = false;
-  @State isHovered: boolean = false;
+  @State isPressed: boolean = false;
   onToggle?: () => void;
   onOpen?: () => void;
 
@@ -43,9 +43,6 @@ export struct AppTaskRow {
     if (this.isFocused) {
       return this.themeColors.announcementSurface;
     }
-    if (this.isHovered && (this.isOpenInteractive() || this.isToggleInteractive())) {
-      return this.themeColors.surfaceSoft;
-    }
     return this.embedded ? this.themeColors.transparent : this.themeColors.surfaceSoft;
   }
 
@@ -55,9 +52,6 @@ export struct AppTaskRow {
     }
     if (this.isFocused) {
       return this.themeColors.primaryLight;
-    }
-    if (this.isHovered && (this.isOpenInteractive() || this.isToggleInteractive())) {
-      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }
@@ -105,68 +99,90 @@ export struct AppTaskRow {
   }
 
   build() {
-    Row({ space: SPACE_XS }) {
-      this.CompletionToggle()
+    Stack() {
+      Row({ space: SPACE_XS }) {
+        this.CompletionToggle()
 
-      Column({ space: SPACE_2XS }) {
-        Text(this.title)
-          .fontSize(TYPE_BODY)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textPrimary)
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .width('100%')
-
-        if (this.subtitle.length > 0) {
-          Text(this.subtitle)
-            .fontSize(TYPE_META)
-            .fontColor(this.themeColors.textSecondary)
-            .maxLines(1)
+        Column({ space: SPACE_2XS }) {
+          Text(this.title)
+            .fontSize(TYPE_BODY)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.themeColors.textPrimary)
+            .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .width('100%')
+
+          if (this.subtitle.length > 0) {
+            Text(this.subtitle)
+              .fontSize(TYPE_META)
+              .fontColor(this.themeColors.textSecondary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+          }
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+        .focusable(this.isOpenInteractive())
+        .onFocus(() => {
+          this.isFocused = true;
+        })
+        .onBlur(() => {
+          this.isFocused = false;
+        })
+
+        if (this.trailingText.length > 0) {
+          Row({ space: SPACE_XS }) {
+            if (this.indicatorColor.length > 0) {
+              Circle()
+                .width(SPACE_XS)
+                .height(SPACE_XS)
+                .fill(this.indicatorColor)
+            }
+
+            Text(this.trailingText)
+              .fontSize(TYPE_META)
+              .fontColor(this.getTrailingColor())
+              .maxLines(1)
+          }
+          .alignItems(VerticalAlign.Center)
         }
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-      .focusable(this.isOpenInteractive())
-      .onFocus(() => {
-        this.isFocused = true;
-      })
-      .onBlur(() => {
-        this.isFocused = false;
-      })
-      .onClick(() => {
-        if (this.isOpenInteractive() && this.onOpen) {
-          this.onOpen();
-        }
-      })
-
-      if (this.trailingText.length > 0) {
-        Row({ space: SPACE_XS }) {
-          if (this.indicatorColor.length > 0) {
-            Circle()
-              .width(SPACE_XS)
-              .height(SPACE_XS)
-              .fill(this.indicatorColor)
-          }
-
-          Text(this.trailingText)
-            .fontSize(TYPE_META)
-            .fontColor(this.getTrailingColor())
-            .maxLines(1)
-        }
-        .alignItems(VerticalAlign.Center)
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+      .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_XS, bottom: SPACE_XS })
+      
+      if (!this.embedded) {
+        Row()
+          .width('100%')
+          .height('100%')
+          .borderRadius(RADIUS_LG)
+          .border({ width: 1, color: this.themeColors.borderHighlight })
+          .hitTestBehavior(HitTestMode.None)
       }
     }
     .width('100%')
-    .alignItems(VerticalAlign.Center)
-    .padding({ left: SPACE_SM, right: SPACE_SM, top: SPACE_XS, bottom: SPACE_XS })
     .backgroundColor(this.getBackgroundColor())
     .borderRadius(RADIUS_LG)
     .border({ width: this.embedded && !this.isFocused ? 0 : BORDER_DEFAULT, color: this.getBorderColor() })
     .opacity(this.getOpacity())
-    .onHover((isHover: boolean) => {
-      this.isHovered = isHover;
+    .scale({
+      x: this.isPressed ? 0.98 : 1,
+      y: this.isPressed ? 0.98 : 1
+    })
+    .animation({ duration: 100, curve: Curve.Friction })
+    .onTouch((event: TouchEvent) => {
+      if (!this.isOpenInteractive()) return;
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
+      }
+    })
+    .onClick(() => {
+      if (this.isOpenInteractive() && this.onOpen) {
+        this.onOpen();
+      }
     })
   }
 }

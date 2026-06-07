@@ -6,6 +6,7 @@ import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { AppCard } from '../ui/base/AppCard';
 import { AppChip } from '../ui/base/AppChip';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
+import { AppIcon } from '../ui/base/AppIcon';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { SPACE_2XS, SPACE_LG, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMPACT_PAGE_PADDING } from '../foundation/tokens/PageTierTokens';
@@ -51,19 +52,22 @@ struct ActionTaskCard {
       .width(TASK_RAIL_WIDTH_LG)
       .height(this.railHeight)
 
-      Text(this.task.status === TaskStatus.COMPLETED ? '\u2713' : '')
-        .fontSize(TYPE_META)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.themeColors.success)
-        .textAlign(TextAlign.Center)
-        .width(CHECKBOX_SIZE_SM)
-        .height(CHECKBOX_SIZE_SM)
-        .border({
-          width: 1.5,
-          color: this.task.status === TaskStatus.COMPLETED ? this.themeColors.success : this.themeColors.borderColor
-        })
-        .borderRadius(RADIUS_PILL)
-        .backgroundColor(this.themeColors.surface)
+      Stack({ alignContent: Alignment.Center }) {
+        Row()
+          .width(CHECKBOX_SIZE_SM)
+          .height(CHECKBOX_SIZE_SM)
+          .border({
+            width: 1.5,
+            color: this.task.status === TaskStatus.COMPLETED ? this.themeColors.success : this.themeColors.borderColor
+          })
+          .borderRadius(RADIUS_PILL)
+          .backgroundColor(this.themeColors.surface)
+        if (this.task.status === TaskStatus.COMPLETED) {
+          AppIcon({ name: 'success', iconSize: 12, framed: false, color: this.themeColors.success, useSystemSymbol: false })
+        }
+      }
+      .width(CHECKBOX_SIZE_SM)
+      .height(CHECKBOX_SIZE_SM)
 
         Column({ space: SPACE_2XS }) {
           Text(this.task.title)
@@ -613,19 +617,22 @@ export struct TaskListTab {
 
   @Builder
   private TaskCheckMark(task: Task) {
-    Text(this.isTaskDisplayCompleted(task) ? '\u2713' : '')
-      .fontSize(TYPE_META)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(this.themeColors.success)
-      .textAlign(TextAlign.Center)
+    Stack({ alignContent: Alignment.Center }) {
+      Row()
+        .width(ICON_BUTTON_SIZE_SM)
+        .height(ICON_BUTTON_SIZE_SM)
+        .border({
+          width: 1.5,
+          color: this.isTaskDisplayCompleted(task) ? this.themeColors.success : this.themeColors.borderColor
+        })
+        .borderRadius(RADIUS_PILL)
+        .backgroundColor(this.themeColors.surface)
+      if (this.isTaskDisplayCompleted(task)) {
+        AppIcon({ name: 'success', iconSize: 14, framed: false, color: this.themeColors.success, useSystemSymbol: false })
+      }
+    }
       .width(ICON_BUTTON_SIZE_SM)
       .height(ICON_BUTTON_SIZE_SM)
-      .border({
-        width: 1.5,
-        color: this.isTaskDisplayCompleted(task) ? this.themeColors.success : this.themeColors.borderColor
-      })
-      .borderRadius(RADIUS_PILL)
-      .backgroundColor(this.themeColors.surface)
       .onClick(() => {
         const isCompleting = !this.isTaskDisplayCompleted(task);
         if (isCompleting) {

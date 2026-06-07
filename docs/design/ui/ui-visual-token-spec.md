@@ -1,428 +1,115 @@
-# Chronoisle 视觉 Token 与组件外观规范
-
-更新时间：2026-06-05
-
-适用对象：设计、前端、测试
-
-关联文档：
-
-- [精致效率 UI 风格规范](</docs/design/ui/ui-style-guide-efficiency.md>)
-- [深浅色主题 Token 规范](</docs/design/ui/theme-token-spec.md>)
-- [一级页线框与首屏布局规范](</docs/design/ui/primary-page-wireframes.md>)
-
-## 1. 文档目标
-
-这份文档用于把“精致、清晰、轻科技、效率优先”的风格，进一步落成可执行的视觉 token 和组件外观规则。
-
-它回答三件事：
-
-- 设计稿里哪些尺寸、圆角、边框、字重和层次应该固定。
-- 前端在 ArkUI 中该用哪些统一的视觉参数，而不是页面各自写样式。
-- 测试该如何判断一个页面是“符合新风格”，还是只做了表面换色。
-
-## 2. 总体原则
-
-### 2.1 视觉目标
-
-- 让界面看起来更精密，而不是更用力。
-- 让主操作更明确，而不是更抢眼。
-- 让结构更清楚，而不是堆更多颜色。
-- 让页面像同一个产品，而不是每页各自挑一套颜色说话。
-
-### 2.2 视觉禁忌
-
-统一禁止：
-
-- 大面积高饱和色块
-- 粗描边、粗图标、粗分隔
-- 厚重阴影
-- 过亮的渐变和辉光
-- 过大的胶囊圆角
-- 同屏过多不同色彩的 chip 和 badge
-- 让分类色、功能色、会员色同时争夺主视觉
-
-## 3. 视觉 Token 体系
-
-本规范在 [theme-token-spec.md](</docs/design/ui/theme-token-spec.md>) 的颜色语义基础上，再补 6 组非颜色 token。
-
-### 3.1 Typography Token
-
-| Token | 数值 | 用途 |
-| --- | --- | --- |
-| `font-page-title` | `22` | 页面标题 |
-| `font-hero-title` | `18` | Hero 标题、主模块标题 |
-| `font-section-title` | `16` | 分区标题 |
-| `font-body` | `14` | 列表主文案 |
-| `font-meta` | `12` | 副信息、描述 |
-| `font-micro` | `11` | 标签、辅助说明 |
-| `font-numeric-l` | `28` | 关键统计数字 |
-| `font-numeric-m` | `22` | 普通统计数字 |
-
-规则：
-
-- 页面级大标题只允许 `22` 或 `20`，不要出现 `26+` 的常规标题。
-- 任务、提醒、目标等列表主文案优先使用 `14`。
-- 副信息尽量用 `12`，不要用 `14` 模拟“更清楚”。
-
-### 3.2 Weight Token
-
-| Token | 建议值 | 用途 |
-| --- | --- | --- |
-| `weight-regular` | `400` | 普通描述 |
-| `weight-medium` | `500` | 标准标题、列表主文案 |
-| `weight-semibold` | `600` | Hero 标题、重要数字 |
-| `weight-bold` | `700` | 仅极少数关键数字或主标题 |
-
-规则：
-
-- 不用靠很重的字重造存在感。
-- 大多数标题控制在 `500-600`。
-- 一屏内不要出现太多 `700`。
-
-### 3.3 Spacing Token
-
-| Token | 数值 | 用途 |
-| --- | --- | --- |
-| `space-4` | `4` | 图标与字、短行距 |
-| `space-6` | `6` | 标题与副标题 |
-| `space-8` | `8` | 小组件内部间距 |
-| `space-12` | `12` | 标准卡片内边距 |
-| `space-14` | `14` | 中型卡片内边距 |
-| `space-16` | `16` | 页面左右边距、模块间距 |
-| `space-20` | `20` | 大模块分隔 |
-
-规则：
-
-- 页面左右边距统一 `16`。
-- 模块间距优先 `16`，不要随手写 `24/28/32`。
-- 卡片 padding 默认在 `12-14` 之间。
-
-### 3.4 Radius Token
-
-| Token | 数值 | 用途 |
-| --- | --- | --- |
-| `radius-s` | `10` | chip、输入框、弱面板 |
-| `radius-m` | `14` | 标准卡片 |
-| `radius-l` | `18` | Hero 卡、大卡片 |
-| `radius-xl` | `20` | 底部弹层顶部圆角 |
-| `radius-round` | `999` | 极少数胶囊按钮 |
-
-规则：
-
-- 卡片尽量稳定在 `14-18`。
-- 不要满屏 `20+` 的大圆角。
-- 同页圆角层级不要超过 3 档。
-
-### 3.5 Border Token
-
-| Token | 建议值 | 用途 |
-| --- | --- | --- |
-| `border-subtle` | `0.5-1` | 分隔线、弱边框 |
-| `border-default` | `1` | 卡片、输入框 |
-| `border-active` | `1-1.5` | 选中态、主激活边框 |
-
-规则：
-
-- 所有边框都应偏细。
-- 不允许 `2+` 的大面积卡片描边。
-- 激活态优先提升颜色，不靠加粗边框。
-
-### 3.6 Shadow Token
-
-| Token | 建议值 | 用途 |
-| --- | --- | --- |
-| `shadow-none` | `none` | 普通弱组件 |
-| `shadow-card` | 轻阴影 | 标准卡片 |
-| `shadow-float` | 中轻阴影 | FAB、弹层、极少数悬浮模块 |
-
-规则：
-
-- 阴影只做层次，不做视觉主角。
-- 深色模式阴影强度可以更深，但半径和扩散依然克制。
-
-### 3.7 Icon Stroke Token
-
-| Token | 建议值 | 用途 |
-| --- | --- | --- |
-| `icon-stroke-s` | `1` | 小图标、Tab 图标 |
-| `icon-stroke-m` | `1.25` | 标准功能图标 |
-| `icon-stroke-l` | `1.5` | 少量大图标 |
-
-规则：
-
-- 图标一律优先线性系统。
-- 同页不要混用厚线和细线图标。
-- 激活态靠颜色和细节变化，不靠整体加粗。
-
-## 4. 组件尺寸基线
-
-### 4.1 搜索框
-
-| 项目 | 建议值 |
-| --- | --- |
-| 高度 | `40-44` |
-| 左右 padding | `12-14` |
-| 图标尺寸 | `14-16` |
-| 主提示字号 | `14` |
-| AI badge 高度 | `22-24` |
-
-要求：
-
-- 单行提示
-- 不显示第二行说明
-- 搜索图标、文案、AI badge 同轴对齐
-
-### 4.2 标准列表行
-
-| 项目 | 建议值 |
-| --- | --- |
-| 高度 | `56-68` |
-| 左右 padding | `12-14` |
-| 主标题字号 | `14` |
-| 副信息字号 | `12` |
-| 行内状态尺寸 | `11-12` |
-
-要求：
-
-- 一眼可扫读
-- 不出现三层以上文字堆叠
-- 行内右侧状态尽量单列
-
-### 4.3 提醒卡
-
-| 项目 | 建议值 |
-| --- | --- |
-| 高度 | `76-88` |
-| 宽度 | 小屏下优先 `180-220` |
-| 圆角 | `14` |
-| 标题行数 | 最多 2 行 |
-| 副信息行数 | 1 行 |
-
-要求：
-
-- 用细状态条或弱点色，不用粗边框
-- 不额外加入装饰 emoji
-- 不保留多余底部空白
-
-### 4.4 今日计划卡
-
-| 项目 | 建议值 |
-| --- | --- |
-| 总高度 | `220-280` |
-| 标题字号 | `18` |
-| 说明字号 | `12` |
-| 数字卡高度 | `72-84` |
-| 主按钮高度 | `40-44` |
-
-要求：
-
-- 标签与标题同行
-- 说明文案控制在 50 字内
-- 空态和已采纳态样式要区分
-- 已采纳态优先展示任务列表
-- 焦点感优先来自 `announcementSurface`、主次文字层级和弱主色边界
-- 禁止通过高饱和整底或粗左色条制造“重要”
-
-### 4.5 目标卡
-
-| 项目 | 建议值 |
-| --- | --- |
-| 高度 | `180-220` |
-| 标题字号 | `16` |
-| KR 条数 | `1-3` |
-| 进度条高度 | `4-6` |
-
-要求：
-
-- 标题、进度、今日动作、KR 三层结构清晰
-- 不要只展示装饰性标签
-- 超过 3 张目标卡默认折叠
-- 分类色只用于 badge、进度数值、细强调条
-- 默认卡片边框回归中性，不允许整卡被分类色边框包裹
-
-### 4.6 按钮
-
-| 类型 | 高度 | 圆角 |
-| --- | --- | --- |
-| 主按钮 | `40-44` | `20-22` |
-| 次按钮 | `38-42` | `18-20` |
-| Ghost / 文本按钮 | `32-36` | `16-18` |
-
-要求：
-
-- 文案短，不堆说明
-- 主按钮不做厚重胶囊风
-- 次按钮优先弱边框或弱背景
-- 快速操作按钮优先使用 `primarySubtle` 背景 + `primary` 图标，而不是 4 个实心主按钮并排
-
-### 4.7 Bottom Sheet
-
-| 项目 | 建议值 |
-| --- | --- |
-| 顶部圆角 | `18-20` |
-| 顶部内边距 | `14-16` |
-| 标题字号 | `16-18` |
-| 关闭图标 | `18-20` |
-
-要求：
-
-- 顶部更像工具面板头部
-- 不做大标题海报式 Sheet
-- 选项列表优先信息面板化
-
-## 5. 组件外观模板
-
-### 5.1 SurfaceCard
-
-视觉要求：
-
-- 轻边框
-- 弱阴影
-- 中小圆角
-- 内边距清晰
-- 标题与内容区对齐稳定
-
-适用：
-
-- 标准业务卡
-- 数据摘要卡
-- 功能面板
-
-### 5.2 OutlinePanel
-
-视觉要求：
-
-- 背景弱于标准卡
-- 仅轻边框或轻底色
-- 信息密度比标准卡更高
-
-适用：
-
-- 任务行容器
-- KR 条目
-- 设置项面板
-
-### 5.3 HeroPanel
-
-视觉要求：
-
-- 仍以中性色为主
-- 只在局部使用主色
-- 操作区和信息区分层清楚
-- 不做彩色大底
-- 优先使用“弱强调表面 + 弱边界”，不要用营销式视觉做工作面板
-
-适用：
-
-- 今日计划
-- 会员主卡
-- 当前专注态
-
-### 5.4 StatusChip
-
-视觉要求：
-
-- 小尺寸
-- 字重适中
-- 弱背景 + 强文字
-- 左右 padding 小而稳定
-- 同一屏内状态 chip 数量要克制，避免彩点过多造成噪音
-
-适用：
-
-- 重点、逾期、待办、同步、会员、配额等轻状态
-
-## 6. 一级页组件组合建议
-
-### 6.1 Today
-
-建议组件序列：
-
-- `CompactHeader`
-- `QuickActionRow`
-- `RiskStrip`
-- `TodayPlanHero`
-- `ReminderList`
-- `GoalProgressStack`
-
-### 6.2 行动
-
-建议组件序列：
-
-- `CompactHeader`
-- `SegmentTabs`
-- `FilterChipRow`
-- `CalendarPanel`
-- `ActionListPanel`
-
-### 6.3 日历
-
-建议组件序列：
-
-- `CompactHeader`
-- `CalendarModeSwitch`
-- `CalendarGridPanel`
-- `DayAgendaPanel`
-
-### 6.4 我的
-
-建议组件序列：
-
-- `CompactHeader`
-- `ProfileSummaryCard`
-- `BenefitPanel`
-- `SystemPanelGroup`
-- `DangerActionStrip`
-
-## 7. 前端命名建议
-
-建议在 ArkUI 侧补这一层命名：
-
-- `VisualTokens.ets`
-- `ElevationTokens.ets`
-- `BorderTokens.ets`
-- `IconTokens.ets`
-- `PageDensityTokens.ets`
-
-基础组件建议：
-
-- `AppSearchBar`
-- `AppTaskRow`
-- `AppReminderCard`
-- `AppHeroPanel`
-- `AppGoalCard`
-- `AppPanelSection`
-- `AppSegmentTabs`
-
-## 8. 设计交付要求
-
-设计稿必须标注：
-
-- 字号和字重层级
-- 卡片圆角
-- 边框粗细
-- 阴影使用场景
-- 图标线条风格
-- 组件高度
-- 截断规则
-
-如果设计稿只给颜色，不给尺寸和边框规则，视为未交付完成。
-
-## 9. 测试验收点
-
-以下任一情况视为不通过：
-
-- 图标明显偏粗
-- 卡片边框过重
-- 大面积高亮色块占主视觉
-- 同一类组件在不同页尺寸差异明显
-- Hero 卡看起来像宣传图而不是工作面板
-- 深色模式下弱边框和弱图标发灰不可读
-- 目标页里分类色比主题主色更抢眼
-- 今日页的快捷操作比今日计划更吸睛
-
-最终验收标准不是“像设计稿”，而是：
-
-- 像同一个产品
-- 像精致效率工具
-- 像可以高频使用的主工作界面
+# Chronoisle UI System V2 视觉组件级规范
+
+> 本规范详细定义了具体 UI 组件的视觉构造规则。开发者在封装基础组件时，需完全符合此文档的定义。
+
+## 1. 列表容器与行 (List Container & Row)
+
+在 V2 版本中，列表采取“大白卡容器 + 无界内部行”的设计。
+
+- **大容器 (List Container)**:
+  - 必须使用 `radiusLg` (14vp)。
+  - 具有 `borderLight` 细边框和 `shadowCard`。
+  - **切除溢出**: 必须设置 `clip(true)`，防止内部行在点击时超出圆角。
+  - **取消内部 Padding**: 容器内部不能有统一的 `padding`，直接包裹 `Row`。
+- **列表行 (List Row)**:
+  - 自身 `padding: 12vp 14vp`。
+  - 点击态使用 `Scale(0.98)` + `backgroundColor(surfacePressed)`。
+  - **底部分割线**:
+    - **禁止使用通栏实线**。
+    - 必须使用伪元素/渐变渲染技术，实现左右两端透明淡出 (`LinearGradient`：透明 -> 15% 处实色 -> 85% 处实色 -> 透明)。
+
+## 2. 复选框 (Checkbox)
+
+- 尺寸: `20vp * 20vp`。
+- 圆角: `radiusSm` (6vp)。
+- **未选中态**:
+  - 浅色: 极淡的灰底 (`#F8F9FB`) + 边框 + **微弱内阴影**。
+  - 深色: 极深的黑底 (`#090A0C`) + 边框 + **沉重内阴影**。
+- **选中态**:
+  - 边框变为 `brandPrimary`。
+  - 背景变为 `brandLight` (带透明度，不要用实心主色)。
+
+## 3. 分类标签 (Category Tags)
+
+- 必须保持极简的“淡色底 + 鲜明字”风格。
+- 尺寸: `padding: 2vp 6vp`，圆角 `radiusSm` (4vp)。
+- **浅色模式**:
+  - 背景色透明度: 8%~10%。
+  - 文字色/边框色透明度: 100% / 10%~15%。
+- **深色模式**:
+  - 背景色透明度保持 10%，但文字颜色必须提高亮度 (如原版紫色 `#8B5CF6` 需提亮为 `#A78BFA`)。
+
+## 4. 悬浮 AI 按钮 (AI FAB)
+
+AI 按钮不再是一个巨大的发光球，而是一个深邃、专业的终端入口。
+
+- **尺寸**: `48vp * 48vp`。
+- **形状**: `radius: 20vp` (接近 Squircle 超椭圆)。
+- **浅色模式背景**:
+  - 使用深邃黑渐变: `Linear(135deg, #1C1D24, #2A2C36)`。
+  - 阴影: 强烈的向下投影 `0 6px 16px rgba(0,0,0,0.25)`。
+- **深色模式背景**:
+  - 相同的黑渐变底色。
+  - 阴影: **极强的黑色投影** `0 8px 24px rgba(0,0,0,0.6)` + 白色的 `borderHighlight` 描边。
+- **AI 极光点 (Dot)**:
+  - 位于右上角 (`top: 8vp, right: 8vp`)。
+  - 尺寸 `6vp * 6vp`。
+  - 使用 `aiGradient` 填充，并带有发光阴影 (浅色下光晕弱，深色下光晕极强)。
+
+## 5. 进度环 (Progress Ring)
+
+这是体现“精工质感”的核心组件，必须摒弃原生的纯色边框画法，采用 **环形渐变 (Conic Gradient)**。
+
+- **外环尺寸**: `32vp * 32vp`，`radius: 50%`。
+- **渲染方式**: 必须使用 Conic Gradient。
+  - 浅色示例: `conic-gradient(brandPrimary 65%, #E5E7EB 0)`
+  - 深色示例: `conic-gradient(brandPrimary 65%, #2A2C38 0)`
+- **内环挖空 (Cutout)**: 
+  - 通过覆盖一个白底/黑底的内圆来实现挖空。
+  - 浅色内圆: `#FFFFFF`，带有 `inset 0 1px 2px rgba(0,0,0,0.05)` 内阴影。
+  - 深色内圆: `#1A1B23`，带有 `inset 0 2px 4px rgba(0,0,0,0.5)` 内阴影。
+- **文字**: 等宽字体，字号 `9vp`，居中对齐。
+
+## 7. 开发者核心实现指南 (ArkTS Snippets)
+
+为了降低实现门槛，请直接参考以下代码片段在 ArkTS 中实现复杂视觉效果：
+
+### A. 极速按压动效 (Crisp Animation)
+不再使用复杂的显式动画，而是利用 ArkUI 的状态驱动：
+```typescript
+.scale({ x: this.isPressed ? 0.96 : 1, y: this.isPressed ? 0.96 : 1 })
+.backgroundColor(this.isPressed ? this.themeColors.surfacePressed : this.themeColors.surfaceBase)
+.animation({ duration: 100, curve: Curve.Friction })
+```
+
+### B. 内阴影平替方案 (Inset Shadow Workaround)
+ArkUI 默认的 `shadow` 无法直接写 `inset`。
+**平替方案**：给组件内层覆盖一个透明度极低的 `border`，或者嵌套一个覆盖层。
+```typescript
+// 浅色模式卡片的顶部高光 (伪 Inset)
+.border({ width: { top: 1 }, color: 'rgba(255,255,255,0.8)' })
+
+// 深色模式复选框的沉重内阴影
+Stack() {
+  // 底部黑框
+  Row().width('100%').height('100%').backgroundColor('#090A0C')
+  // 顶部覆盖一层黑色半透明边框模拟内阴影
+  Row().width('100%').height('100%').border({ width: 2, color: 'rgba(0,0,0,0.8)' })
+}
+```
+
+### C. 点阵科技底纹 (Dot-matrix Pattern)
+ArkUI 中可通过平铺极小的背景图，或者使用简单的径向渐变 (`radialGradient`) 矩阵实现。
+最简单的平替方案是使用 `.backgroundImage` 和 `ImageRepeat.XY`：
+```typescript
+.backgroundImage($r('app.media.dot_pattern')) // 一张 20x20 的极淡小圆点透明 PNG
+.backgroundImageSize({ width: 20, height: 20 })
+.backgroundImagePosition(Alignment.TopStart)
+.backgroundImageRepeat(ImageRepeat.XY)
+```
+
+### D. 毛玻璃特效 (Glassmorphism)
+```typescript
+.backgroundColor(this.isDark ? 'rgba(26,27,35,0.85)' : 'rgba(255,255,255,0.9)')
+.backgroundBlurStyle(BlurStyle.Thin) // 或直接使用 .backdropBlur(24)
+```

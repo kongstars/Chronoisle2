@@ -1,5 +1,5 @@
 import { ThemeColors, LightTheme } from '../../theme/AppTheme';
-import { ICON_SIZE_XL, ICON_SYMBOL_DEFAULT_WEIGHT } from '../../foundation/tokens/IconTokens';
+import { ICON_SIZE_XL } from '../../foundation/tokens/IconTokens';
 import {
   AppTone,
   getToneBorderColor,
@@ -9,13 +9,13 @@ import {
 
 export type AppIconName =
   'today' | 'health' | 'growth' | 'finance' | 'joy' | 'goal' | 'task' | 'reminder' | 'focus' | 'calendar' |
-  'habit' | 'milestone' | 'counter' | 'countdown' | 'stats' | 'wallet' | 'archive' | 'help' |
-  'info' | 'ai' | 'plan' | 'progress' | 'action' | 'review' | 'warning' | 'success' | 'note' |
-  'idea' | 'sync' | 'tomato' | 'noise' | 'rain' | 'storm' | 'wind' | 'water' | 'bird' |
-  'power' | 'radio' | 'phone' | 'gear' | 'profile' | 'search' | 'spark' | 'voice' |
-  'edit' | 'delete' | 'share' | 'filter' | 'sort' | 'copy' | 'link' | 'lock' | 'unlock' | 'eye' | 'eye-off' |
-  'star' | 'star-fill' | 'heart' | 'flag' | 'tag' | 'location' | 'time' | 'date' |
-  'chevron-left' | 'chevron-right' | 'chevron-up' | 'chevron-down' | 'plus' | 'minus' | 'close' | 'unknown';
+  'habit' | 'milestone' | 'counter' | 'countdown' | 'stats' | 'wallet' | 'archive' | 'help' | 'info' | 'ai' |
+  'plan' | 'progress' | 'action' | 'review' | 'warning' | 'success' | 'note' | 'idea' | 'sync' | 'tomato' |
+  'noise' | 'rain' | 'storm' | 'wind' | 'water' | 'bird' | 'power' | 'radio' | 'phone' | 'gear' | 'profile' |
+  'search' | 'spark' | 'voice' | 'edit' | 'delete' | 'share' | 'filter' | 'sort' | 'copy' | 'link' | 'lock' |
+  'unlock' | 'eye' | 'eye-off' | 'star' | 'star-fill' | 'heart' | 'flag' | 'tag' | 'location' | 'time' |
+  'date' | 'chevron-left' | 'chevron-right' | 'chevron-up' | 'chevron-down' | 'plus' | 'minus' | 'close' |
+  'unknown';
 
 export function normalizeAppIconName(value: string): AppIconName {
   switch (value) {
@@ -215,7 +215,7 @@ export function getAppIconTone(value: string): AppTone {
     case 'minus':
       return 'primary';
     case 'delete':
-      return 'warning';
+      return 'danger';
     case 'edit':
     case 'share':
     case 'filter':
@@ -252,6 +252,7 @@ export struct AppIcon {
   @Prop framed: boolean = true;
   @Prop muted: boolean = false;
   @Prop useSystemSymbol: boolean = true;
+  @Prop selected: boolean = false;
 
   private getIconName(): AppIconName {
     return normalizeAppIconName(this.name);
@@ -282,682 +283,252 @@ export struct AppIcon {
     return this.framed ? getToneBorderColor(this.themeColors, this.getTone()) + '40' : this.themeColors.transparent;
   }
 
-  private getStroke(): number {
-    return Math.max(1.2, this.iconSize * 0.075);
+  private getTintMatrix(color: string): number[] {
+    const rgba = this.parseColor(color);
+    return [
+      0, 0, 0, 0, rgba[0] / 255,
+      0, 0, 0, 0, rgba[1] / 255,
+      0, 0, 0, 0, rgba[2] / 255,
+      0, 0, 0, 1, 0
+    ];
   }
 
-  private getInnerSize(): number {
-    return this.iconSize * 0.58;
+  private parseColor(color: string): number[] {
+    const value = color.trim();
+    if (value.startsWith('#')) {
+      if (value.length === 7) {
+        return [
+          parseInt(value.slice(1, 3), 16),
+          parseInt(value.slice(3, 5), 16),
+          parseInt(value.slice(5, 7), 16),
+          255
+        ];
+      }
+      if (value.length === 9) {
+        return [
+          parseInt(value.slice(3, 5), 16),
+          parseInt(value.slice(5, 7), 16),
+          parseInt(value.slice(7, 9), 16),
+          parseInt(value.slice(1, 3), 16)
+        ];
+      }
+    }
+
+    const rgbaMatch = value.match(/rgba?\(([^)]+)\)/i);
+    if (rgbaMatch && rgbaMatch[1]) {
+      const parts = rgbaMatch[1].split(',').map((part: string) => part.trim());
+      const red = Number(parts[0] ?? '0');
+      const green = Number(parts[1] ?? '0');
+      const blue = Number(parts[2] ?? '0');
+      const alpha = parts.length > 3 ? Math.round(Number(parts[3]) * 255) : 255;
+      return [red, green, blue, alpha];
+    }
+
+    return [26, 36, 53, 255];
   }
 
-  private getSmallRadius(): number {
-    return Math.max(1, this.iconSize * 0.08);
-  }
-
-  private hasSystemSymbol(iconName: AppIconName): boolean {
-    if (!this.useSystemSymbol) {
+  private usesIntrinsicSelectedAsset(iconName: AppIconName): boolean {
+    if (!this.selected) {
       return false;
     }
     switch (iconName) {
-      case 'success':
-      case 'warning':
-      case 'info':
-      case 'help':
-      case 'goal':
-      case 'task':
-      case 'reminder':
-      case 'focus':
-      case 'calendar':
       case 'today':
-      case 'profile':
-      case 'search':
-      case 'chevron-left':
-      case 'chevron-right':
-      case 'chevron-up':
-      case 'chevron-down':
-      case 'wallet':
-      case 'archive':
-      case 'note':
-      case 'gear':
-      case 'plus':
-      case 'minus':
-      case 'close':
-      case 'habit':
-      case 'milestone':
-      case 'counter':
-      case 'countdown':
-      case 'stats':
-      case 'progress':
-      case 'plan':
       case 'action':
-      case 'review':
-      case 'sync':
-      case 'idea':
-      case 'spark':
-      case 'ai':
-      case 'voice':
-      case 'noise':
-      case 'rain':
-      case 'storm':
-      case 'wind':
-      case 'water':
-      case 'bird':
-      case 'radio':
-      case 'tomato':
-      case 'power':
-      case 'phone':
-      case 'health':
-      case 'growth':
-      case 'finance':
-      case 'joy':
-      case 'edit':
-      case 'delete':
-      case 'share':
-      case 'filter':
-      case 'sort':
-      case 'copy':
-      case 'link':
-      case 'lock':
-      case 'unlock':
-      case 'eye':
-      case 'eye-off':
-      case 'star':
-      case 'star-fill':
-      case 'heart':
-      case 'flag':
-      case 'tag':
-      case 'location':
-      case 'time':
-      case 'date':
+      case 'goal':
+      case 'profile':
         return true;
       default:
         return false;
     }
   }
 
-  private getSystemSymbolResource(iconName: AppIconName): Resource {
+  private getSelectedResource(iconName: AppIconName): Resource {
     switch (iconName) {
-      case 'success':
-        return $r('sys.symbol.checkmark');
-      case 'warning':
-        return $r('sys.symbol.exclamationmark_triangle_fill');
-      case 'info':
-        return $r('sys.symbol.info_circle');
-      case 'help':
-        return $r('sys.symbol.questionmark_circle');
-      case 'goal':
-        return $r('sys.symbol.flag_fill');
-      case 'task':
-        return $r('sys.symbol.list_checkmask');
-      case 'reminder':
-        return $r('sys.symbol.bell_fill');
-      case 'focus':
-        return $r('sys.symbol.timer');
-      case 'calendar':
-        return $r('sys.symbol.calendar');
       case 'today':
-        return $r('sys.symbol.house_fill');
-      case 'profile':
-        return $r('sys.symbol.person_fill');
-      case 'search':
-        return $r('sys.symbol.magnifyingglass');
-      case 'chevron-left':
-        return $r('sys.symbol.chevron_left');
-      case 'chevron-right':
-        return $r('sys.symbol.chevron_right');
-      case 'chevron-up':
-        return $r('sys.symbol.chevron_up');
-      case 'chevron-down':
-        return $r('sys.symbol.chevron_down');
-      case 'wallet':
-        return $r('sys.symbol.creditcard');
-      case 'archive':
-        return $r('sys.symbol.archivebox');
-      case 'note':
-        return $r('sys.symbol.doc_text');
-      case 'gear':
-        return $r('sys.symbol.gearshape');
-      case 'plus':
-        return $r('sys.symbol.plus');
-      case 'minus':
-        return $r('sys.symbol.minus');
-      case 'close':
-        return $r('sys.symbol.xmark');
-      case 'habit':
-      case 'sync':
-        return $r('sys.symbol.arrow_clockwise');
-      case 'milestone':
-        return $r('sys.symbol.star_fill');
-      case 'counter':
-        return $r('sys.symbol.plus_circle');
-      case 'countdown':
-        return $r('sys.symbol.hourglass');
-      case 'stats':
-        return $r('sys.symbol.list_checkmask');
-      case 'progress':
-        return $r('sys.symbol.list_checkmask');
-      case 'plan':
-        return $r('sys.symbol.doc_text');
+        return $r('app.media.app_icon_today_selected');
       case 'action':
-        return $r('sys.symbol.bolt');
-      case 'review':
-        return $r('sys.symbol.eye');
-      case 'idea':
-        return $r('sys.symbol.lightbulb');
-      case 'spark':
-      case 'ai':
-        return $r('sys.symbol.wand_and_stars');
-      case 'voice':
-        return $r('sys.symbol.mic');
-      case 'noise':
-        return $r('sys.symbol.speaker_wave_2');
-      case 'rain':
-        return $r('sys.symbol.cloud');
-      case 'storm':
-        return $r('sys.symbol.cloud');
-      case 'wind':
-        return $r('sys.symbol.wind');
-      case 'water':
-        return $r('sys.symbol.drop');
-      case 'bird':
-        return $r('sys.symbol.mic');
-      case 'radio':
-        return $r('sys.symbol.radio');
-      case 'tomato':
-        return $r('sys.symbol.timer');
-      case 'power':
-        return $r('sys.symbol.power');
-      case 'phone':
-        return $r('sys.symbol.phone');
-      case 'health':
-        return $r('sys.symbol.heart_fill');
-      case 'growth':
-        return $r('sys.symbol.arrow_up_right');
-      case 'finance':
-        return $r('sys.symbol.circle');
-      case 'joy':
-        return $r('sys.symbol.face_smiling');
-      case 'edit':
-        return $r('sys.symbol.square_and_pencil');
-      case 'delete':
-        return $r('sys.symbol.trash');
-      case 'share':
-        return $r('sys.symbol.share');
-      case 'filter':
-        return $r('sys.symbol.list_checkmask');
-      case 'sort':
-        return $r('sys.symbol.chevron_up');
-      case 'copy':
-        return $r('sys.symbol.doc_text');
-      case 'link':
-        return $r('sys.symbol.link');
-      case 'lock':
-        return $r('sys.symbol.lock');
-      case 'unlock':
-        return $r('sys.symbol.lock_open');
-      case 'eye':
-        return $r('sys.symbol.eye');
-      case 'eye-off':
-        return $r('sys.symbol.eye_slash');
-      case 'star':
-        return $r('sys.symbol.star');
-      case 'star-fill':
-        return $r('sys.symbol.star_fill');
-      case 'heart':
-        return $r('sys.symbol.heart');
-      case 'flag':
-        return $r('sys.symbol.flag');
-      case 'tag':
-        return $r('sys.symbol.bookmark');
-      case 'location':
-        return $r('sys.symbol.flag');
-      case 'time':
-        return $r('sys.symbol.clock');
-      case 'date':
-        return $r('sys.symbol.calendar');
+        return $r('app.media.app_icon_action_selected');
+      case 'goal':
+        return $r('app.media.app_icon_goal_selected');
+      case 'profile':
+        return $r('app.media.app_icon_profile_selected');
       default:
-        return $r('sys.symbol.checkmark');
+        return this.getDefaultResource(iconName);
     }
   }
 
-  @Builder
-  private Bar(width: number, height: number, color: string) {
-    Row()
-      .width(width)
-      .height(height)
-      .backgroundColor(color)
-      .borderRadius(height / 2)
-  }
-
-  @Builder
-  private RotatedBar(width: number, height: number, color: string, angle: number, x: number, y: number) {
-    Row()
-      .width(width)
-      .height(height)
-      .backgroundColor(color)
-      .borderRadius(height / 2)
-      .rotate({ angle: angle })
-      .position({ x: x, y: y })
-  }
-
-  @Builder
-  private CenterRotatedBar(width: number, height: number, color: string, angle: number) {
-    Row()
-      .width(width)
-      .height(height)
-      .backgroundColor(color)
-      .borderRadius(height / 2)
-      .rotate({ angle: angle })
-  }
-
-  @Builder
-  private BarsMark(color: string) {
-    Row({ space: this.iconSize * 0.08 }) {
-      this.Bar(this.iconSize * 0.11, this.iconSize * 0.32, color)
-      this.Bar(this.iconSize * 0.11, this.iconSize * 0.46, color)
-      this.Bar(this.iconSize * 0.11, this.iconSize * 0.24, color)
-    }
-    .alignItems(VerticalAlign.Bottom)
-    .height(this.getInnerSize())
-  }
-
-  @Builder
-  private BoxMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.getInnerSize())
-        .height(this.iconSize * 0.42)
-        .borderRadius(this.getSmallRadius())
-        .border({ width: this.getStroke(), color: color })
-
-      Column({ space: this.iconSize * 0.07 }) {
-        this.Bar(this.iconSize * 0.34, this.getStroke(), color)
-        this.Bar(this.iconSize * 0.22, this.getStroke(), color)
-      }
-    }
-  }
-
-  @Builder
-  private TargetMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.getInnerSize())
-        .height(this.getInnerSize())
-        .borderRadius(this.getInnerSize() / 2)
-        .border({ width: this.getStroke(), color: color })
-      Row()
-        .width(this.iconSize * 0.18)
-        .height(this.iconSize * 0.18)
-        .borderRadius(this.iconSize * 0.09)
-        .backgroundColor(color)
-    }
-  }
-
-  @Builder
-  private CheckMark(color: string) {
-    Stack() {
-      this.RotatedBar(this.iconSize * 0.22, this.getStroke() * 1.35, color, 45, this.iconSize * 0.26,
-        this.iconSize * 0.53)
-      this.RotatedBar(this.iconSize * 0.48, this.getStroke() * 1.35, color, -45, this.iconSize * 0.38,
-        this.iconSize * 0.44)
-    }
-    .width(this.iconSize)
-    .height(this.iconSize)
-  }
-
-  @Builder
-  private PlusMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      this.Bar(this.iconSize * 0.44, this.getStroke() * 1.25, color)
-      this.Bar(this.getStroke() * 1.25, this.iconSize * 0.44, color)
-    }
-  }
-
-  @Builder
-  private CloseMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      this.CenterRotatedBar(this.iconSize * 0.48, this.getStroke() * 1.25, color, 45)
-      this.CenterRotatedBar(this.iconSize * 0.48, this.getStroke() * 1.25, color, -45)
-    }
-  }
-
-  @Builder
-  private WaveMark(color: string) {
-    Column({ space: this.iconSize * 0.08 }) {
-      this.Bar(this.iconSize * 0.46, this.getStroke(), color)
-      this.Bar(this.iconSize * 0.34, this.getStroke(), color)
-      this.Bar(this.iconSize * 0.42, this.getStroke(), color)
-    }
-    .alignItems(HorizontalAlign.Center)
-  }
-
-  @Builder
-  private AlertMark(color: string) {
-    Column({ space: this.iconSize * 0.08 }) {
-      this.Bar(this.getStroke() * 1.35, this.iconSize * 0.32, color)
-      this.Bar(this.getStroke() * 1.35, this.getStroke() * 1.35, color)
-    }
-    .alignItems(HorizontalAlign.Center)
-  }
-
-  @Builder
-  private InfoMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.getInnerSize())
-        .height(this.getInnerSize())
-        .borderRadius(this.getInnerSize() / 2)
-        .border({ width: this.getStroke(), color: color })
-      Column({ space: this.iconSize * 0.07 }) {
-        this.Bar(this.getStroke() * 1.25, this.getStroke() * 1.25, color)
-        this.Bar(this.getStroke() * 1.25, this.iconSize * 0.24, color)
-      }
-      .alignItems(HorizontalAlign.Center)
-    }
-  }
-
-  @Builder
-  private HelpMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.getInnerSize())
-        .height(this.getInnerSize())
-        .borderRadius(this.getInnerSize() / 2)
-        .border({ width: this.getStroke(), color: color })
-      Row()
-        .width(this.iconSize * 0.24)
-        .height(this.getStroke() * 1.2)
-        .backgroundColor(color)
-        .borderRadius(this.getStroke())
-        .rotate({ angle: -24 })
-        .margin({ bottom: this.iconSize * 0.14 })
-      Row()
-        .width(this.getStroke() * 1.25)
-        .height(this.getStroke() * 1.25)
-        .borderRadius(this.getStroke())
-        .backgroundColor(color)
-        .margin({ top: this.iconSize * 0.34 })
+  private getDefaultResource(iconName: AppIconName): Resource {
+    switch (iconName) {
+      case 'today':
+        return $r('app.media.app_icon_today');
+      case 'health':
+        return $r('app.media.app_icon_health');
+      case 'growth':
+        return $r('app.media.app_icon_growth');
+      case 'finance':
+        return $r('app.media.app_icon_finance');
+      case 'joy':
+        return $r('app.media.app_icon_joy');
+      case 'goal':
+        return $r('app.media.app_icon_goal');
+      case 'task':
+        return $r('app.media.app_icon_task');
+      case 'reminder':
+        return $r('app.media.app_icon_reminder');
+      case 'focus':
+        return $r('app.media.app_icon_focus');
+      case 'calendar':
+        return $r('app.media.app_icon_calendar');
+      case 'habit':
+        return $r('app.media.app_icon_habit');
+      case 'milestone':
+        return $r('app.media.app_icon_milestone');
+      case 'counter':
+        return $r('app.media.app_icon_counter');
+      case 'countdown':
+        return $r('app.media.app_icon_countdown');
+      case 'stats':
+        return $r('app.media.app_icon_stats');
+      case 'wallet':
+        return $r('app.media.app_icon_wallet');
+      case 'archive':
+        return $r('app.media.app_icon_archive');
+      case 'help':
+        return $r('app.media.app_icon_help');
+      case 'info':
+        return $r('app.media.app_icon_info');
+      case 'ai':
+        return $r('app.media.app_icon_ai');
+      case 'plan':
+        return $r('app.media.app_icon_plan');
+      case 'progress':
+        return $r('app.media.app_icon_progress');
+      case 'action':
+        return $r('app.media.app_icon_action');
+      case 'review':
+        return $r('app.media.app_icon_review');
+      case 'warning':
+        return $r('app.media.app_icon_warning');
+      case 'success':
+        return $r('app.media.app_icon_success');
+      case 'note':
+        return $r('app.media.app_icon_note');
+      case 'idea':
+        return $r('app.media.app_icon_idea');
+      case 'sync':
+        return $r('app.media.app_icon_sync');
+      case 'tomato':
+        return $r('app.media.app_icon_tomato');
+      case 'noise':
+        return $r('app.media.app_icon_noise');
+      case 'rain':
+        return $r('app.media.app_icon_rain');
+      case 'storm':
+        return $r('app.media.app_icon_storm');
+      case 'wind':
+        return $r('app.media.app_icon_wind');
+      case 'water':
+        return $r('app.media.app_icon_water');
+      case 'bird':
+        return $r('app.media.app_icon_bird');
+      case 'power':
+        return $r('app.media.app_icon_power');
+      case 'radio':
+        return $r('app.media.app_icon_radio');
+      case 'phone':
+        return $r('app.media.app_icon_phone');
+      case 'gear':
+        return $r('app.media.app_icon_gear');
+      case 'profile':
+        return $r('app.media.app_icon_profile');
+      case 'search':
+        return $r('app.media.app_icon_search');
+      case 'spark':
+        return $r('app.media.app_icon_spark');
+      case 'voice':
+        return $r('app.media.app_icon_voice');
+      case 'edit':
+        return $r('app.media.app_icon_edit');
+      case 'delete':
+        return $r('app.media.app_icon_delete');
+      case 'share':
+        return $r('app.media.app_icon_share');
+      case 'filter':
+        return $r('app.media.app_icon_filter');
+      case 'sort':
+        return $r('app.media.app_icon_sort');
+      case 'copy':
+        return $r('app.media.app_icon_copy');
+      case 'link':
+        return $r('app.media.app_icon_link');
+      case 'lock':
+        return $r('app.media.app_icon_lock');
+      case 'unlock':
+        return $r('app.media.app_icon_unlock');
+      case 'eye':
+        return $r('app.media.app_icon_eye');
+      case 'eye-off':
+        return $r('app.media.app_icon_eye_off');
+      case 'star':
+        return $r('app.media.app_icon_star');
+      case 'star-fill':
+        return $r('app.media.app_icon_star_fill');
+      case 'heart':
+        return $r('app.media.app_icon_heart');
+      case 'flag':
+        return $r('app.media.app_icon_flag');
+      case 'tag':
+        return $r('app.media.app_icon_tag');
+      case 'location':
+        return $r('app.media.app_icon_location');
+      case 'time':
+        return $r('app.media.app_icon_time');
+      case 'date':
+        return $r('app.media.app_icon_date');
+      case 'chevron-left':
+        return $r('app.media.app_icon_chevron_left');
+      case 'chevron-right':
+        return $r('app.media.app_icon_chevron_right');
+      case 'chevron-up':
+        return $r('app.media.app_icon_chevron_up');
+      case 'chevron-down':
+        return $r('app.media.app_icon_chevron_down');
+      case 'plus':
+        return $r('app.media.app_icon_plus');
+      case 'minus':
+        return $r('app.media.app_icon_minus');
+      case 'close':
+        return $r('app.media.app_icon_close');
+      case 'unknown':
+        return $r('app.media.app_icon_unknown');
+      default:
+        return $r('app.media.app_icon_unknown');
     }
   }
 
-  @Builder
-  private AiMark(color: string) {
-    Stack() {
-      Row()
-        .width(this.iconSize * 0.16)
-        .height(this.iconSize * 0.16)
-        .borderRadius(this.iconSize * 0.04)
-        .backgroundColor(color)
-        .position({ x: this.iconSize * 0.25, y: this.iconSize * 0.24 })
-      Row()
-        .width(this.iconSize * 0.22)
-        .height(this.iconSize * 0.22)
-        .borderRadius(this.iconSize * 0.06)
-        .border({ width: this.getStroke(), color: color })
-        .position({ x: this.iconSize * 0.46, y: this.iconSize * 0.20 })
-      Row()
-        .width(this.iconSize * 0.22)
-        .height(this.iconSize * 0.22)
-        .borderRadius(this.iconSize * 0.06)
-        .border({ width: this.getStroke(), color: color })
-        .position({ x: this.iconSize * 0.26, y: this.iconSize * 0.52 })
-      Row()
-        .width(this.iconSize * 0.16)
-        .height(this.iconSize * 0.16)
-        .borderRadius(this.iconSize * 0.04)
-        .backgroundColor(color)
-        .position({ x: this.iconSize * 0.58, y: this.iconSize * 0.58 })
-    }
-    .width(this.iconSize)
-    .height(this.iconSize)
+  private getResource(iconName: AppIconName): Resource {
+    return this.usesIntrinsicSelectedAsset(iconName) ? this.getSelectedResource(iconName) : this.getDefaultResource(iconName);
   }
 
   @Builder
-  private PowerMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.getInnerSize())
-        .height(this.getInnerSize())
-        .borderRadius(this.getInnerSize() / 2)
-        .border({ width: this.getStroke(), color: color })
-      Row()
-        .width(this.getStroke() * 1.3)
-        .height(this.iconSize * 0.32)
-        .borderRadius(this.getStroke())
-        .backgroundColor(color)
-        .margin({ bottom: this.iconSize * 0.28 })
-    }
-  }
-
-  @Builder
-  private PhoneMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.iconSize * 0.38)
-        .height(this.iconSize * 0.58)
-        .borderRadius(this.iconSize * 0.08)
-        .border({ width: this.getStroke(), color: color })
-      Row()
-        .width(this.iconSize * 0.12)
-        .height(this.getStroke())
-        .borderRadius(this.getStroke() / 2)
-        .backgroundColor(color)
-        .margin({ top: this.iconSize * 0.38 })
-    }
-  }
-
-  @Builder
-  private ProfileMark(color: string) {
-    Stack({ alignContent: Alignment.Center }) {
-      Row()
-        .width(this.iconSize * 0.22)
-        .height(this.iconSize * 0.22)
-        .borderRadius(this.iconSize * 0.11)
-        .border({ width: this.getStroke(), color: color })
-        .position({ x: this.iconSize * 0.39, y: this.iconSize * 0.26 })
-      Row()
-        .width(this.iconSize * 0.42)
-        .height(this.iconSize * 0.20)
-        .borderRadius(this.iconSize * 0.10)
-        .border({ width: this.getStroke(), color: color })
-        .position({ x: this.iconSize * 0.29, y: this.iconSize * 0.54 })
-    }
-    .width(this.iconSize)
-    .height(this.iconSize)
-  }
-
-  @Builder
-  private SystemSymbolMark(resource: Resource, color: string) {
-    Row() {
-      SymbolGlyph(resource)
-        .fontSize(this.iconSize * 0.78)
-        .fontColor([color])
-        .fontWeight(ICON_SYMBOL_DEFAULT_WEIGHT)
-        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-    }
-    .width(this.iconSize)
-    .height(this.iconSize)
-    .justifyContent(FlexAlign.Center)
-    .alignItems(VerticalAlign.Center)
-  }
-
-  @Builder
-  private ChevronMark(direction: 'left' | 'right', color: string) {
-    Stack() {
-      Row()
-        .width(this.iconSize * 0.42)
-        .height(this.getStroke() * 1.45)
-        .backgroundColor(color)
-        .borderRadius(this.getStroke())
-        .rotate({ angle: direction === 'left' ? -42 : 42 })
-        .position({
-          x: this.iconSize * (direction === 'left' ? 0.22 : 0.36),
-          y: this.iconSize * 0.32
-        })
-
-      Row()
-        .width(this.iconSize * 0.42)
-        .height(this.getStroke() * 1.45)
-        .backgroundColor(color)
-        .borderRadius(this.getStroke())
-        .rotate({ angle: direction === 'left' ? 42 : -42 })
-        .position({
-          x: this.iconSize * (direction === 'left' ? 0.22 : 0.36),
-          y: this.iconSize * 0.52
-        })
-    }
-    .width(this.iconSize)
-    .height(this.iconSize)
-  }
-
-  @Builder
-  private ChevronVerticalMark(direction: 'up' | 'down', color: string) {
-    Stack() {
-      Row()
-        .width(this.iconSize * 0.42)
-        .height(this.getStroke() * 1.45)
-        .backgroundColor(color)
-        .borderRadius(this.getStroke())
-        .rotate({ angle: direction === 'up' ? -42 : 42 })
-        .position({
-          x: this.iconSize * 0.24,
-          y: this.iconSize * (direction === 'up' ? 0.40 : 0.48)
-        })
-
-      Row()
-        .width(this.iconSize * 0.42)
-        .height(this.getStroke() * 1.45)
-        .backgroundColor(color)
-        .borderRadius(this.getStroke())
-        .rotate({ angle: direction === 'up' ? 42 : -42 })
-        .position({
-          x: this.iconSize * 0.44,
-          y: this.iconSize * (direction === 'up' ? 0.40 : 0.48)
-        })
-    }
-    .width(this.iconSize)
-    .height(this.iconSize)
-  }
-
-  @Builder
-  private IconMark(iconName: AppIconName, color: string) {
-    if (this.hasSystemSymbol(iconName)) {
-      this.SystemSymbolMark(this.getSystemSymbolResource(iconName), color)
-    } else if (iconName === 'health') {
-      this.PlusMark(color)
-    } else if (iconName === 'plus') {
-      this.PlusMark(color)
-    } else if (iconName === 'minus') {
-      this.Bar(this.iconSize * 0.44, this.getStroke() * 1.25, color)
-    } else if (iconName === 'close') {
-      this.CloseMark(color)
-    } else if (iconName === 'growth') {
-      this.BarsMark(color)
-    } else if (iconName === 'finance' || iconName === 'wallet') {
-      Stack({ alignContent: Alignment.Center }) {
-        Row()
-          .width(this.getInnerSize())
-          .height(this.getInnerSize())
-          .borderRadius(this.getInnerSize() / 2)
-          .border({ width: this.getStroke(), color: color })
-        this.Bar(this.iconSize * 0.28, this.getStroke(), color)
-      }
-    } else if (iconName === 'goal' || iconName === 'focus') {
-      this.TargetMark(color)
-    } else if (iconName === 'task' || iconName === 'success') {
-      this.CheckMark(color)
-    } else if (iconName === 'habit') {
-      this.CheckMark(color)
-    } else if (iconName === 'reminder' || iconName === 'calendar' || iconName === 'today' || iconName === 'countdown') {
-      this.BoxMark(color)
-    } else if (iconName === 'stats' || iconName === 'progress') {
-      this.BarsMark(color)
-    } else if (iconName === 'archive') {
-      Stack({ alignContent: Alignment.Center }) {
-        Row()
-          .width(this.getInnerSize())
-          .height(this.iconSize * 0.36)
-          .borderRadius(this.getSmallRadius())
-          .border({ width: this.getStroke(), color: color })
-        Row()
-          .width(this.iconSize * 0.22)
-          .height(this.getStroke() * 1.4)
-          .backgroundColor(color)
-          .borderRadius(this.getStroke())
-          .margin({ bottom: this.iconSize * 0.28, right: this.iconSize * 0.2 })
-      }
-    } else if (iconName === 'note' || iconName === 'plan' || iconName === 'action') {
-      this.BoxMark(color)
-    } else if (iconName === 'warning') {
-      this.AlertMark(color)
-    } else if (iconName === 'help') {
-      this.HelpMark(color)
-    } else if (iconName === 'info') {
-      this.InfoMark(color)
-    } else if (iconName === 'ai') {
-      this.AiMark(color)
-    } else if (iconName === 'idea' || iconName === 'joy' || iconName === 'spark' || iconName === 'milestone') {
-      Stack({ alignContent: Alignment.Center }) {
-        this.Bar(this.iconSize * 0.42, this.getStroke(), color)
-        this.Bar(this.getStroke(), this.iconSize * 0.42, color)
-        Row()
-          .width(this.iconSize * 0.12)
-          .height(this.iconSize * 0.12)
-          .borderRadius(this.iconSize * 0.06)
-          .backgroundColor(color)
-          .margin({ left: this.iconSize * 0.32, bottom: this.iconSize * 0.32 })
-      }
-    } else if (iconName === 'tomato') {
-      Stack({ alignContent: Alignment.Center }) {
-        Row()
-          .width(this.getInnerSize())
-          .height(this.getInnerSize())
-          .borderRadius(this.getInnerSize() / 2)
-          .border({ width: this.getStroke(), color: color })
-        Row()
-          .width(this.iconSize * 0.18)
-          .height(this.getStroke())
-          .backgroundColor(color)
-          .borderRadius(this.getStroke() / 2)
-          .margin({ bottom: this.iconSize * 0.42 })
-      }
-    } else if (iconName === 'noise' || iconName === 'rain' || iconName === 'storm' || iconName === 'wind' ||
-      iconName === 'water' || iconName === 'bird' || iconName === 'radio') {
-      this.WaveMark(color)
-    } else if (iconName === 'power') {
-      this.PowerMark(color)
-    } else if (iconName === 'phone') {
-      this.PhoneMark(color)
-    } else if (iconName === 'gear') {
-      this.TargetMark(color)
-    } else if (iconName === 'profile') {
-      this.ProfileMark(color)
-    } else if (iconName === 'search') {
-      this.TargetMark(color)
-    } else if (iconName === 'counter') {
-      Stack({ alignContent: Alignment.Center }) {
-        Row()
-          .width(this.getInnerSize())
-          .height(this.getInnerSize())
-          .borderRadius(this.getInnerSize() / 2)
-          .border({ width: this.getStroke(), color: color })
-        this.Bar(this.iconSize * 0.34, this.getStroke(), color)
-        this.Bar(this.getStroke(), this.iconSize * 0.34, color)
-      }
-    } else if (iconName === 'chevron-left') {
-      this.ChevronMark('left', color)
-    } else if (iconName === 'chevron-right') {
-      this.ChevronMark('right', color)
-    } else if (iconName === 'chevron-up') {
-      this.ChevronVerticalMark('up', color)
-    } else if (iconName === 'chevron-down') {
-      this.ChevronVerticalMark('down', color)
+  private IconImage(iconName: AppIconName, color: string) {
+    if (this.usesIntrinsicSelectedAsset(iconName)) {
+      Image(this.getResource(iconName))
+        .width(this.iconSize)
+        .height(this.iconSize)
+        .objectFit(ImageFit.Contain)
+        .interpolation(ImageInterpolation.High)
+        .draggable(false)
+        .syncLoad(true)
     } else {
-      Row()
-        .width(this.iconSize * 0.22)
-        .height(this.iconSize * 0.22)
-        .borderRadius(this.iconSize * 0.11)
-        .backgroundColor(color)
+      Image(this.getResource(iconName))
+        .width(this.iconSize)
+        .height(this.iconSize)
+        .objectFit(ImageFit.Contain)
+        .interpolation(ImageInterpolation.High)
+        .draggable(false)
+        .syncLoad(true)
+        .colorFilter(this.getTintMatrix(color))
     }
   }
 
@@ -969,7 +540,7 @@ export struct AppIcon {
         .backgroundColor(this.getSurfaceColor())
         .borderRadius(this.iconSize * 0.32)
         .border({ width: this.framed ? 1 : 0, color: this.getBorderColor() })
-      this.IconMark(this.getIconName(), this.getMarkColor())
+      this.IconImage(this.getIconName(), this.getMarkColor())
     }
     .width(this.iconSize)
     .height(this.iconSize)

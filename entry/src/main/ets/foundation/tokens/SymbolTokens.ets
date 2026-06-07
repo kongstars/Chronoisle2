@@ -20,11 +20,11 @@ export const HARMONY_SYMBOL_RENDER_MULTIPLE_OPACITY: number = 2;
 export const HARMONY_SYMBOL_MAPPINGS: HarmonySymbolMapping[] = [
   {
     name: 'today',
-    semantic: 'home/today/calendar',
-    symbol: 'sys.symbol.house',
+    semantic: 'today/calendar/day',
+    symbol: 'sys.symbol.calendar',
     status: 'ready',
-    fallback: 'media-resource',
-    note: 'verified from HarmonyOS Symbol runtime resources; bottom navigation uses AppIcon system symbol'
+    fallback: 'app-vector',
+    note: 'runtime now prefers AppIcon custom calendar mark for bottom navigation and large brand usage'
   },
   {
     name: 'task',
@@ -44,11 +44,11 @@ export const HARMONY_SYMBOL_MAPPINGS: HarmonySymbolMapping[] = [
   },
   {
     name: 'goal',
-    semantic: 'target/flag/progress',
-    symbol: 'sys.symbol.flag',
+    semantic: 'target/goal/focus',
+    symbol: 'sys.symbol.flag_fill',
     status: 'ready',
     fallback: 'app-vector',
-    note: 'verified from HarmonyOS Symbol runtime resources; uses flag to avoid overly decorative target marks'
+    note: 'runtime now prefers AppIcon custom target mark; filled flag remains only as system fallback reference'
   },
   {
     name: 'reminder',
@@ -69,18 +69,18 @@ export const HARMONY_SYMBOL_MAPPINGS: HarmonySymbolMapping[] = [
   {
     name: 'ai',
     semantic: 'spark/intelligence',
-    symbol: 'sys.symbol.sparkles',
+    symbol: 'sys.symbol.wand_and_stars',
     status: 'candidate',
-    fallback: 'text-mark',
-    note: 'AI mark should stay restrained and not become a marketing badge'
+    fallback: 'app-vector',
+    note: 'aligned with AppIcon runtime; AI mark stays restrained and is not treated as a marketing badge'
   },
   {
     name: 'profile',
     semantic: 'person/account',
-    symbol: 'sys.symbol.person',
+    symbol: 'sys.symbol.person_fill',
     status: 'ready',
-    fallback: 'text-mark',
-    note: 'verified from HarmonyOS Symbol runtime resources; used by bottom navigation'
+    fallback: 'app-vector',
+    note: 'runtime now prefers AppIcon custom profile mark for bottom navigation and avatar placeholders'
   },
   {
     name: 'search',
@@ -148,19 +148,19 @@ export const HARMONY_SYMBOL_MAPPINGS: HarmonySymbolMapping[] = [
   },
   {
     name: 'progress',
-    semantic: 'chart/bar/progress',
+    semantic: 'progress/ring/trend',
     symbol: 'sys.symbol.chart_bar',
-    status: 'candidate',
+    status: 'deferred',
     fallback: 'app-vector',
-    note: 'candidate; verify on device; fallback is geometric BarMark'
+    note: 'runtime currently uses AppIcon custom progress mark; chart bar remains a future system-symbol candidate'
   },
   {
     name: 'stats',
-    semantic: 'chart/pie/analytics',
+    semantic: 'stats/analytics/bar',
     symbol: 'sys.symbol.chart_pie',
-    status: 'candidate',
+    status: 'deferred',
     fallback: 'app-vector',
-    note: 'candidate; verify on device; fallback is geometric BoxMark variant'
+    note: 'runtime currently uses AppIcon custom bar mark for clearer small-size analytics readability'
   },
   {
     name: 'wallet',
@@ -181,10 +181,10 @@ export const HARMONY_SYMBOL_MAPPINGS: HarmonySymbolMapping[] = [
   {
     name: 'plan',
     semantic: 'clipboard/list/plan',
-    symbol: 'sys.symbol.list_clipboard',
+    symbol: 'sys.symbol.doc_text',
     status: 'candidate',
     fallback: 'app-vector',
-    note: 'candidate; verify on device; used in planning and task selection'
+    note: 'aligned with AppIcon runtime; document glyph currently reads more clearly than clipboard at small sizes'
   },
   {
     name: 'note',
@@ -205,10 +205,10 @@ export const HARMONY_SYMBOL_MAPPINGS: HarmonySymbolMapping[] = [
   {
     name: 'sync',
     semantic: 'sync/refresh/cloud',
-    symbol: 'sys.symbol.arrow_triangle_2_circlepath',
+    symbol: 'sys.symbol.arrow_clockwise',
     status: 'candidate',
     fallback: 'app-vector',
-    note: 'candidate; verify on device; used in cloud sync status indicators'
+    note: 'aligned with AppIcon runtime; clockwise refresh mark is the active system fallback'
   },
   {
     name: 'plus',

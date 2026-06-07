@@ -30,6 +30,7 @@
     "pages/TermsOfServicePage",
     "pages/CreditTransactionsPage",
     "pages/ReschedulePage",
+    "pages/GoalReschedulePage",
     "pages/TodayPlanPage",
     "pages/StatsHubPage",
     "pages/TaskSelectPage",

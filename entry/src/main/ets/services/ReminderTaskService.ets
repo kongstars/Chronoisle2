@@ -100,6 +100,22 @@ function getPendingReminderTasks(tasks: Task[], eventId: string): Task[] {
     });
 }
 
+function buildPlanFromPendingTask(task: Task): ReminderTaskPlan | null {
+  if (task.reminderOccurrenceTime === undefined) {
+    return null;
+  }
+
+  const summary = (task.description || '').startsWith('来自提醒：')
+    ? (task.description || '').substring('来自提醒：'.length)
+    : (task.reminderTitle || formatDayEventDate(task.reminderOccurrenceTime));
+
+  return {
+    occurrenceTime: task.reminderOccurrenceTime,
+    dueDate: task.dueDate || task.reminderOccurrenceTime,
+    summary
+  };
+}
+
 function hasCompletedAutoOccurrence(tasks: Task[], eventId: string, occurrenceTime: number): boolean {
   return tasks.some((task: Task) => {
     return task.reminderId === eventId &&
@@ -293,6 +309,12 @@ function getCountTargetPlan(event: DayEvent, rule: ReminderRule, tasks: Task[], 
 export function planNextReminderTask(event: DayEvent, tasks: Task[], referenceTime: number = Date.now()): ReminderTaskPlan | null {
   if (!event.isEnabled || event.isCompleted) {
     return null;
+  }
+
+  // 如果上一条自动生成任务还未完成，直接沿用它，避免继续派生同源新任务造成重复积压。
+  const pendingTaskPlan = buildPlanFromPendingTask(getPendingReminderTasks(tasks, event.id)[0]);
+  if (pendingTaskPlan) {
+    return pendingTaskPlan;
   }
 
   const countRule = event.reminderRules.find((rule: ReminderRule) => {

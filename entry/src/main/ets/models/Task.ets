@@ -175,7 +175,7 @@ export class Task {
     task.dueDate = json.dueDate;
     task.dueTime = json.dueTime;
     task.priority = json.priority || TaskPriority.NORMAL; // 兼容旧数据
-    task.status = json.status;
+    task.status = json.status === TaskStatus.COMPLETED ? TaskStatus.COMPLETED : TaskStatus.PENDING;
     task.createdAt = json.createdAt;
     task.completedAt = json.completedAt;
     task.updatedAt = json.updatedAt;

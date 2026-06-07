@@ -19,7 +19,7 @@ export struct AppGoalCard {
   @Prop surfaceColor: string = '';
   @Prop disabled: boolean = false;
   @State isFocused: boolean = false;
-  @State isHovered: boolean = false;
+  @State isPressed: boolean = false;
   tapAction?: () => void;
 
   private isInteractive(): boolean {
@@ -46,9 +46,6 @@ export struct AppGoalCard {
     if (this.disabled) {
       return this.themeColors.surfaceSoft;
     }
-    if (this.isHovered && this.isInteractive() && this.surfaceColor.length <= 0) {
-      return this.themeColors.surfaceRaised;
-    }
     return this.getSurfaceColor();
   }
 
@@ -58,9 +55,6 @@ export struct AppGoalCard {
     }
     if (this.isFocused) {
       return this.themeColors.primaryLight;
-    }
-    if (this.isHovered && this.isInteractive()) {
-      return this.themeColors.divider;
     }
     return this.themeColors.borderColor;
   }
@@ -172,6 +166,11 @@ export struct AppGoalCard {
     .borderRadius(RADIUS_LG)
     .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })
     .opacity(this.disabled ? DISABLED_OPACITY : 1)
+    .scale({
+      x: this.isPressed ? 0.98 : 1,
+      y: this.isPressed ? 0.98 : 1
+    })
+    .animation({ duration: 100, curve: Curve.Friction })
     .focusable(this.isInteractive())
     .onFocus(() => {
       this.isFocused = true;
@@ -179,8 +178,13 @@ export struct AppGoalCard {
     .onBlur(() => {
       this.isFocused = false;
     })
-    .onHover((isHover: boolean) => {
-      this.isHovered = isHover;
+    .onTouch((event: TouchEvent) => {
+      if (!this.isInteractive()) return;
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
+      }
     })
     .onClick(() => {
       if (this.isInteractive() && this.tapAction) {

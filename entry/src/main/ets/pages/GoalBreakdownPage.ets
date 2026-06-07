@@ -15,7 +15,7 @@ import {
 import { RADIUS_LG, RADIUS_MD } from '../foundation/tokens/RadiusTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_MICRO, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { BOTTOM_CONTENT_SPACER, BUTTON_HEIGHT_MD, CHECKBOX_SIZE_LG, CHECKBOX_SIZE_SM, ICON_BUTTON_SIZE_MD } from '../foundation/tokens/ComponentSizeTokens';
-import { ICON_SIZE_LG, ICON_SIZE_XL, ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
+import { ICON_SIZE_LG, ICON_SIZE_MD, ICON_SIZE_XL, ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { PAGE_PADDING, PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { COMFORTABLE_PAGE_PADDING, COMFORTABLE_SECTION_GAP } from '../foundation/tokens/PageTierTokens';
 import { TelemetryService } from '../services/TelemetryService';
@@ -646,8 +646,8 @@ struct GoalBreakdownPage {
         return {
         icon: 'help',
           step: 2,
-          title: '补齐关键约束',
-          description: '你的回答会影响任务粒度、提醒节奏和关键日期安排。',
+          title: '补充关键信息',
+          description: '这些信息会影响后续规划结果。',
           outcome: '输出一组更贴近你真实情况的规划输入。',
           trustHint: '不确定的项可以先留空，后面仍然可以改。',
           eta: '通常 10-20 秒'
@@ -656,8 +656,8 @@ struct GoalBreakdownPage {
         return {
         icon: 'stats',
           step: 3,
-          title: '先定义怎么判断在前进',
-          description: '先把结果指标定清楚，再去生成行动，能减少“做了很多却看不见进展”的情况。',
+          title: '先定义进度',
+          description: '先确定进度指标，再生成行动。',
           outcome: '输出 1-3 条你能持续追踪的进度指标。',
           trustHint: '至少保留一条你愿意长期更新的指标。',
           eta: '通常 40-60 秒'
@@ -666,8 +666,8 @@ struct GoalBreakdownPage {
         return {
         icon: 'archive',
           step: 4,
-          title: '把目标落到行动和提醒',
-          description: 'AI 会基于追踪项生成起步任务、日常习惯和关键日期。',
+          title: '生成行动和提醒',
+          description: '基于追踪项生成任务、提醒和关键日期。',
           outcome: '输出行动清单、重复提醒和关键日期。',
           trustHint: '现在删改不会影响正式数据，确认创建后才会落地。',
           eta: '通常 1-2 分钟'
@@ -676,8 +676,8 @@ struct GoalBreakdownPage {
         return {
         icon: 'task',
           step: 5,
-          title: '写入你的执行系统',
-          description: '系统正在保存目标、任务、提醒和倒计时，并关联回这次规划结果。',
+          title: '正在保存结果',
+          description: '正在保存目标、任务和提醒。',
           outcome: '创建完成后会自动跳转到目标详情页。',
           trustHint: '这一步只需要等待，不要重复点击。',
           eta: '通常 10-15 秒'
@@ -687,7 +687,7 @@ struct GoalBreakdownPage {
         icon: 'success',
           step: 5,
           title: '规划已完成',
-          description: '新的目标和配套行动已经创建完成。',
+          description: '目标和配套行动已创建。',
           outcome: '你可以直接去目标详情里开始执行。',
           trustHint: '后续仍然可以继续补任务、补提醒或增强目标。',
           eta: '已完成'
@@ -696,8 +696,8 @@ struct GoalBreakdownPage {
         return {
         icon: 'warning',
           step: Math.max(1, this.getStageIndex() + 1),
-          title: '这一步没有顺利完成',
-          description: '已生成的内容会尽量保留，你可以重试当前步骤或换一种方式继续。',
+          title: '这一步未完成',
+          description: '已生成内容会尽量保留，可重试当前步骤。',
           outcome: '不会直接丢掉已经确认过的规划结果。',
           trustHint: '如果是额度或网络问题，先处理阻塞再继续。',
           eta: '处理后可立即继续'
@@ -708,8 +708,8 @@ struct GoalBreakdownPage {
         return {
         icon: 'goal',
           step: 1,
-          title: '先确认这是不是一个值得规划的目标',
-          description: 'AI 会先识别你的意图、周期和成果形态，避免把一件临时待办误拆成长目标。',
+          title: '先确认目标范围',
+          description: '先确认目标类型、周期和范围。',
           outcome: '输出目标草案、周期和类型判断。',
           trustHint: '这一步只是理解，不会创建任何任务和提醒。',
           eta: '通常 10-20 秒'
@@ -1260,18 +1260,22 @@ struct GoalBreakdownPage {
   @Builder
   private StepProgress() {
     Column({ space: SPACE_SM }) {
-      Row({ space: SPACE_SM }) {
+      Row() {
         ForEach(this.getStepLabels(), (item: StageStepData, index: number) => {
           Column({ space: SPACE_2XS }) {
-            Stack() {
+            Stack({ alignContent: Alignment.Center }) {
               Circle()
-              .width(CHECKBOX_SIZE_LG).height(CHECKBOX_SIZE_LG)
-                .fill(index <= this.getStageIndex() ? this.themeColors.primary : this.themeColors.surfaceLight)
+                .width(34)
+                .height(34)
+                .fill(this.getStepNodeSurfaceColor(index))
+                .stroke(this.getStepNodeBorderColor(index))
+                .strokeWidth(1.5)
               AppIcon({
                 name: item.icon,
-                iconSize: ICON_SIZE_LG,
+                iconSize: ICON_SIZE_MD,
                 framed: false,
-                color: index <= this.getStageIndex() ? this.themeColors.textOnPrimary : this.themeColors.textMuted
+                color: this.getStepNodeIconColor(index),
+                muted: index > this.getStageIndex()
               })
             }
             Text(item.title)
@@ -1280,23 +1284,21 @@ struct GoalBreakdownPage {
               .fontColor(index <= this.getStageIndex() ? this.themeColors.primary : this.themeColors.textMuted)
               .maxLines(1)
           }
-          .layoutWeight(1).alignItems(HorizontalAlign.Center)
+          .width(48)
+          .alignItems(HorizontalAlign.Center)
 
           if (index < 4) {
             Line()
-              .width(SPACE_XS).height(SPACE_2XS)
+              .layoutWeight(1)
+              .height(2)
               .backgroundColor(index < this.getStageIndex() ? this.themeColors.primary : this.themeColors.borderColor)
-              .margin({ top: -SPACE_CARD })
+              .borderRadius(1)
+              .margin({ left: SPACE_XS, right: SPACE_XS, top: 14 })
           }
         })
       }
       .width('100%')
 
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        this.InfoTag('入口', this.getSourceText())
-        this.InfoTag('额度', this.getQuotaText())
-      }
-      .width('100%').padding({ left: SPACE_2XS, right: SPACE_2XS })
     }
     .width('100%').padding({ left: SPACE_MD, right: SPACE_MD, top: SPACE_2XS, bottom: SPACE_2XS })
   }
@@ -1312,40 +1314,46 @@ struct GoalBreakdownPage {
     return steps;
   }
 
+  private getStepNodeSurfaceColor(index: number): string {
+    if (index === this.getStageIndex()) {
+      return this.themeColors.primary;
+    }
+    if (index < this.getStageIndex()) {
+      return this.themeColors.primarySubtle;
+    }
+    return this.themeColors.surfaceLight;
+  }
+
+  private getStepNodeBorderColor(index: number): string {
+    return index <= this.getStageIndex() ? this.themeColors.primaryLight : this.themeColors.borderColor;
+  }
+
+  private getStepNodeIconColor(index: number): string {
+    if (index === this.getStageIndex()) {
+      return this.themeColors.textOnPrimary;
+    }
+    if (index < this.getStageIndex()) {
+      return this.themeColors.primary;
+    }
+    return this.themeColors.textMuted;
+  }
+
   @Builder
   private StageOverviewCard() {
     Column() {
       AppCard({ variant: 'accent', paddingLevel: 'md', spacing: SPACE_SM }) {
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-          AppStatusBadge({ text: '当前阶段', tone: 'primary', iconName: 'ai' })
-          if (this.restoreHint.length > 0) {
+        if (this.restoreHint.length > 0) {
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
             AppStatusBadge({ text: this.restoreHint, tone: 'success', iconName: 'success' })
           }
+          .width('100%')
         }
-        .width('100%')
 
         Text(this.getActiveNarrative().title)
           .fontSize(TYPE_SECTION_TITLE).fontWeight(FontWeight.Bold).fontColor(this.themeColors.textPrimary)
           .width('100%')
         Text(this.getActiveNarrative().description)
           .fontSize(TYPE_META).lineHeight(20).fontColor(this.themeColors.textSecondary).width('100%')
-
-        Column({ space: SPACE_SM }) {
-          Row({ space: SPACE_SM }) {
-            AppStatusBadge({ text: '你会得到', tone: 'neutral', iconName: 'plan' })
-            Text(this.getActiveNarrative().outcome)
-              .fontSize(TYPE_META).fontColor(this.themeColors.textPrimary).layoutWeight(1)
-          }
-          .width('100%').alignItems(VerticalAlign.Top)
-
-          Row({ space: SPACE_SM }) {
-            AppStatusBadge({ text: '提醒', tone: 'neutral', iconName: 'reminder' })
-            Text(this.isProcessing ? this.getRemainingText() : this.getActiveNarrative().trustHint)
-              .fontSize(TYPE_META).fontColor(this.themeColors.textSecondary).layoutWeight(1)
-          }
-          .width('100%').alignItems(VerticalAlign.Top)
-        }
-        .width('100%')
       }
     }
     .width('100%')
@@ -1408,11 +1416,6 @@ struct GoalBreakdownPage {
         }
         .width('100%')
 
-        Text(this.runtimeStatus?.isSlow ? '分析比平时久一些，但这通常意味着 AI 正在处理更复杂的约束，请不要重复点击。' : '这一步还不会改动你的正式数据，结果出来后你可以继续删改。')
-          .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.textSecondary)
-          .textAlign(TextAlign.Center)
-          .width('100%')
-          .padding({ left: SPACE_SM, right: SPACE_SM })
       }
     }
     .width('100%')
@@ -1469,10 +1472,6 @@ struct GoalBreakdownPage {
       Text(this.errorMessage)
         .fontSize(TYPE_BODY).lineHeight(21).fontColor(this.themeColors.textSecondary).textAlign(TextAlign.Center)
         .width('100%').padding({ left: SPACE_CARD, right: SPACE_CARD })
-      Text(this.getStageNarrative('error').trustHint)
-        .fontSize(TYPE_META).fontColor(this.themeColors.textMuted)
-        .textAlign(TextAlign.Center)
-        .width('100%').padding({ left: SPACE_CARD, right: SPACE_CARD })
       Row({ space: SPACE_MD }) {
         AppButton({
           text: '返回',
@@ -1513,7 +1512,7 @@ struct GoalBreakdownPage {
       .width('100%').padding({ left: SPACE_CARD, right: SPACE_CARD })
       .alignItems(VerticalAlign.Center)
     }
-    .width('100%').padding(COMFORTABLE_SECTION_GAP).justifyContent(FlexAlign.Center)
+    .width('100%').padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: SPACE_MD, bottom: COMFORTABLE_SECTION_GAP })
   }
 
   // === Step 1: 目标理解结果 ===
@@ -1521,7 +1520,7 @@ struct GoalBreakdownPage {
   private UnderstandingView() {
     Column({ space: SPACE_CARD }) {
       if (this.goalDraft) {
-      this.SectionCard('AI 已理解你的目标', this.goalDraft.title, this.goalDraft.description, 'accent')
+      this.SectionCard('目标理解结果', this.goalDraft.title, this.goalDraft.description, 'accent')
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
           this.InfoTag('分类', this.getCategoryLabel(this.goalDraft.category))
@@ -1531,18 +1530,6 @@ struct GoalBreakdownPage {
           }
         }
         .width('100%').padding({ left: PANEL_GAP, right: PANEL_GAP })
-
-        Column({ space: SPACE_XS }) {
-          Text('为什么先做这一步')
-            .fontSize(TYPE_META).fontWeight(FontWeight.Medium).fontColor(this.themeColors.textPrimary)
-            .width('100%')
-          Text('先把目标边界和周期看清楚，后面的追踪和行动才不会越拆越散。')
-            .fontSize(TYPE_META).lineHeight(19).fontColor(this.themeColors.textSecondary).width('100%')
-        }
-        .width('100%')
-        .padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.surfaceLight)
-        .borderRadius(RADIUS_LG)
       }
     }
     .width('100%')
@@ -1553,9 +1540,6 @@ struct GoalBreakdownPage {
   private ClarificationView() {
     Column({ space: SPACE_CARD }) {
       Column({ space: SPACE_SM }) {
-            Text('补充一点背景，结果会更贴合你的真实节奏')
-          .fontSize(TYPE_BODY).fontWeight(FontWeight.Medium).fontColor(this.themeColors.textPrimary)
-          .width('100%')
         Text(`已回答 ${this.getClarificationAnsweredCount()}/${this.questions.length} 题${this.getClarificationRequiredCount() > 0 ? ` · 必答 ${this.getClarificationRequiredCount()} 题` : ''}`)
           .fontSize(TYPE_META).fontColor(this.themeColors.textSecondary).width('100%')
       }
@@ -1611,18 +1595,11 @@ struct GoalBreakdownPage {
       })
 
       if (this.hasMissingRequiredAnswers()) {
-        Text('带 * 的问题会直接影响 AI 的判断，如果没有标准答案，先给一个大致范围也比留空更稳。')
+        Text('带 * 的问题会影响结果，建议优先填写。')
           .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.warning)
           .width('100%')
           .padding(SPACE_MD)
           .backgroundColor(this.themeColors.warningSubtle)
-          .borderRadius(RADIUS_MD)
-      } else {
-        Text('如果后面看到的规划不够贴合，你仍然可以回到这一步补充信息后重新生成。')
-          .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.textSecondary)
-          .width('100%')
-          .padding(SPACE_MD)
-          .backgroundColor(this.themeColors.surfaceLight)
           .borderRadius(RADIUS_MD)
       }
     }
@@ -1633,18 +1610,6 @@ struct GoalBreakdownPage {
   @Builder
   private ProgressView() {
     Column({ space: SPACE_CARD }) {
-      Column({ space: SPACE_XS }) {
-      Text('先定义“怎么算在前进”')
-          .fontSize(TYPE_BODY).fontWeight(FontWeight.Medium).fontColor(this.themeColors.textPrimary)
-          .width('100%')
-        Text('追踪项不是越多越好，保留 1-3 条你真的愿意持续更新的指标就够了。')
-          .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.textSecondary).width('100%')
-      }
-      .width('100%')
-      .padding(SPACE_CARD)
-      .backgroundColor(this.themeColors.announcementSurface)
-      .borderRadius(RADIUS_LG)
-
       // 难度评估卡片
       if (this.goalAssessment) {
         Column({ space: SPACE_SM }) {
@@ -1759,18 +1724,6 @@ struct GoalBreakdownPage {
   private ActionsView() {
     Column({ space: SPACE_CARD }) {
       if (this.actionPlan) {
-        Column({ space: SPACE_XS }) {
-      Text('现在把追踪落到行动与提醒')
-            .fontSize(TYPE_BODY).fontWeight(FontWeight.Medium).fontColor(this.themeColors.textPrimary)
-            .width('100%')
-          Text('先从起步行动开始，习惯提醒和关键日期是帮你把节奏稳住，而不是增加心理负担。')
-            .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.textSecondary).width('100%')
-        }
-        .width('100%')
-        .padding(SPACE_CARD)
-        .backgroundColor(this.themeColors.announcementSurface)
-        .borderRadius(RADIUS_LG)
-
         if (this.progressPlan && this.progressPlan.tracks.length > 0) {
           Column({ space: SPACE_SM }) {
               Text(`当前追踪 (${this.progressPlan.tracks.length}项)`)
@@ -1846,7 +1799,7 @@ struct GoalBreakdownPage {
             .width('100%')
           })
         } else {
-          Text('当前还没有起步任务，你可以手动补充，或让 AI 再生成一次。')
+          Text('还没有起步任务，可手动补充或重新生成。')
             .fontSize(TYPE_META)
             .fontColor(this.themeColors.textSecondary)
             .width('100%')
@@ -1994,13 +1947,11 @@ struct GoalBreakdownPage {
   private DoneView() {
     Column({ space: SECTION_GAP }) {
               AppIcon({ name: 'success', iconSize: ICON_SIZE_XL })
-      Text('方案已成功保存！')
+      Text('已保存')
         .fontSize(TYPE_SECTION_TITLE).fontWeight(FontWeight.Bold).fontColor(this.themeColors.textPrimary)
-      Text('正在跳转到目标详情页...')
-        .fontSize(TYPE_META).fontColor(this.themeColors.textSecondary)
     }
-    .width('100%').padding(COMFORTABLE_SECTION_GAP)
-    .justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+    .width('100%').padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: SPACE_MD, bottom: COMFORTABLE_SECTION_GAP })
+    .alignItems(HorizontalAlign.Center)
   }
 
   // --- 通用组件 ---
@@ -2056,10 +2007,6 @@ struct GoalBreakdownPage {
       .width('100%').padding({ left: PANEL_GAP, right: PANEL_GAP, top: SPACE_SM, bottom: SPACE_MD })
     } else if (this.stage === 'progress' && !this.isProcessing) {
       Column({ space: SPACE_SM }) {
-        Text('确认这些追踪项后，下一步会自动生成起步行动、习惯提醒和关键日期。')
-          .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.textSecondary)
-          .width('100%')
-          .padding({ left: SPACE_CARD, right: SPACE_CARD })
         Row() {
           AppButton({
             text: '下一步：生成行动方案',
@@ -2077,10 +2024,6 @@ struct GoalBreakdownPage {
       .width('100%').padding({ top: 8 })
     } else if (this.stage === 'actions' && !this.isProcessing) {
       Column({ space: SPACE_SM }) {
-        Text('确认创建后，会一次性写入目标、任务、提醒和倒计时。')
-          .fontSize(TYPE_META).lineHeight(18).fontColor(this.themeColors.textSecondary)
-          .width('100%')
-          .padding({ left: SPACE_CARD, right: SPACE_CARD })
         Row() {
           AppButton({
             text: '确认并创建目标',
@@ -2148,22 +2091,19 @@ struct GoalBreakdownPage {
 
       if (this.isProcessing || this.stage === 'loading') {
         Column({ space: SPACE_CARD }) {
-          if (this.stage !== 'loading') {
-            this.StageOverviewCard()
-          }
           this.ProcessingView()
         }
-        .layoutWeight(1).justifyContent(FlexAlign.Center).padding({ left: PANEL_GAP, right: PANEL_GAP, top: SPACE_SM, bottom: SPACE_SM })
+        .layoutWeight(1).justifyContent(FlexAlign.Start).padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 10, bottom: SPACE_SM })
       } else if (this.stage === 'error') {
         Column() {
           this.ErrorView()
         }
-        .layoutWeight(1).justifyContent(FlexAlign.Center)
+        .layoutWeight(1).justifyContent(FlexAlign.Start)
       } else if (this.stage === 'done') {
         Column() {
           this.DoneView()
         }
-        .layoutWeight(1).justifyContent(FlexAlign.Center)
+        .layoutWeight(1).justifyContent(FlexAlign.Start)
       } else {
         Scroll() {
           Column({ space: SPACE_MD }) {

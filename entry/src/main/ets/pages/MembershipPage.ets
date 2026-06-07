@@ -549,21 +549,28 @@ struct MembershipPage {
   }
 
   build() {
-    Scroll() {
-      Column({ space: SECTION_GAP }) {
-        AppPageHeader({
-          title: '会员中心',
-          subtitle: '查看积分权益和开通选项',
-          actionText: this.isLoading ? '' : '刷新',
-          actionIconName: 'sync',
-          onBack: () => this.getUIContext().getRouter().back(),
-          onAction: () => { void this.loadPageData(); }
-        })
+    Column({ space: 0 }) {
+      AppPageHeader({
+        title: '会员中心',
+        subtitle: '查看积分权益和开通选项',
+        actionText: this.isLoading ? '' : '刷新',
+        actionIconName: 'sync',
+        onBack: () => this.getUIContext().getRouter().back(),
+        onAction: () => { void this.loadPageData(); }
+      })
 
-        Column({ space: SECTION_GAP }) {
-          if (this.isLoading) {
-            AppLoadingState({ label: '正在加载会员信息...' })
-          } else {
+      if (this.isLoading) {
+        Column() {
+          AppLoadingState({ label: '正在加载会员信息...' })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: PAGE_PADDING })
+        .justifyContent(FlexAlign.Start)
+        .alignItems(HorizontalAlign.Start)
+      } else {
+        Scroll() {
+          Column({ space: SECTION_GAP }) {
             AppCard({ variant: 'premium', spacing: 12 }) {
               Row() {
                 Column({ space: 8 }) {
@@ -682,15 +689,16 @@ struct MembershipPage {
               }
             }
           }
+          .width('100%')
+          .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: PAGE_PADDING })
         }
         .width('100%')
-        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: PAGE_PADDING })
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
       }
-      .width('100%')
     }
     .width('100%')
     .height('100%')
     .backgroundColor(this.themeColors.background)
-    .scrollBar(BarState.Off)
   }
 }

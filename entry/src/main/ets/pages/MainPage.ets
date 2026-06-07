@@ -15,6 +15,8 @@ import { VoiceRecognitionService } from '../services/VoiceRecognitionService';
 import { QuotaService, SpendResult } from '../services/QuotaService';
 import { hasMicrophonePermission, requestMicrophonePermission } from '../Utils/UserPerm';
 import { TodayPlanService } from '../services/TodayPlanService';
+import { GoalReschedulePromptService, type GoalReschedulePrompt } from '../services/GoalReschedulePromptService';
+import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
@@ -24,7 +26,7 @@ import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 import { BOTTOM_BAR_HEIGHT, FAB_SIZE, NAV_ICON_SIZE } from '../foundation/tokens/PageDensityTokens';
 import { RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
 import { CONTENT_GAP, PANEL_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM } from '../foundation/tokens/SpacingTokens';
-import { ICON_SIZE_XL } from '../foundation/tokens/IconTokens';
+import { ICON_SIZE_SM, ICON_SIZE_XL } from '../foundation/tokens/IconTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { TOUCH_TARGET_LG } from '../foundation/tokens/VisualTokens';
 import { Logger } from '../Utils/Logger';
@@ -97,9 +99,10 @@ struct MainPage {
   @State dayEvents: DayEvent[] = [];
   @State user: UserAccount | null = null;
   @State savedPlan: SavedTodayPlan | null = null;
+  @State goalReschedulePrompt: GoalReschedulePrompt | null = null;
   @State hasPlanQuota: boolean = true;
   @State fabFocused: boolean = false;
-  @State fabHovered: boolean = false;
+  @State fabPressed: boolean = false;
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
   private readonly fabSize: number = FAB_SIZE;
   private readonly bottomBarHeight: number = BOTTOM_BAR_HEIGHT;
@@ -199,6 +202,7 @@ struct MainPage {
         this.dayEvents = db.getAllDayEvents();
         this.user = await authService.getCurrentUser();
         await this.loadTodayPlan(context);
+        await this.refreshGoalReschedulePrompt(false);
       } while (this.pendingPageDataReload);
     } catch (error) {
       logger.error('MainPage loadPageData failed', error as Object);
@@ -234,6 +238,73 @@ struct MainPage {
       }
     } catch (error) {
       logger.error('MainPage refreshTodayPlanFromCloud failed', error as Object);
+    }
+  }
+
+  private async refreshGoalReschedulePrompt(markAsShown: boolean): Promise<void> {
+    if (this.currentTabIndex !== 2) {
+      this.goalReschedulePrompt = null;
+      return;
+    }
+
+    try {
+      const context = this.getHostContext();
+      const candidate = await GoalReschedulePromptService.getPromptCandidate(context, this.goals, this.tasks);
+      if (!candidate) {
+        if (this.goalReschedulePrompt &&
+          GoalReschedulePromptService.isGoalStillEligible(this.goalReschedulePrompt.goalId, this.goals, this.tasks)) {
+          return;
+        }
+        this.goalReschedulePrompt = null;
+        return;
+      }
+
+      this.goalReschedulePrompt = candidate;
+      if (markAsShown) {
+        await GoalReschedulePromptService.markPromptShown(context, candidate.goalId);
+        const shownProps: TelemetryProperties = {
+          "goalId": candidate.goalId,
+          "remainingTaskCount": candidate.remainingTaskCount,
+          "overdueTaskCount": candidate.overdueTaskCount,
+          "stalledDays": candidate.stalledDays
+        };
+        TelemetryService.track('goal_reschedule_prompt_shown', shownProps, 'goal');
+      }
+    } catch (error) {
+      logger.error('MainPage refreshGoalReschedulePrompt failed', error as Object);
+    }
+  }
+
+  private async dismissGoalReschedulePrompt(goalId: string): Promise<void> {
+    try {
+      await GoalReschedulePromptService.dismissPrompt(this.getHostContext(), goalId);
+      const dismissProps: TelemetryProperties = {
+        "goalId": goalId
+      };
+      TelemetryService.track('goal_reschedule_prompt_dismissed', dismissProps, 'goal');
+    } catch (error) {
+      logger.error('MainPage dismissGoalReschedulePrompt failed', error as Object);
+    } finally {
+      if (this.goalReschedulePrompt?.goalId === goalId) {
+        this.goalReschedulePrompt = null;
+      }
+    }
+  }
+
+  private async openGoalRescheduleFromPrompt(goalId: string): Promise<void> {
+    try {
+      await GoalReschedulePromptService.acceptPrompt(this.getHostContext(), goalId);
+      const clickProps: TelemetryProperties = {
+        "goalId": goalId
+      };
+      TelemetryService.track('goal_reschedule_prompt_clicked', clickProps, 'goal');
+    } catch (error) {
+      logger.error('MainPage openGoalRescheduleFromPrompt failed', error as Object);
+    } finally {
+      if (this.goalReschedulePrompt?.goalId === goalId) {
+        this.goalReschedulePrompt = null;
+      }
+      this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalReschedulePage', params: { goalId } });
     }
   }
 
@@ -455,11 +526,18 @@ struct MainPage {
       GoalsTab({
         goals: this.goals,
         tasks: this.tasks,
+        goalReschedulePrompt: this.goalReschedulePrompt,
         onCreate: () => {
           this.openGoalCreatePage();
         },
         onOpenGoalDetail: (goalId: string) => {
           this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalDetailPage', params: { goalId } });
+        },
+        onOpenGoalReschedule: (goalId: string) => {
+          void this.openGoalRescheduleFromPrompt(goalId);
+        },
+        onDismissGoalReschedulePrompt: (goalId: string) => {
+          void this.dismissGoalReschedulePrompt(goalId);
         }
       })
     } else {
@@ -475,32 +553,55 @@ struct MainPage {
     return this.isTabActive(index) ? this.themeColors.primary : this.themeColors.textSecondary;
   }
 
-  private getFabBorderColor(): string {
-    return this.fabFocused || this.fabHovered ? this.themeColors.primaryLight : this.themeColors.transparent;
+  private tabIconColor(index: number): string {
+    if (this.isTabActive(index)) {
+      return this.themeColors.primary;
+    }
+    if (index === 0) {
+      return this.themeColors.textMuted;
+    }
+    return this.themeColors.textSecondary;
   }
 
-  // ========== 底部 Tab 图标（系统符号，选中 filled / 未选中 outline） ==========
+  private getFabBorderColor(): string {
+    return this.fabFocused || this.fabPressed ? this.themeColors.primaryLight : this.themeColors.transparent;
+  }
 
-  private getTabSymbol(index: number): Resource {
+  // ========== 底部 Tab 图标（统一走 AppIcon） ==========
+
+  private getTabIconName(index: number): string {
     if (index === 0) {
-      return this.isTabActive(0) ? $r('sys.symbol.calendar_fill') : $r('sys.symbol.calendar');
+      return 'today';
     }
     if (index === 1) {
-      return this.isTabActive(1) ? $r('sys.symbol.list_checkmask') : $r('sys.symbol.list_bullet');
+      return 'action';
     }
     if (index === 2) {
-      return this.isTabActive(2) ? $r('sys.symbol.flag_fill') : $r('sys.symbol.flag');
+      return 'goal';
     }
-    return this.isTabActive(3) ? $r('sys.symbol.person_fill') : $r('sys.symbol.person');
+    return 'profile';
   }
 
   @Builder
   private TabIcon(index: number) {
-    SymbolGlyph(this.getTabSymbol(index))
-      .fontSize(NAV_ICON_SIZE)
-      .fontColor([this.tabLabelColor(index)])
-      .fontWeight(this.isTabActive(index) ? FontWeight.Medium : FontWeight.Regular)
-      .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+    if (index === 0 && !this.isTabActive(index)) {
+      Image($r('app.media.app_icon_today_inactive'))
+        .width(NAV_ICON_SIZE)
+        .height(NAV_ICON_SIZE)
+        .objectFit(ImageFit.Contain)
+        .interpolation(ImageInterpolation.High)
+        .draggable(false)
+        .syncLoad(true)
+    } else {
+      AppIcon({
+        name: this.getTabIconName(index),
+        iconSize: NAV_ICON_SIZE,
+        color: this.tabIconColor(index),
+        framed: false,
+        useSystemSymbol: false,
+        selected: this.isTabActive(index)
+      })
+    }
   }
 
   @Builder
@@ -522,6 +623,11 @@ struct MainPage {
         this.showVoiceOnly = false;
       });
       this.resetInlineVoiceState();
+      if (index === 2) {
+        void this.refreshGoalReschedulePrompt(true);
+      } else {
+        this.goalReschedulePrompt = null;
+      }
     })
   }
 
@@ -551,11 +657,13 @@ struct MainPage {
         .backgroundColor(this.themeColors.announcementSurface)
         .borderRadius(RADIUS_PILL)
         .border({ width: BORDER_DEFAULT, color: this.themeColors.primaryLight })
-      SymbolGlyph($r('sys.symbol.mic'))
-        .fontSize(NAV_ICON_SIZE)
-        .fontColor([this.themeColors.primary])
-        .fontWeight(FontWeight.Medium)
-        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      AppIcon({
+        name: 'voice',
+        iconSize: NAV_ICON_SIZE,
+        color: this.themeColors.primary,
+        framed: false,
+        useSystemSymbol: false
+      })
     }
     .width('100%')
     .height('100%')
@@ -793,13 +901,14 @@ struct MainPage {
                           this.voiceInlinePhase === 'error' ? this.themeColors.dangerSubtle :
                           this.themeColors.primarySubtle)
           .borderRadius(16)
-        SymbolGlyph($r('sys.symbol.mic'))
-          .fontSize(TYPE_BODY)
-          .fontColor([this.voiceInlinePhase === 'recording' ? this.themeColors.danger :
-                     this.voiceInlinePhase === 'error' ? this.themeColors.danger :
-                     this.themeColors.primary])
-          .fontWeight(FontWeight.Medium)
-          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        AppIcon({
+          name: 'voice',
+          iconSize: TYPE_BODY + 4,
+          color: this.voiceInlinePhase === 'recording' ? this.themeColors.danger :
+            this.voiceInlinePhase === 'error' ? this.themeColors.danger : this.themeColors.primary,
+          framed: false,
+          useSystemSymbol: false
+        })
       }
       .width(32)
       .height(32)
@@ -946,11 +1055,37 @@ struct MainPage {
 
       Column() {
         AppCard({ variant: 'raised', spacing: PANEL_GAP, paddingLevel: 'lg' }) {
-          Text('新建内容')
-            .fontSize(TYPE_SECTION_TITLE)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.themeColors.textPrimary)
-            .width('100%')
+          Row() {
+            Text('新建内容')
+              .fontSize(TYPE_SECTION_TITLE)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.themeColors.textPrimary)
+
+            Blank()
+
+            Stack({ alignContent: Alignment.Center }) {
+              Row()
+                .width(TOUCH_TARGET_LG)
+                .height(TOUCH_TARGET_LG)
+                .backgroundColor(this.themeColors.surfaceSoft)
+                .borderRadius(TOUCH_TARGET_LG / 2)
+                .border({ width: BORDER_DEFAULT, color: this.themeColors.borderColor })
+
+              AppIcon({
+                name: 'close',
+                iconSize: ICON_SIZE_SM,
+                framed: false,
+                color: this.themeColors.textSecondary
+              })
+            }
+            .onClick(() => {
+              if (!this.voiceCloseBlocked) {
+                this.closeAddSheet();
+              }
+            })
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
 
           Column({ space: CONTENT_GAP }) {
             this.AddSheetItem('goal', '新建目标', '设定方向和阶段计划', 'goal')
@@ -997,8 +1132,11 @@ struct MainPage {
     .backgroundColor(Color.Transparent)
     .borderRadius(this.fabSize / 2)
     .border({ width: BORDER_DEFAULT, color: this.getFabBorderColor() })
-    .useEffect(true)
-    .hoverEffect(HoverEffect.Auto)
+    .scale({
+      x: this.fabPressed ? 0.92 : 1,
+      y: this.fabPressed ? 0.92 : 1
+    })
+    .animation({ duration: 100, curve: Curve.Friction })
     .focusable(true)
     .onFocus(() => {
       this.fabFocused = true;
@@ -1006,8 +1144,12 @@ struct MainPage {
     .onBlur(() => {
       this.fabFocused = false;
     })
-    .onHover((isHover: boolean) => {
-      this.fabHovered = isHover;
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        this.fabPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.fabPressed = false;
+      }
     })
     .onClick(() => {
       if (this.showAddSheet) {
@@ -1053,15 +1195,6 @@ struct MainPage {
 
       if (this.showAddSheet) {
         this.AddActionSheet()
-
-        Stack() {
-          this.FloatingButton()
-        }
-        .width(this.fabSize)
-        .height(this.fabSize)
-        .align(Alignment.Bottom)
-        .translate({ y: -(this.bottomBarHeight / 2) })
-        .zIndex(30)
       }
 
       // AI 识别中浮层（仅在 analyzing 阶段显示）

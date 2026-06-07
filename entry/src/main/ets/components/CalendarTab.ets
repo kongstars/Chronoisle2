@@ -272,7 +272,7 @@ export struct CalendarTab {
   }
 
   private getDateCellHeight(): number {
-    return BUTTON_HEIGHT_LG;
+    return BUTTON_HEIGHT_MD;
   }
 
   private getMonthDateBadgeColor(date: Date): string {
@@ -465,7 +465,7 @@ export struct CalendarTab {
   private CalendarExpandHandle() {
     Column({ space: SPACE_2XS }) {
       Row()
-        .width(BUTTON_HEIGHT_LG)
+        .width(BUTTON_HEIGHT_MD)
         .height(SPACE_2XS)
         .backgroundColor(this.themeColors.primaryLight)
         .borderRadius(2)

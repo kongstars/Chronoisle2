@@ -1,7 +1,7 @@
 const express = require('express');
-const axios = require('axios');
 const PlanningSession = require('../models/PlanningSession');
 const GoalPlanningTrace = require('../models/GoalPlanningTrace');
+const { createChatCompletion, getDeepSeekModel } = require('../utils/deepseekClient');
 
 const router = express.Router();
 
@@ -16,8 +16,8 @@ const APP_IDS = {
   actionPlanner: 'goal-action-planner',
   critic: 'goal-critic'
 };
-const GOAL_PLANNING_MODEL = process.env.GOAL_PLANNING_MODEL || process.env.BAILIAN_GOAL_PLANNING_MODEL || 'qwen3-max';
-const GOAL_PLANNING_FAST_MODEL = process.env.GOAL_PLANNING_FAST_MODEL || 'qwen-plus-latest';
+const GOAL_PLANNING_MODEL = process.env.GOAL_PLANNING_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
+const GOAL_PLANNING_FAST_MODEL = process.env.GOAL_PLANNING_FAST_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
 const GOAL_PLANNING_TRACE_ENABLED = process.env.GOAL_PLANNING_TRACE_ENABLED !== 'false';
 const GOAL_PLANNING_HTTP_TIMEOUT_MS = parseInt(process.env.GOAL_PLANNING_HTTP_TIMEOUT_MS || '300000', 10);
 const GOAL_PLANNING_DEFAULT_TIMEOUT_MS = parseInt(process.env.GOAL_PLANNING_TIMEOUT_MS || '300000', 10);
@@ -1411,43 +1411,30 @@ function buildAgentSystemPrompt(agentKey) {
   }
 }
 
-async function callBailianAgent(prompt, agentKey, model = resolveAgentModel(agentKey), traceContext = {}) {
-  const apiKey = process.env.ALIBABA_CLOUD_BAILIAN_API_KEY;
-  if (!apiKey) {
-    throw new Error('ALIBABA_CLOUD_BAILIAN_API_KEY 未配置');
-  }
-
+async function callDeepSeekAgent(prompt, agentKey, model = resolveAgentModel(agentKey), traceContext = {}) {
   const startedAt = Date.now();
   let output = '';
   const timeoutMs = resolveAgentTimeoutMs(agentKey, traceContext);
+  const resolvedModel = getDeepSeekModel(model);
 
   try {
-    const response = await axios.post(
-      'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-      {
-        model,
-        temperature: 0.2,
-        messages: [
-          {
-            role: 'system',
-            content: buildAgentSystemPrompt(agentKey)
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
+    const completion = await createChatCompletion({
+      model: resolvedModel,
+      temperature: 0.2,
+      timeoutMs,
+      messages: [
+        {
+          role: 'system',
+          content: buildAgentSystemPrompt(agentKey)
         },
-        timeout: timeoutMs
-      }
-    );
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
 
-    output = response.data?.choices?.[0]?.message?.content || '';
+    output = completion.content || '';
     let text = output.replace(/```json/gi, '').replace(/```/g, '').trim();
     const arrayStart = text.indexOf('[');
     const arrayEnd = text.lastIndexOf(']');
@@ -1470,7 +1457,7 @@ async function callBailianAgent(prompt, agentKey, model = resolveAgentModel(agen
       source: traceContext?.source || 'unknown',
       status: 'success',
       agentKey,
-      model,
+      model: resolvedModel,
       durationMs: Date.now() - startedAt,
       requestPreview: prompt,
       responsePreview: output,
@@ -1491,7 +1478,7 @@ async function callBailianAgent(prompt, agentKey, model = resolveAgentModel(agen
       source: traceContext?.source || 'unknown',
       status: 'failed',
       agentKey,
-      model,
+      model: resolvedModel,
       durationMs: Date.now() - startedAt,
       requestPreview: prompt,
       responsePreview: output,
@@ -1506,7 +1493,7 @@ async function callBailianAgent(prompt, agentKey, model = resolveAgentModel(agen
 async function safeCallAgent(prompt, agentKey, traceContext = {}) {
   const model = resolveAgentModel(agentKey);
   try {
-    return await callBailianAgent(prompt, agentKey, model, traceContext);
+    return await callDeepSeekAgent(prompt, agentKey, model, traceContext);
   } catch (err) {
     console.error(`[goalPlanning] Agent 调用失败 (${agentKey}, model=${model}):`, err.message);
     return null;

@@ -6,6 +6,48 @@ const { PROD_SERVER } = require('../shared/serverTargets');
 
 const SERVER_ROOT = path.resolve(__dirname, '../..');
 
+function buildRemoteEnvPatchCommand() {
+  const updates = {
+    NODE_ENV: 'production',
+    PORT: String(PROD_SERVER.healthPort),
+    MONGODB_URI: `mongodb://127.0.0.1:27017/${PROD_SERVER.mongoDb}`,
+    CORS_ORIGIN: 'https://sishiqingdan.cn,https://www.sishiqingdan.cn,https://api.sishiqingdan.cn,https://test-api.sishiqingdan.cn'
+  };
+  const patchScript = `
+const fs = require('fs');
+const file = '.env.production';
+const updates = ${JSON.stringify(updates)};
+const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+const seen = new Set();
+const lines = [];
+for (const line of existing.split(/\\r?\\n/)) {
+  if (!line.trim()) continue;
+  const key = line.split('=')[0];
+  if (Object.prototype.hasOwnProperty.call(updates, key)) {
+    if (!seen.has(key)) {
+      lines.push(key + '=' + updates[key]);
+      seen.add(key);
+    }
+  } else {
+    lines.push(line);
+  }
+}
+for (const [key, value] of Object.entries(updates)) {
+  if (!seen.has(key)) lines.push(key + '=' + value);
+}
+fs.writeFileSync(file, lines.join('\\n') + '\\n', 'utf8');
+`;
+  return `cd "${PROD_SERVER.appDir}" && node <<'NODE_ENV_PATCH'\n${patchScript}\nNODE_ENV_PATCH`;
+}
+
+function buildNginxInstallCommand() {
+  return [
+    `install -m 644 "${PROD_SERVER.appDir}/nginx_prod.conf" "/etc/nginx/conf.d/chronoisle-prod.conf"`,
+    'nginx -t',
+    '(systemctl reload nginx || nginx -s reload)'
+  ].join(' && ');
+}
+
 async function execStep(ssh, label, command) {
   const result = await ssh.execCommand(command);
   const stdout = (result.stdout || '').trim();
@@ -88,11 +130,13 @@ async function main() {
     await execStep(ssh, 'prepare-dir', `mkdir -p "${PROD_SERVER.appDir}"`);
     await execStep(ssh, 'unzip', `unzip -o "${remoteZip}" -d "${PROD_SERVER.appDir}"`);
     await execStep(ssh, 'cleanup-zip', `rm -f "${remoteZip}"`);
+    await execStep(ssh, 'patch-env', buildRemoteEnvPatchCommand());
     await execStep(ssh, 'npm-ci', `cd "${PROD_SERVER.appDir}" && npm ci --omit=dev`);
+    await execStep(ssh, 'install-nginx', buildNginxInstallCommand());
     await execStep(
       ssh,
       'pm2-restart',
-      `cd "${PROD_SERVER.appDir}" && (pm2 describe "${PROD_SERVER.pm2Name}" >/dev/null 2>&1 && pm2 restart "${PROD_SERVER.pm2Name}" --update-env || pm2 start index.js --name "${PROD_SERVER.pm2Name}")`
+      `cd "${PROD_SERVER.appDir}" && export NODE_ENV=production PORT=${PROD_SERVER.healthPort} MONGODB_URI="mongodb://127.0.0.1:27017/${PROD_SERVER.mongoDb}" && (pm2 describe "${PROD_SERVER.pm2Name}" >/dev/null 2>&1 && pm2 restart "${PROD_SERVER.pm2Name}" --update-env || pm2 start index.js --name "${PROD_SERVER.pm2Name}" --update-env)`
     );
     await waitForHealth(ssh, PROD_SERVER.healthPort, 'prod');
   } finally {

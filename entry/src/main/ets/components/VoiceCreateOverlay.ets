@@ -924,7 +924,7 @@ export struct VoiceCreateOverlay {
 
       Column({ space: 4 }) {
         Text('语音创建')
-          .fontSize(15)
+          .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.themeColors.textPrimary)
           .width('100%')
