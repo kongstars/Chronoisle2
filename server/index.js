@@ -455,13 +455,15 @@ app.post('/api/agent/completion', authenticate, agentRateLimiter, async (req, re
       return res.status(400).json({ success: false, message: '缺少有效的 prompt' });
     }
 
-    const resolvedModel = getDeepSeekModel(model || process.env.AGENT_COMPLETION_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro');
+    const resolvedModel = getDeepSeekModel(model || process.env.AGENT_COMPLETION_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash');
     console.log(`正在转发请求至 DeepSeek model=${resolvedModel}${app_id ? ` legacy_app_id=${app_id}` : ''}${session_id ? ` session_id=${session_id}` : ''}`);
 
     const completion = await createChatCompletion({
       model: resolvedModel,
       timeoutMs: 120000,
       temperature: 0.2,
+      thinking: 'disabled',
+      traceLabel: 'agent.completion',
       messages: [
         {
           role: 'system',

@@ -186,9 +186,11 @@ async function runRescheduleJob(jobId, payload, deps) {
     });
 
     const completion = await createChatCompletion({
-      model: getDeepSeekModel(payload.model || process.env.AGENT_RESCHEDULE_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro'),
+      model: getDeepSeekModel(payload.model || process.env.AGENT_RESCHEDULE_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash'),
       timeoutMs: 120000,
       temperature: 0.2,
+      thinking: 'disabled',
+      traceLabel: 'agent.reschedule',
       messages: [
         {
           role: 'system',

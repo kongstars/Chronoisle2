@@ -111,6 +111,14 @@ export class AgentService {
   private static readonly MATCH_THRESHOLD_HIGH = 0.85;
   private static readonly MATCH_THRESHOLD_LOW = 0.5;
 
+  private static async buildHttpErrorMessage(responseCode: number, responseBody: string, path: string): Promise<string> {
+    const message = AppErrorService.fromResponse(responseCode, responseBody);
+    if (responseCode === 401) {
+      await authService.handleUnauthorizedState(message, path);
+    }
+    return message;
+  }
+
   private static buildActiveGoalsPrompt(): string {
     const activeGoals = db.getActiveGoals();
     if (activeGoals.length === 0) {
@@ -239,22 +247,11 @@ ${goalsListDesc}
             };
         }
       } else {
-        let errMsg = `HTTP状态码: ${response.responseCode}`;
-        try {
-          if (response.result) {
-            interface ErrDetail { message?: string; }
-            interface ErrObj { message?: string; error?: ErrDetail; }
-            const errObj = JSON.parse(response.result as string) as ErrObj;
-            if (errObj.message) {
-               errMsg += ` - ${errObj.message}`;
-            } else if (errObj.error && errObj.error.message) {
-               errMsg += ` - ${errObj.error.message}`;
-            }
-          }
-        } catch (e) {
-          // 忽略解析错误
-        }
-        errMsg = AppErrorService.fromMessage(errMsg, 'AI 请求失败，请稍后重试');
+        let errMsg = await AgentService.buildHttpErrorMessage(
+          response.responseCode,
+          String(response.result),
+          'agent/completion:analyze-input'
+        );
         logger.error('Agent API Error:', errMsg as Object);
         (() => { let _p: TelemetryProperties = { 
           "code": TelemetryErrorCode.ERR_HTTP_EXCEPTION, 
@@ -455,6 +452,13 @@ ${goalsListDesc}
             }; TelemetryService.track('api_error', _p, 'ai'); })();
           }
         }
+      } else {
+        const errMsg = await AgentService.buildHttpErrorMessage(
+          response.responseCode,
+          String(response.result),
+          'agent/completion:auto-fill-task'
+        );
+        logger.error('autoFillTask HTTP Error:', errMsg as Object);
       }
     } catch (error) {
       logger.error('autoFillTask LLM err:', error as Object);
@@ -580,7 +584,11 @@ ${goalsListDesc}
         if (typeof defaultVal === 'object' && defaultVal !== null) {
           const obj = defaultVal as ErrorMsgContainer;
           if (obj.errorMsg !== undefined) {
-            obj.errorMsg = AppErrorService.fromResponse(response.responseCode, String(response.result));
+            obj.errorMsg = await AgentService.buildHttpErrorMessage(
+              response.responseCode,
+              String(response.result),
+              'agent/completion:call-agent-api'
+            );
           }
         }
       }
@@ -820,7 +828,11 @@ ${pendingTasksSummary}
         }
       );
       if (response.responseCode !== 200) {
-        throw new Error(AppErrorService.fromResponse(response.responseCode, String(response.result)));
+        throw new Error(await AgentService.buildHttpErrorMessage(
+          response.responseCode,
+          String(response.result),
+          'agent/reschedule/start'
+        ));
       }
       const envelope = JSON.parse(response.result as string) as ApiEnvelope<RescheduleJobStatus>;
       if (!envelope.success || !envelope.data) {
@@ -851,7 +863,11 @@ ${pendingTasksSummary}
         }
       );
       if (response.responseCode !== 200) {
-        throw new Error(AppErrorService.fromResponse(response.responseCode, String(response.result)));
+        throw new Error(await AgentService.buildHttpErrorMessage(
+          response.responseCode,
+          String(response.result),
+          'agent/reschedule/status'
+        ));
       }
       const envelope = JSON.parse(response.result as string) as ApiEnvelope<RescheduleJobStatus>;
       if (!envelope.success || !envelope.data) {

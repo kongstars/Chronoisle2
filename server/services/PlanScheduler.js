@@ -18,7 +18,7 @@ const { createChatCompletion, getDeepSeekModel } = require('../utils/deepseekCli
 
 class PlanScheduler {
   constructor() {
-    this.model = process.env.TODAY_PLAN_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
+    this.model = process.env.TODAY_PLAN_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
   }
 
   /**
@@ -238,6 +238,8 @@ ${pendingTasksSummary}
         model: getDeepSeekModel(this.model),
         timeoutMs: 120000,
         temperature: 0.2,
+        thinking: 'disabled',
+        traceLabel: 'plan.scheduler',
         messages: [
           {
             role: 'system',

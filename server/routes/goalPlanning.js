@@ -16,8 +16,8 @@ const APP_IDS = {
   actionPlanner: 'goal-action-planner',
   critic: 'goal-critic'
 };
-const GOAL_PLANNING_MODEL = process.env.GOAL_PLANNING_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
-const GOAL_PLANNING_FAST_MODEL = process.env.GOAL_PLANNING_FAST_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
+const GOAL_PLANNING_MODEL = process.env.GOAL_PLANNING_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
+const GOAL_PLANNING_FAST_MODEL = process.env.GOAL_PLANNING_FAST_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 const GOAL_PLANNING_TRACE_ENABLED = process.env.GOAL_PLANNING_TRACE_ENABLED !== 'false';
 const GOAL_PLANNING_HTTP_TIMEOUT_MS = parseInt(process.env.GOAL_PLANNING_HTTP_TIMEOUT_MS || '300000', 10);
 const GOAL_PLANNING_DEFAULT_TIMEOUT_MS = parseInt(process.env.GOAL_PLANNING_TIMEOUT_MS || '300000', 10);
@@ -1422,6 +1422,7 @@ async function callDeepSeekAgent(prompt, agentKey, model = resolveAgentModel(age
       model: resolvedModel,
       temperature: 0.2,
       timeoutMs,
+      traceLabel: `goalPlanning.${agentKey}`,
       messages: [
         {
           role: 'system',

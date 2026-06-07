@@ -154,6 +154,25 @@ class AuthService {
   private prefs: dataPreferences.Preferences | null = null;
   private tokenCache: string | null = null;
 
+  private isUnauthorizedMessage(message: string): boolean {
+    const text = (message || '').trim();
+    return text.includes('401:') ||
+      text.includes('登录已过期') ||
+      text.includes('Token无效') ||
+      text.includes('AUTH_TOKEN_INVALID') ||
+      text.includes('AUTH_REQUIRED');
+  }
+
+  async handleUnauthorizedState(message: string, path: string): Promise<boolean> {
+    if (!this.isUnauthorizedMessage(message)) {
+      return false;
+    }
+    logger.warn(`Unauthorized state detected for ${path}`);
+    trackApiError(TelemetryErrorCode.ERR_AUTH_TOKEN_EXPIRED, message, path);
+    await this.logout();
+    return true;
+  }
+
   private trackSessionEvent(eventName: string, properties?: SessionEventTelemetryProps): void {
     TelemetryService.trackImmediate(eventName, properties as TelemetryProperties, 'session');
   }
@@ -513,12 +532,7 @@ class AuthService {
       );
 
       if (!userResult.success || !userResult.data) {
-        // 如果是认证失败，清理登录状态
-        if (userResult.message?.includes('认证失败')) {
-          logger.warn('User deleted or token invalid, forcing logout');
-          trackApiError(TelemetryErrorCode.ERR_AUTH_TOKEN_EXPIRED, 'auth/me failed', 'auth/me');
-          await this.logout();
-        }
+        await this.handleUnauthorizedState(userResult.message || '', 'auth/me');
         return null;
       }
 
@@ -560,6 +574,8 @@ class AuthService {
           serverUser.creditFrozen = creditResult.data.isFrozen;
           serverUser.isMemberActive = creditResult.data.isMemberActive;
           serverUser.lastGrantMonth = creditResult.data.lastGrantMonth;
+        } else {
+          await this.handleUnauthorizedState(creditResult.message || '', 'credit/balance');
         }
       } catch (creditError) {
         logger.warn('refresh credit balance failed', creditError as Object);

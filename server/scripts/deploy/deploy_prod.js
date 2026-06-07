@@ -11,7 +11,25 @@ function buildRemoteEnvPatchCommand() {
     NODE_ENV: 'production',
     PORT: String(PROD_SERVER.healthPort),
     MONGODB_URI: `mongodb://127.0.0.1:27017/${PROD_SERVER.mongoDb}`,
-    CORS_ORIGIN: 'https://sishiqingdan.cn,https://www.sishiqingdan.cn,https://api.sishiqingdan.cn,https://test-api.sishiqingdan.cn'
+    CORS_ORIGIN: 'https://sishiqingdan.cn,https://www.sishiqingdan.cn,https://api.sishiqingdan.cn,https://test-api.sishiqingdan.cn',
+    DEEPSEEK_MODEL: 'deepseek-v4-flash',
+    DEEPSEEK_FAST_MODEL: 'deepseek-v4-flash',
+    AGENT_COMPLETION_MODEL: 'deepseek-v4-flash',
+    AGENT_RESCHEDULE_MODEL: 'deepseek-v4-flash',
+    TODAY_PLAN_MODEL: 'deepseek-v4-flash',
+    VOICE_CREATE_MODEL: 'deepseek-v4-flash',
+    VOICE_CLASSIFY_MODEL: 'deepseek-v4-flash',
+    VOICE_PARSE_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_FAST_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_GOAL_DEFINER_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_CLARIFY_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_DIFFICULTY_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_PROGRESS_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_TASK_PLANNER_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_TASK_ATOMIZER_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_ACTION_MODEL: 'deepseek-v4-flash',
+    GOAL_PLANNING_CRITIC_MODEL: 'deepseek-v4-flash'
   };
   const patchScript = `
 const fs = require('fs');

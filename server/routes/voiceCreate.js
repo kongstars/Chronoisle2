@@ -13,7 +13,7 @@ function readPositiveNumberEnv(name, fallbackValue) {
   return Number.isFinite(value) && value > 0 ? value : fallbackValue;
 }
 
-const VOICE_CREATE_MODEL = process.env.VOICE_CREATE_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro';
+const VOICE_CREATE_MODEL = process.env.VOICE_CREATE_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 const VOICE_CLASSIFY_MODEL = process.env.VOICE_CLASSIFY_MODEL || VOICE_CREATE_MODEL;
 const VOICE_PARSE_MODEL = process.env.VOICE_PARSE_MODEL || VOICE_CREATE_MODEL;
 const VOICE_ANALYZE_TIMEOUT_MS = readPositiveNumberEnv('VOICE_ANALYZE_TIMEOUT_MS', 15000);
@@ -90,6 +90,7 @@ async function callAgent(systemPrompt, userPrompt, options = {}) {
     model: getDeepSeekModel(options.model || VOICE_CREATE_MODEL),
     timeoutMs: options.timeoutMs || 30000,
     temperature: 0.15,
+    traceLabel: options.traceLabel || 'voiceCreate.agent',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
@@ -265,7 +266,8 @@ const ROUTER_SYSTEM_PROMPT = `你是四时清单的语音创建智能助手。�
 async function routeIntent(text) {
   return await callAgent(ROUTER_SYSTEM_PROMPT, `用户语音输入：${text}`, {
     model: VOICE_CLASSIFY_MODEL,
-    timeoutMs: VOICE_CLASSIFY_TIMEOUT_MS
+    timeoutMs: VOICE_CLASSIFY_TIMEOUT_MS,
+    traceLabel: 'voiceCreate.routeIntent'
   });
 }
 
@@ -292,7 +294,8 @@ ${goalsContext}
 
   return await callAgent(systemPrompt, `用户语音输入：${text}`, {
     model: VOICE_PARSE_MODEL,
-    timeoutMs: VOICE_PARSE_TIMEOUT_MS
+    timeoutMs: VOICE_PARSE_TIMEOUT_MS,
+    traceLabel: 'voiceCreate.parseSchedule'
   });
 }
 
@@ -322,7 +325,8 @@ ${taskListStr}
 
   return await callAgent(systemPrompt, `用户语音输入：${text}`, {
     model: VOICE_PARSE_MODEL,
-    timeoutMs: VOICE_PARSE_TIMEOUT_MS
+    timeoutMs: VOICE_PARSE_TIMEOUT_MS,
+    traceLabel: 'voiceCreate.parseFocus'
   });
 }
 
@@ -346,7 +350,8 @@ Return pure JSON only:
 async function routeIntentV2(text, options = {}) {
   return await callAgent(ROUTER_SYSTEM_PROMPT_V2, buildVoiceInputPrompt(text), {
     model: options.model || VOICE_CLASSIFY_MODEL,
-    timeoutMs: options.timeoutMs || VOICE_CLASSIFY_TIMEOUT_MS
+    timeoutMs: options.timeoutMs || VOICE_CLASSIFY_TIMEOUT_MS,
+    traceLabel: options.traceLabel || 'voiceCreate.routeIntentV2'
   });
 }
 
@@ -369,7 +374,8 @@ Return pure JSON only:
 
   return await callAgent(systemPrompt, buildVoiceInputPrompt(text), {
     model: options.model || VOICE_PARSE_MODEL,
-    timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS
+    timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS,
+    traceLabel: options.traceLabel || 'voiceCreate.parseScheduleV2'
   });
 }
 
@@ -395,7 +401,8 @@ Return pure JSON only:
 
   return await callAgent(systemPrompt, buildVoiceInputPrompt(text), {
     model: options.model || VOICE_PARSE_MODEL,
-    timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS
+    timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS,
+    traceLabel: options.traceLabel || 'voiceCreate.parseFocusV2'
   });
 }
 
@@ -904,7 +911,8 @@ Rules:
   try {
     const aiParsed = await callAgent(systemPrompt, buildVoiceInputPrompt(text), {
       model: options.model || VOICE_PARSE_MODEL,
-      timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS
+      timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS,
+      traceLabel: options.traceLabel || 'voiceCreate.parseReminderV2'
     });
     return normalizeReminderParsed(aiParsed, fallback, text, baseDate);
   } catch (error) {

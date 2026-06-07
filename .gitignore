@@ -11,6 +11,8 @@
 **/build
 /.hvigor
 .playwright-mcp/
+.dbg/
+debug-ai-*.md
 *.log
 *.swp
 env-check.txt
