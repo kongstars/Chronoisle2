@@ -63,6 +63,12 @@ interface ReminderSourceData {
   events: DayEvent[];
 }
 
+interface ReminderListRouteParams {
+  goalsJson?: string;
+  tasksJson?: string;
+  dayEventsJson?: string;
+}
+
 @Entry
 @Component
 struct ReminderListPage {
@@ -123,6 +129,28 @@ struct ReminderListPage {
     } catch (error) {
       logger.error('ReminderListPage parseDayEvents error', error as Object);
       return [];
+    }
+  }
+
+  private readRouteSourceData(): ReminderSourceData | null {
+    try {
+      const params = this.getUIContext().getRouter().getParams() as ReminderListRouteParams;
+      const goalsJson = params.goalsJson || '';
+      const tasksJson = params.tasksJson || '';
+      const dayEventsJson = params.dayEventsJson || '';
+      if (goalsJson.length === 0 && tasksJson.length === 0 && dayEventsJson.length === 0) {
+        return null;
+      }
+      const routeData: ReminderSourceData = {
+        goals: this.parseGoals(goalsJson),
+        tasks: this.parseTasks(tasksJson),
+        events: this.parseDayEvents(dayEventsJson)
+      };
+      logger.info(`ReminderListPage readRouteSourceData - goals: ${routeData.goals.length}, tasks: ${routeData.tasks.length}, events: ${routeData.events.length}`);
+      return routeData;
+    } catch (error) {
+      logger.error('ReminderListPage readRouteSourceData error', error as Object);
+      return null;
     }
   }
 
@@ -434,7 +462,14 @@ struct ReminderListPage {
     this.isLoading = true;
     this.loadError = '';
     try {
-      await this.refreshItemsFromStorage();
+      const routeData = this.readRouteSourceData();
+      if (routeData !== null) {
+        this.goals = routeData.goals;
+        this.rebuildItems(routeData.events, routeData.tasks);
+        this.refreshTick++;
+      } else {
+        await this.refreshItemsFromStorage();
+      }
     } catch (error) {
       logger.error('ReminderListPage load error', error as Object);
       this.activeItems = [];

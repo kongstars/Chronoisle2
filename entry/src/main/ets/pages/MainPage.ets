@@ -63,6 +63,12 @@ interface MainPageEntryRouteParams {
   onboardingCategory?: string;
 }
 
+interface ReminderListRouteParams {
+  goalsJson: string;
+  tasksJson: string;
+  dayEventsJson: string;
+}
+
 @Component
 struct MainFabButton {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
@@ -210,6 +216,14 @@ struct MainPage {
     } finally {
       this.isPageDataLoading = false;
     }
+  }
+
+  private buildReminderListRouteParams(): ReminderListRouteParams {
+    return {
+      goalsJson: JSON.stringify(this.goals),
+      tasksJson: JSON.stringify(this.tasks),
+      dayEventsJson: JSON.stringify(this.dayEvents)
+    };
   }
 
   private async loadTodayPlan(context: Context): Promise<void> {
@@ -494,7 +508,10 @@ struct MainPage {
         },
         onOpenReminderCenter: () => {
           dataSyncService.setDayEvents(this.dayEvents);
-          this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+          this.getUIContext().getRouter().pushUrl({
+            url: 'pages/ReminderListPage',
+            params: this.buildReminderListRouteParams()
+          });
         },
         onOpenTaskDetail: (taskId: string) => {
           this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId } });
@@ -520,7 +537,10 @@ struct MainPage {
         },
         onOpenReminderCenter: () => {
           dataSyncService.setDayEvents(this.dayEvents);
-          this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
+          this.getUIContext().getRouter().pushUrl({
+            url: 'pages/ReminderListPage',
+            params: this.buildReminderListRouteParams()
+          });
         },
         onOpenSearch: () => { this.openSearchPage(); }
       })
