@@ -24,6 +24,17 @@
       }
     },
     {
+      "id": "task-guitar-purchase",
+      "input": "明天要买一把吉他",
+      "expectedAnalysisText": "明天要买一把吉他",
+      "expectedIntent": "task",
+      "expectedFields": {
+        "titleContains": "吉他",
+        "dueDateRequired": true
+      },
+      "notes": "如果用户存在“学习吉他”相关目标，真实解析时应尽量关联到该目标。"
+    },
+    {
       "id": "reminder-daily-medicine",
       "input": "每天晚上九点提醒我吃药",
       "expectedAnalysisText": "每天晚上九点提醒我吃药",
@@ -32,6 +43,16 @@
         "eventType": "periodic",
         "periodicMode": "daily",
         "hour": 21
+      }
+    },
+    {
+      "id": "reminder-single-meeting",
+      "input": "明天下午提醒我开产品会",
+      "expectedAnalysisText": "明天下午提醒我开产品会",
+      "expectedIntent": "reminder",
+      "expectedFields": {
+        "eventType": "single",
+        "targetDateRequired": true
       }
     },
     {
@@ -92,6 +113,17 @@
         "focusSubjectContains": "预算表",
         "duration": 25
       }
+    },
+    {
+      "id": "focus-immediate-architecture-design",
+      "input": "我现在开始APP的架构设计",
+      "expectedAnalysisText": "我现在开始APP的架构设计",
+      "expectedIntent": "focus",
+      "expectedFields": {
+        "focusSubjectContains": "APP的架构设计",
+        "duration": 25
+      },
+      "notes": "用于回归即时开工式表达；真实匹配时应优先命中与 APP、技术选型、架构设计 相关的待办任务。"
     },
     {
       "id": "filler-only",

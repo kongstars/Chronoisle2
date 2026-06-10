@@ -1,7 +1,8 @@
-import { formatDayEventDate, formatDayEventTime, getDayEventOccurrenceTimeOnDate, isDayEventEnded, startOfDay } from '../common/DayEventUtils';
-import { DayEvent, DayEventType, ReminderType } from '../models/DayEvent';
-import { Goal, GoalCategory } from '../models/Goal';
-import { Task, TaskStatus } from '../models/Task';
+﻿import dataPreferences from '@ohos.data.preferences';
+import { formatDayEventDate, formatDayEventTime, getDayEventOccurrenceTimeOnDate, isDayEventEnded, isDayEventSkipActive, startOfDay } from '../common/DayEventUtils';
+import { DayEvent, DayEventData, DayEventType, ReminderType } from '../models/DayEvent';
+import { Goal, GoalCategory, GoalData } from '../models/Goal';
+import { Task, TaskData, TaskStatus } from '../models/Task';
 import { CATEGORIES, CategoryInfo } from '../common/Constants';
 import {
   getNextReminderOccurrenceTime,
@@ -26,6 +27,10 @@ import { TYPE_BODY, TYPE_CAPTION, TYPE_HERO_TITLE, TYPE_META, TYPE_NUMERIC_LG } 
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('ReminderListPage');
+const REMINDER_PREFERENCES_NAME: string = 'life_goal_storage';
+const REMINDER_GOALS_KEY: string = 'goals';
+const REMINDER_TASKS_KEY: string = 'tasks';
+const REMINDER_DAY_EVENTS_KEY: string = 'dayEvents';
 
 type ReminderFilter = 'today' | 'all' | 'paused' | 'ended';
 
@@ -52,6 +57,12 @@ interface ReminderDisplayItem {
   periodLabel: string;
 }
 
+interface ReminderSourceData {
+  goals: Goal[];
+  tasks: Task[];
+  events: DayEvent[];
+}
+
 @Entry
 @Component
 struct ReminderListPage {
@@ -61,12 +72,18 @@ struct ReminderListPage {
   @State activeItems: ReminderDisplayItem[] = [];
   @State pausedItems: ReminderDisplayItem[] = [];
   @State endedItems: ReminderDisplayItem[] = [];
-  @State filter: ReminderFilter = 'today';
+  @State filter: ReminderFilter = 'all';
   @State refreshTick: number = 0;
   private goals: Goal[] = [];
 
   aboutToAppear(): void {
     void this.loadItems();
+  }
+
+  onPageShow(): void {
+    if (!this.isLoading) {
+      void this.refreshItemsFromStorage();
+    }
   }
 
   private showToast(message: string): void {
@@ -76,8 +93,61 @@ struct ReminderListPage {
     }
   }
 
+  private parseGoals(json: string): Goal[] {
+    try {
+      const parsed: Object = JSON.parse(json);
+      const data: GoalData[] = parsed as GoalData[];
+      return data.map((item: GoalData) => Goal.fromJSON(item));
+    } catch (error) {
+      logger.error('ReminderListPage parseGoals error', error as Object);
+      return [];
+    }
+  }
+
+  private parseTasks(json: string): Task[] {
+    try {
+      const parsed: Object = JSON.parse(json);
+      const data: TaskData[] = parsed as TaskData[];
+      return data.map((item: TaskData) => Task.fromJSON(item));
+    } catch (error) {
+      logger.error('ReminderListPage parseTasks error', error as Object);
+      return [];
+    }
+  }
+
+  private parseDayEvents(json: string): DayEvent[] {
+    try {
+      const parsed: Object = JSON.parse(json);
+      const data: DayEventData[] = parsed as DayEventData[];
+      return data.map((item: DayEventData) => DayEvent.fromJSON(item));
+    } catch (error) {
+      logger.error('ReminderListPage parseDayEvents error', error as Object);
+      return [];
+    }
+  }
+
+  private async readReminderSourceData(): Promise<ReminderSourceData> {
+    const context = this.getUIContext().getHostContext() as Context;
+    const prefs = await dataPreferences.getPreferences(context, REMINDER_PREFERENCES_NAME);
+    const goalsValue: dataPreferences.ValueType = await prefs.get(REMINDER_GOALS_KEY, '[]');
+    const tasksValue: dataPreferences.ValueType = await prefs.get(REMINDER_TASKS_KEY, '[]');
+    const dayEventsValue: dataPreferences.ValueType = await prefs.get(REMINDER_DAY_EVENTS_KEY, '[]');
+    const goals = this.parseGoals(String(goalsValue));
+    const tasks = this.parseTasks(String(tasksValue));
+    const events = this.parseDayEvents(String(dayEventsValue));
+    logger.info(`ReminderListPage readReminderSourceData - goals: ${goals.length}, tasks: ${tasks.length}, events: ${events.length}`);
+    const sourceData: ReminderSourceData = {
+      goals,
+      tasks,
+      events
+    };
+    return sourceData;
+  }
+
   private getTypeText(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return '单次提醒';
       case DayEventType.HABIT:
         return '习惯养成';
       case DayEventType.COUNTDOWN:
@@ -93,6 +163,8 @@ struct ReminderListPage {
 
   private getTypeBadgeText(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return '单';
       case DayEventType.HABIT:
         return '习';
       case DayEventType.COUNTDOWN:
@@ -110,6 +182,10 @@ struct ReminderListPage {
     if (event.type === DayEventType.COUNTDOWN && event.targetDate) {
       return `目标日期 · ${formatDayEventDate(event.targetDate)}`;
     }
+    if (event.type === DayEventType.SINGLE && event.targetDate) {
+      const rule = event.reminderRules[0];
+      return `提醒时间 · ${formatDayEventDate(event.targetDate)} ${formatDayEventTime(rule?.hour ?? 9, rule?.minute ?? 0)}`;
+    }
     if (event.type === DayEventType.MILESTONE && event.targetDate) {
       return `关键日期 · ${formatDayEventDate(event.targetDate)}`;
     }
@@ -119,6 +195,8 @@ struct ReminderListPage {
 
     const rule = event.reminderRules[0];
     switch (rule.type) {
+      case ReminderType.SINGLE_AT:
+        return `${formatDayEventDate(event.targetDate || event.startDate)} ${formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0)}`;
       case ReminderType.HABIT_DAILY:
       case ReminderType.PERIODIC_DAILY:
         return `每天 ${formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0)}`;
@@ -148,6 +226,8 @@ struct ReminderListPage {
 
   private buildAccentColor(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return this.themeColors.primary;
       case DayEventType.HABIT:
         return this.themeColors.success;
       case DayEventType.MILESTONE:
@@ -202,7 +282,7 @@ struct ReminderListPage {
     if (!event.isEnabled) {
       return '当前处于长期暂停状态';
     }
-    if (event.skipOnceUntil !== undefined && event.skipOnceUntil >= Date.now()) {
+    if (isDayEventSkipActive(event, Date.now()) && event.skipOnceUntil !== undefined) {
       return `已跳过一次，直到 ${this.formatRelativeDateTime(event.skipOnceUntil)}`;
     }
     return '';
@@ -268,7 +348,7 @@ struct ReminderListPage {
       (nextOccurrence !== undefined && startOfDay(nextOccurrence) === todayStart) ||
       completedToday;
 
-    const isSkipped = event.skipOnceUntil !== undefined && event.skipOnceUntil >= now;
+    const isSkipped = isDayEventSkipActive(event, now);
     const totalCompletedCount = getReminderCompletionCount(tasks, event.id);
     const periodProgress = getReminderPeriodProgress(event, tasks, now);
 
@@ -315,7 +395,17 @@ struct ReminderListPage {
   }
 
   private rebuildItems(events: DayEvent[], tasks: Task[]): void {
-    const built = events.map((event: DayEvent) => this.buildItem(event, tasks));
+    const built: ReminderDisplayItem[] = [];
+    let failCount = 0;
+    events.forEach((event: DayEvent) => {
+      try {
+        built.push(this.buildItem(event, tasks));
+      } catch (error) {
+        failCount++;
+        logger.error(`ReminderListPage buildItem failed: ${event.id}`, error as Object);
+      }
+    });
+    logger.info(`ReminderListPage rebuildItems - total: ${events.length}, built: ${built.length}, failed: ${failCount}`);
     this.endedItems = built
       .filter((item: ReminderDisplayItem) => item.isEnded)
       .sort((first: ReminderDisplayItem, second: ReminderDisplayItem) => {
@@ -330,11 +420,13 @@ struct ReminderListPage {
       .sort((first: ReminderDisplayItem, second: ReminderDisplayItem) => {
         return (second.event.updatedAt || second.event.createdAt) - (first.event.updatedAt || first.event.createdAt);
       });
+    logger.info(`ReminderListPage rebuildItems result - active: ${this.activeItems.length}, paused: ${this.pausedItems.length}, ended: ${this.endedItems.length}`);
   }
 
-  private refreshItemsFromDb(): void {
-    this.goals = db.getAllGoals();
-    this.rebuildItems(db.getAllDayEvents(), db.getAllTasks());
+  private async refreshItemsFromStorage(): Promise<void> {
+    const source = await this.readReminderSourceData();
+    this.goals = source.goals;
+    this.rebuildItems(source.events, source.tasks);
     this.refreshTick++;
   }
 
@@ -342,9 +434,7 @@ struct ReminderListPage {
     this.isLoading = true;
     this.loadError = '';
     try {
-      const context = this.getUIContext().getHostContext() as Context;
-      await db.initialize(context as Context);
-      this.refreshItemsFromDb();
+      await this.refreshItemsFromStorage();
     } catch (error) {
       logger.error('ReminderListPage load error', error as Object);
       this.activeItems = [];
@@ -362,38 +452,61 @@ struct ReminderListPage {
       return;
     }
     await db.pauseDayEventOnce(item.event.id, item.nextOccurrence);
-    this.refreshItemsFromDb();
+    await this.refreshItemsFromStorage();
     this.showToast('已跳过 1 次');
   }
 
   private async pauseIndefinitely(item: ReminderDisplayItem): Promise<void> {
     await db.pauseDayEventIndefinitely(item.event.id);
-    this.refreshItemsFromDb();
+    await this.refreshItemsFromStorage();
     this.showToast('已长期暂停');
   }
 
   private async completeReminder(item: ReminderDisplayItem): Promise<void> {
     const success = await db.completeDayEventOccurrence(item.event.id, Date.now());
     this.showToast(success ? '已标记本次完成' : '当前没有可完成的提醒');
-    this.refreshItemsFromDb();
+    await this.refreshItemsFromStorage();
   }
 
   private async resumeReminder(item: ReminderDisplayItem): Promise<void> {
     await db.resumeDayEvent(item.event.id);
-    this.refreshItemsFromDb();
+    await this.refreshItemsFromStorage();
     this.showToast('已恢复提醒');
   }
 
   private async endReminder(item: ReminderDisplayItem): Promise<void> {
     await db.endDayEvent(item.event.id);
-    this.refreshItemsFromDb();
+    await this.refreshItemsFromStorage();
     this.showToast('已结束这条提醒');
   }
 
+  private isSingleReminder(item: ReminderDisplayItem): boolean {
+    return item.event.type === DayEventType.SINGLE;
+  }
+
   private openPauseDialog(item: ReminderDisplayItem): void {
+    if (this.isSingleReminder(item)) {
+      this.getUIContext().showAlertDialog({
+        title: '结束提醒',
+        message: `单次提醒“${item.event.title}”不支持跳过一次，你可以直接完成或结束它。`,
+        buttons: [
+          {
+            value: '结束',
+            action: () => {
+              void this.endReminder(item);
+            }
+          },
+          {
+            value: '取消',
+            action: () => {}
+          }
+        ]
+      });
+      return;
+    }
     this.getUIContext().showAlertDialog({
       title: '暂停提醒',
-      message: `你想如何暂停"${item.event.title}"？`,
+      message: `你想如何暂停“${item.event.title}”？`,
       buttons: [
         {
           value: '跳过一次',
@@ -402,7 +515,7 @@ struct ReminderListPage {
           }
         },
         {
-          value: '长期暂停',
+          value: '无限暂停',
           action: () => {
             void this.pauseIndefinitely(item);
           }
@@ -418,7 +531,7 @@ struct ReminderListPage {
   private openEndDialog(item: ReminderDisplayItem): void {
     this.getUIContext().showAlertDialog({
       title: '结束提醒',
-      message: `结束后将不再提醒"${item.event.title}"，可以稍后从已结束列表中恢复。`,
+      message: `结束后将不再提醒“${item.event.title}”，你可以稍后从已结束列表中恢复。`,
       buttons: [
         {
           value: '取消',
@@ -452,7 +565,7 @@ struct ReminderListPage {
   }
 
   private canResume(item: ReminderDisplayItem): boolean {
-    return !item.event.isEnabled || (item.event.skipOnceUntil !== undefined && item.event.skipOnceUntil >= Date.now());
+    return !item.event.isEnabled || isDayEventSkipActive(item.event, Date.now());
   }
 
   private getTodayItems(): ReminderDisplayItem[] {
@@ -478,6 +591,8 @@ struct ReminderListPage {
 
   private getFilterIndex(): number {
     switch (this.filter) {
+      case 'today':
+        return 0;
       case 'all':
         return 1;
       case 'paused':
@@ -485,7 +600,7 @@ struct ReminderListPage {
       case 'ended':
         return 3;
       default:
-        return 0;
+        return 1;
     }
   }
 
@@ -556,13 +671,13 @@ struct ReminderListPage {
   @Builder
   private SummaryCard() {
     AppCard({ variant: 'soft', spacing: SPACE_XS, paddingLevel: 'md' }) {
-      Text('你的所有重要提醒都在这里')
+      Text('你的重要提醒都在这里')
         .fontSize(TYPE_HERO_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
 
-      Text('系统会根据优先级自动排序，你可以根据你的实际情况完成、暂停或跳过每个提醒。')
+      Text('系统会根据优先级自动排序，你可以按实际情况完成、暂停或结束每个提醒。')
         .fontSize(TYPE_META)
         .lineHeight(20)
         .fontColor(this.themeColors.textSecondary)
@@ -600,13 +715,17 @@ struct ReminderListPage {
   @Builder
   private ActionButton(item: ReminderDisplayItem) {
     AppButton({
-      text: this.canResume(item) ? '恢复' : '暂停',
+      text: this.canResume(item) ? '恢复' : (this.isSingleReminder(item) ? '结束' : '暂停'),
       variant: 'secondary',
       buttonSize: 'sm',
-      iconName: this.canResume(item) ? 'success' : 'warning',
+      iconName: this.canResume(item) ? 'success' : (this.isSingleReminder(item) ? 'archive' : 'warning'),
       tapAction: () => {
         if (this.canResume(item)) {
           void this.resumeReminder(item);
+          return;
+        }
+        if (this.isSingleReminder(item)) {
+          this.openEndDialog(item);
           return;
         }
         this.openPauseDialog(item);
@@ -617,7 +736,7 @@ struct ReminderListPage {
   @Builder
   private CompleteButton(item: ReminderDisplayItem) {
     AppButton({
-      text: item.completedToday ? '今日已完成' : '标记本次完成',
+      text: item.completedToday ? (this.isSingleReminder(item) ? '已完成' : '今日已完成') : (this.isSingleReminder(item) ? '完成' : '标记本次完成'),
       variant: 'primary',
       buttonSize: 'sm',
       iconName: 'success',
@@ -698,29 +817,29 @@ struct ReminderListPage {
       .width('100%')
       .alignItems(VerticalAlign.Center)
 
-      // 子信息行：类型 · 规则
-      Text(`${item.typeText} · ${item.summaryText}`)
+      // 次信息行：类型 · 规则
+      Text(`${item.typeText} 路 ${item.summaryText}`)
         .fontSize(TYPE_META)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-      // 状态文字（下次触发 / 现在可打卡 / 已暂停 等）
+      // 状态文案：下次触发 / 现在可打卡 / 已暂停等
       Text(item.statusText)
         .fontSize(TYPE_META)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
 
-      // 进度统计行：完成 N · 当前周期 X/Y · 已跳过
+      // 进度统计：完成次数 · 当前周期进度 · 是否跳过
       Row({ space: SPACE_SM }) {
         Text(`完成 ${item.totalCompletedCount}`)
           .fontSize(TYPE_CAPTION)
           .fontColor(this.themeColors.textSecondary)
 
         if (item.periodTargetCount > 0) {
-          Text('·')
+          Text('路')
             .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
           Text(`${item.periodLabel} ${item.periodCompletedCount}/${item.periodTargetCount}`)
@@ -730,7 +849,7 @@ struct ReminderListPage {
         }
 
         if (item.isSkipped) {
-          Text('·')
+          Text('路')
             .fontSize(TYPE_CAPTION)
             .fontColor(this.themeColors.textMuted)
           Text('已跳过 1 次')
@@ -750,7 +869,9 @@ struct ReminderListPage {
         Row({ space: SPACE_SM }) {
           this.CompleteButton(item)
           this.ActionButton(item)
-          this.EndButton(item)
+          if (!this.isSingleReminder(item)) {
+            this.EndButton(item)
+          }
         }
         .width('100%')
       }
@@ -776,7 +897,7 @@ struct ReminderListPage {
         ? '恢复后的提醒会重新回到执行列表，之后你可以继续按节奏处理。'
         : (this.filter === 'ended'
           ? '完成的关键日子或主动结束的提醒会归档到这里，方便回看。'
-          : '点击右下角"新建提醒"按钮，开始记录你的第一条提醒。'))
+          : '点击底部“新建提醒”按钮，开始记录你的第一条提醒。'))
         .fontSize(TYPE_META)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
@@ -787,7 +908,7 @@ struct ReminderListPage {
     Column() {
       AppPageHeader({
         title: '提醒中心',
-        subtitle: '统一查看今天要处理、已完成、暂停和已结束的提醒',
+        subtitle: '统一查看今天要处理、已完成、已暂停和已结束的提醒',
         actionIconName: 'search',
         onBack: () => {
           this.getUIContext().getRouter().back();

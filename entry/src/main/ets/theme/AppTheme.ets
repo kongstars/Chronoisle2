@@ -23,6 +23,7 @@ export interface ThemeColors {
   success: string;
   warning: string;
   danger: string;
+  dangerDark: string;
   info: string;
   primarySubtle: string;
   successSubtle: string;
@@ -56,12 +57,16 @@ export interface ThemeColors {
   semanticWarning: string;
   borderLight: string;
   borderHighlight: string;
+  primaryHalf: string;
+  dangerHalf: string;
+  neutralHalf: string;
 }
 
 export const LightTheme: ThemeColors = {
   primary: '#5B5CE6',
   primaryLight: 'rgba(91, 92, 230, 0.08)',
   primaryDark: '#5F62DA',
+  primarySubtle: 'rgba(91, 92, 230, 0.08)',
   accent: '#FFB56F',
   background: '#F0F2F7',
   surface: '#FFFFFF',
@@ -78,7 +83,6 @@ export const LightTheme: ThemeColors = {
   warning: '#D97706',
   danger: '#E63946',
   info: '#5B5CE6',
-  primarySubtle: 'rgba(91, 92, 230, 0.08)',
   successSubtle: 'rgba(5, 166, 96, 0.08)',
   warningSubtle: 'rgba(217, 119, 6, 0.08)',
   dangerSubtle: 'rgba(230, 57, 70, 0.08)',
@@ -107,9 +111,13 @@ export const LightTheme: ThemeColors = {
   brandLight: 'rgba(91, 92, 230, 0.08)',
   semanticSuccess: '#05A660',
   semanticDanger: '#E63946',
+  dangerDark: '#C92A36',
   semanticWarning: '#D97706',
   borderLight: 'rgba(0, 0, 0, 0.05)',
-  borderHighlight: 'rgba(255, 255, 255, 0.8)'
+  borderHighlight: 'rgba(255, 255, 255, 0.8)',
+  primaryHalf: 'rgba(91, 92, 230, 0.5)',
+  dangerHalf: 'rgba(230, 57, 70, 0.5)',
+  neutralHalf: 'rgba(82, 86, 102, 0.5)'
 };
 
 export const DarkTheme: ThemeColors = {
@@ -131,6 +139,7 @@ export const DarkTheme: ThemeColors = {
   success: '#05C973',
   warning: '#FBBF24',
   danger: '#FF4D5E',
+  dangerDark: '#E03142',
   info: '#7A7CFF',
   primarySubtle: 'rgba(122, 124, 255, 0.15)',
   successSubtle: 'rgba(5, 201, 115, 0.1)',
@@ -163,7 +172,10 @@ export const DarkTheme: ThemeColors = {
   semanticDanger: '#FF4D5E',
   semanticWarning: '#FBBF24',
   borderLight: 'rgba(255, 255, 255, 0.06)',
-  borderHighlight: 'rgba(255, 255, 255, 0.12)'
+  borderHighlight: 'rgba(255, 255, 255, 0.12)',
+  primaryHalf: 'rgba(122, 124, 255, 0.5)',
+  dangerHalf: 'rgba(255, 77, 94, 0.5)',
+  neutralHalf: 'rgba(160, 164, 184, 0.5)'
 };
 
 export class ThemeManager {

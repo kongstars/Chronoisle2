@@ -1,4 +1,4 @@
-// 重要日子倒计时卡片
+// 时间提醒卡片
 import { WidgetCountdown, WidgetCountdownType } from '../../models/WidgetData';
 import { buildEventRouteParams, buildWidgetRouteAction } from './WidgetNavigation';
 import { WidgetGlyph } from './WidgetGlyph';
@@ -15,7 +15,7 @@ struct CountdownWidget {
   build() {
     Column({ space: 8 }) {
       Row() {
-        Text('重要日子')
+        Text('时间提醒')
           .fontSize(14)
           .fontWeight(FontWeight.Bold)
           .fontColor(WIDGET_COLOR_TEXT_DARK)
@@ -87,6 +87,8 @@ struct CountdownWidget {
         return 'calendar';
       case 'anniversary':
         return 'heart';
+      case 'reminder':
+        return 'reminder';
       default:
         return 'calendar';
     }
@@ -102,6 +104,9 @@ struct CountdownWidget {
     if (type === 'anniversary') {
       return `第 ${days} 天`;
     }
+    if (type === 'reminder') {
+      return `还有 ${days} 天`;
+    }
     return `还有 ${days} 天`;
   }
 
@@ -111,6 +116,8 @@ struct CountdownWidget {
         return WIDGET_COLOR_ORANGE;
       case 'anniversary':
         return WIDGET_COLOR_PINK;
+      case 'reminder':
+        return WIDGET_COLOR_ACCENT;
       default:
         return WIDGET_COLOR_ACCENT;
     }

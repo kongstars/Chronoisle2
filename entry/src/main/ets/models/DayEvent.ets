@@ -1,4 +1,5 @@
 export enum DayEventType {
+  SINGLE = 'single',
   PERIODIC = 'periodic',
   HABIT = 'habit',
   MILESTONE = 'milestone',
@@ -7,6 +8,7 @@ export enum DayEventType {
 }
 
 export enum ReminderType {
+  SINGLE_AT = 'single_at',
   PERIODIC_DAILY = 'periodic_daily',
   PERIODIC_WEEKLY = 'periodic_weekly',
   PERIODIC_MONTHLY = 'periodic_monthly',
@@ -136,19 +138,22 @@ export class DayEvent implements DayEventData {
     event.krId = data.krId;
     event.krTitle = data.krTitle;
     event.reminderRules = data.reminderRules || [];
-    event.isEnabled = data.isEnabled;
+    // 兼容旧版本提醒数据：缺少布尔字段时按“启用且未完成”处理，避免被提醒中心过滤掉
+    event.isEnabled = data.isEnabled ?? true;
     event.skipOnceUntil = data.skipOnceUntil;
-    event.isCompleted = data.isCompleted;
+    event.isCompleted = data.isCompleted ?? false;
     event.linkedTaskId = data.linkedTaskId;
     event.linkedTaskTitle = data.linkedTaskTitle;
-    event.updatedAt = data.updatedAt;
-    event.createdAt = data.createdAt;
+    event.updatedAt = data.updatedAt ?? Date.now();
+    event.createdAt = data.createdAt ?? event.updatedAt;
     return event;
   }
 }
 
 export function getEventTypeIcon(type: DayEventType): string {
   switch (type) {
+    case DayEventType.SINGLE:
+      return 'reminder';
     case DayEventType.HABIT:
       return 'habit';
     case DayEventType.MILESTONE:
@@ -164,6 +169,8 @@ export function getEventTypeIcon(type: DayEventType): string {
 
 export function getEventTypeLabel(type: DayEventType): string {
   switch (type) {
+    case DayEventType.SINGLE:
+      return '单次提醒';
     case DayEventType.HABIT:
       return '习惯';
     case DayEventType.MILESTONE:

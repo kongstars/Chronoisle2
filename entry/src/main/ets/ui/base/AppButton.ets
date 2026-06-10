@@ -4,11 +4,11 @@ import { BORDER_DEFAULT } from '../../foundation/tokens/BorderTokens';
 import { ICON_SIZE_SM, ICON_SIZE_XS } from '../../foundation/tokens/IconTokens';
 import { BUTTON_HEIGHT_LG, BUTTON_HEIGHT_MD, BUTTON_HEIGHT_SM } from '../../foundation/tokens/PageDensityTokens';
 import { DISABLED_OPACITY } from '../../foundation/tokens/VisualTokens';
-import { SPACE_CARD, SPACE_MD, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
+import { SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_XS } from '../../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_META } from '../../foundation/tokens/TypographyTokens';
 import { AppIcon } from './AppIcon';
 
-export type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'premium';
+export type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'premium' | 'neutral';
 export type AppButtonSize = 'sm' | 'md' | 'lg';
 export type AppButtonEmphasis = 'normal' | 'strong' | 'subtle';
 
@@ -23,6 +23,9 @@ export struct AppButton {
   @Prop loading: boolean = false;
   @Prop iconName: string = '';
   @Prop fullWidth: boolean = false;
+  @Prop isOutlined: boolean = false;
+  @Prop halfOpacityBg: boolean = false;
+  @Prop contentGap: number = SPACE_XS;
   @State isFocused: boolean = false;
   @State isPressed: boolean = false;
   tapAction?: () => void;
@@ -39,13 +42,48 @@ export struct AppButton {
     }
     const variant = this.effectiveVariant();
     
+    if (this.isOutlined) {
+      if (this.isPressed) {
+        switch (variant) {
+          case 'primary': return this.themeColors.brandLight;
+          case 'danger': return this.themeColors.dangerSubtle;
+          case 'neutral': return this.themeColors.surfacePressed;
+          default: return this.themeColors.surfacePressed;
+        }
+      }
+      switch (variant) {
+        case 'primary': return this.themeColors.brandLight;
+        case 'danger': return this.themeColors.dangerSubtle;
+        case 'neutral': return this.themeColors.surfaceSoft;
+        default: return this.themeColors.surfaceLight;
+      }
+    }
+
+    if (this.halfOpacityBg) {
+      if (this.isPressed) {
+        switch (variant) {
+          case 'primary': return this.themeColors.primaryDark;
+          case 'danger': return this.themeColors.dangerDark;
+          case 'neutral': return this.themeColors.textPrimary;
+          default: return this.themeColors.primaryDark;
+        }
+      }
+      switch (variant) {
+        case 'primary': return this.themeColors.primaryHalf;
+        case 'danger': return this.themeColors.dangerHalf;
+        case 'neutral': return this.themeColors.neutralHalf;
+        default: return this.themeColors.primaryHalf;
+      }
+    }
+
     if (this.isPressed) {
       switch (variant) {
         case 'primary': return this.themeColors.primaryDark;
         case 'secondary': return this.themeColors.surfacePressed;
         case 'ghost': return this.themeColors.surfacePressed;
-        case 'danger': return this.themeColors.dangerSubtle;
+        case 'danger': return this.themeColors.dangerDark;
         case 'premium': return this.themeColors.premiumBorder;
+        case 'neutral': return this.themeColors.textPrimary;
       }
     }
 
@@ -57,9 +95,11 @@ export struct AppButton {
       case 'ghost':
         return this.themeColors.transparent;
       case 'danger':
-        return this.themeColors.riskSurface;
+        return this.themeColors.semanticDanger;
       case 'premium':
         return this.themeColors.premium;
+      case 'neutral':
+        return this.themeColors.textSecondary;
     }
   }
 
@@ -68,15 +108,27 @@ export struct AppButton {
       return this.themeColors.textMuted;
     }
     const variant = this.effectiveVariant();
+    
+    if (this.isOutlined) {
+      switch (variant) {
+        case 'primary': return this.themeColors.brandPrimary;
+        case 'danger': return this.themeColors.semanticDanger;
+        case 'neutral': return this.themeColors.textSecondary;
+        default: return this.themeColors.brandPrimary;
+      }
+    }
+
     switch (variant) {
       case 'primary':
       case 'premium':
         return this.themeColors.textOnPrimary;
       case 'danger':
-        return this.themeColors.semanticDanger;
+        return this.themeColors.textOnPrimary;
       case 'secondary':
       case 'ghost':
         return this.themeColors.brandPrimary;
+      case 'neutral':
+        return this.themeColors.textOnPrimary;
       default:
         return this.themeColors.textPrimary;
     }
@@ -101,7 +153,7 @@ export struct AppButton {
   }
 
   build() {
-    Row({ space: SPACE_XS }) {
+    Row({ space: this.contentGap > 0 ? this.contentGap : SPACE_2XS }) {
       if (this.loading) {
         LoadingProgress()
           .width(ICON_SIZE_SM)

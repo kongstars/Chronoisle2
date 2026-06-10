@@ -4,7 +4,6 @@ import { DayEvent } from '../models/DayEvent';
 import { db } from '../storage/Database';
 import { authService, UserAccount } from '../services/AuthService';
 import type { SavedTodayPlan } from '../models/TodayPlan';
-import { injectTodayReminders } from '../models/TodayPlan';
 import { TodayTabV2 } from '../components/TodayTabV2';
 import { ActionTab } from '../components/ActionTab';
 import { GoalsTab } from '../components/GoalsTab';
@@ -17,6 +16,7 @@ import { hasMicrophonePermission, requestMicrophonePermission } from '../Utils/U
 import { TodayPlanService } from '../services/TodayPlanService';
 import { GoalReschedulePromptService, type GoalReschedulePrompt } from '../services/GoalReschedulePromptService';
 import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
+import { dataSyncService } from '../services/DataSyncService';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
@@ -216,14 +216,7 @@ struct MainPage {
     try {
       // 仅读取本地缓存计划，不做网络请求（loadPlan 会触发 HTTP 调用导致页面卡住）
       const localPlan = await TodayPlanService.loadLocalPlan(context);
-      if (localPlan) {
-        this.savedPlan = injectTodayReminders(localPlan, this.dayEvents, this.tasks);
-      } else {
-        // 即使没有本地计划，也构建一个仅含提醒的计划
-        const emptyPlan: SavedTodayPlan = { focusTasks: [], deferTasks: [], summary: '今日计划' };
-        const withReminders = injectTodayReminders(emptyPlan, this.dayEvents, this.tasks);
-        this.savedPlan = withReminders.focusTasks.length > 0 ? withReminders : null;
-      }
+      this.savedPlan = localPlan;
     } catch (error) {
       logger.error('MainPage loadTodayPlan failed', error as Object);
       // 出错也不重置 savedPlan，保留之前显示的内容
@@ -234,7 +227,7 @@ struct MainPage {
     try {
       const result = await TodayPlanService.loadPlan(context);
       if (result.plan) {
-        this.savedPlan = injectTodayReminders(result.plan, this.dayEvents, this.tasks);
+        this.savedPlan = result.plan;
       }
     } catch (error) {
       logger.error('MainPage refreshTodayPlanFromCloud failed', error as Object);
@@ -489,10 +482,18 @@ struct MainPage {
         onOpenGoalDetail: (goalId: string) => {
           this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalDetailPage', params: { goalId } });
         },
+        onOpenGoalsTab: () => {
+          this.getUIContext().animateTo({ duration: 300, curve: Curve.EaseInOut }, () => {
+            this.currentTabIndex = 2;
+            this.showVoiceOnly = false;
+            this.showAddSheet = false;
+          });
+        },
         onOpenReschedule: () => {
           this.getUIContext().getRouter().pushUrl({ url: 'pages/ReschedulePage' });
         },
         onOpenReminderCenter: () => {
+          dataSyncService.setDayEvents(this.dayEvents);
           this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
         },
         onOpenTaskDetail: (taskId: string) => {
@@ -518,6 +519,7 @@ struct MainPage {
           this.voiceCloseBlocked = false;
         },
         onOpenReminderCenter: () => {
+          dataSyncService.setDayEvents(this.dayEvents);
           this.getUIContext().getRouter().pushUrl({ url: 'pages/ReminderListPage' });
         },
         onOpenSearch: () => { this.openSearchPage(); }
@@ -878,7 +880,7 @@ struct MainPage {
       this.handleVoiceResult({
         intent: result.intent,
         parsed: result.parsed
-      });
+      }, text);
       return;
     }
 
@@ -939,10 +941,8 @@ struct MainPage {
     .alignItems(VerticalAlign.Center)
     .onTouch((event: TouchEvent) => {
       if (event.type === TouchType.Down) {
-        // 错误态点击重置为 idle
         if (this.voiceInlinePhase === 'error') {
           this.resetInlineVoiceState();
-          return;
         }
         void this.startInlineVoice();
       } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
@@ -1067,7 +1067,7 @@ struct MainPage {
 
   @Builder
   private AddActionSheet() {
-    Stack({ alignContent: Alignment.Bottom }) {
+    Stack({ alignContent: Alignment.Center }) {
       Column()
         .width('100%')
         .height('100%')
@@ -1157,7 +1157,7 @@ struct MainPage {
           }
           .width('100%')
         }
-        .width('100%')
+        .width('86%')
         .padding({ left: SPACE_CARD, right: SPACE_CARD, top: SPACE_SM, bottom: SPACE_LG })
         .backgroundColor(this.themeColors.navBackground)
         .borderRadius(RADIUS_XL)
@@ -1168,8 +1168,8 @@ struct MainPage {
       .padding({
         left: SPACE_CARD,
         right: SPACE_CARD,
-        top: SPACE_MD,
-        bottom: this.bottomBarHeight - SPACE_SM + SPACE_CARD
+        top: SPACE_CARD,
+        bottom: SPACE_CARD
       })
     }
     .width('100%')
@@ -1317,7 +1317,7 @@ struct MainPage {
     .zIndex(40)
   }
 
-  private handleVoiceResult(output: VoiceCreateOutput): void {
+  private handleVoiceResult(output: VoiceCreateOutput, sourceText: string = ''): void {
     if (output.intent === 'goal') {
       this.getUIContext().getRouter().pushUrl({
         url: 'pages/GoalBreakdownPage',
@@ -1332,6 +1332,7 @@ struct MainPage {
           description: output.parsed.description || '',
           priority: output.parsed.priority || 'normal',
           dueDate: output.parsed.dueDate || '',
+          sourceText: sourceText || output.parsed.title || '',
           goalId: output.parsed.goalId || '',
           krId: output.parsed.krId || ''
         }
@@ -1401,7 +1402,8 @@ struct MainPage {
       params: {
         autoFill: 'true',
         title: fallbackTitle || fallbackRawText,
-        description: fallbackDescription || (fallbackRawText !== fallbackTitle ? fallbackRawText : '')
+        description: fallbackDescription || (fallbackRawText !== fallbackTitle ? fallbackRawText : ''),
+        sourceText: fallbackRawText
       }
     });
   }

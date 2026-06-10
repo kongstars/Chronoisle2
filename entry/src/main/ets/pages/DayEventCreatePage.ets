@@ -21,7 +21,7 @@ const logger = Logger.create('DayEventCreatePage');
 type PeriodicMode = 'daily' | 'weekly' | 'monthly' | 'interval';
 type HabitMode = 'daily' | 'weekly' | 'monthly';
 type CounterMode = 'interval' | 'date';
-type DateFieldKey = 'periodicStart' | 'periodicEnd' | 'habitStart' | 'habitEnd' | 'milestoneTarget' | 'counterStart' | 'counterTarget' | 'countdownTarget' | '';
+type DateFieldKey = 'singleTarget' | 'periodicStart' | 'periodicEnd' | 'habitStart' | 'habitEnd' | 'milestoneTarget' | 'counterStart' | 'counterTarget' | 'countdownTarget' | '';
 
 interface TypeCardItem {
   type: DayEventType;
@@ -80,6 +80,7 @@ struct DayEventCreatePage {
   @State periodicMode: PeriodicMode = 'daily';
   @State habitMode: HabitMode = 'daily';
   @State counterMode: CounterMode = 'interval';
+  @State singleTargetDate: Date = new Date(Date.now() + 86400000);
   @State periodicStartDate: Date = new Date();
   @State periodicEndDate: Date = new Date(Date.now() + 90 * 86400000);
   @State hasPeriodicEndDate: boolean = false;
@@ -103,6 +104,7 @@ struct DayEventCreatePage {
   private draftStorageKey: string = 'goalInfoReminderDraft';
 
   private readonly typeCards: TypeCardItem[] = [
+    { type: DayEventType.SINGLE, icon: 'reminder', title: '单次提醒' },
     { type: DayEventType.PERIODIC, icon: 'calendar', title: '周期类' },
     { type: DayEventType.HABIT, icon: 'habit', title: '习惯养成' },
     { type: DayEventType.MILESTONE, icon: 'milestone', title: '重要日子' },
@@ -202,6 +204,7 @@ struct DayEventCreatePage {
       this.hasHabitEndDate = true;
     }
     if (targetDate) {
+      this.singleTargetDate = targetDate;
       this.milestoneTargetDate = targetDate;
       this.counterTargetDate = targetDate;
       this.countdownTargetDate = targetDate;
@@ -277,6 +280,8 @@ struct DayEventCreatePage {
 
   private parseVoiceEventType(value?: string): DayEventType {
     switch (value) {
+      case DayEventType.SINGLE:
+        return DayEventType.SINGLE;
       case DayEventType.HABIT:
         return DayEventType.HABIT;
       case DayEventType.MILESTONE:
@@ -353,6 +358,8 @@ struct DayEventCreatePage {
 
   private getTypeDescription(): string {
     switch (this.selectedType) {
+      case DayEventType.SINGLE:
+        return '适合明天下午提醒我、周五开会前提醒我这类一次性提醒，只在指定日期和时间触发一次。';
       case DayEventType.HABIT:
         return '适合培养长期习惯，支持每天提醒、每周 X 次和每月 X 次，并统计本周期与累计完成次数。';
       case DayEventType.MILESTONE:
@@ -431,6 +438,10 @@ struct DayEventCreatePage {
       }
     }
 
+    if (event.type === DayEventType.SINGLE) {
+      this.singleTargetDate = new Date(event.targetDate || event.startDate || Date.now() + 86400000);
+    }
+
     if (event.type === DayEventType.HABIT) {
       this.habitStartDate = new Date(event.startDate);
       this.hasHabitEndDate = event.endDate !== undefined;
@@ -474,6 +485,8 @@ struct DayEventCreatePage {
 
   private getDateForField(field: DateFieldKey): Date {
     switch (field) {
+      case 'singleTarget':
+        return this.singleTargetDate;
       case 'periodicStart':
         return this.periodicStartDate;
       case 'periodicEnd':
@@ -497,6 +510,9 @@ struct DayEventCreatePage {
 
   private setDateForField(field: DateFieldKey, date: Date): void {
     switch (field) {
+      case 'singleTarget':
+        this.singleTargetDate = date;
+        break;
       case 'periodicStart':
         this.periodicStartDate = date;
         break;
@@ -554,6 +570,10 @@ struct DayEventCreatePage {
     }
   }
 
+  private getSingleRuleSummary(): string {
+    return `${formatDayEventDate(this.singleTargetDate.getTime())} ${this.formatReminderTime()} 提醒一次`;
+  }
+
   private getHabitRuleSummary(): string {
     switch (this.habitMode) {
       case 'weekly':
@@ -579,6 +599,51 @@ struct DayEventCreatePage {
 
   private getSuggestions(): SuggestionItem[] {
     switch (this.selectedType) {
+      case DayEventType.SINGLE:
+        return [
+          {
+            title: '明天 09:00',
+            subtitle: '适合临时待办提醒',
+            enabled: formatDayEventDate(this.singleTargetDate.getTime()) === formatDayEventDate(Date.now() + 86400000) &&
+            this.reminderHour === 9 && this.reminderMinute === 0,
+            onApply: () => {
+              this.singleTargetDate = new Date(Date.now() + 86400000);
+              this.reminderHour = 9;
+              this.reminderMinute = 0;
+            }
+          },
+          {
+            title: '今天 18:00',
+            subtitle: '适合下班前提醒',
+            enabled: formatDayEventDate(this.singleTargetDate.getTime()) === formatDayEventDate(Date.now()) &&
+            this.reminderHour === 18 && this.reminderMinute === 0,
+            onApply: () => {
+              this.singleTargetDate = new Date();
+              this.reminderHour = 18;
+              this.reminderMinute = 0;
+            }
+          },
+          {
+            title: '下周一 09:30',
+            subtitle: '适合会议或出行',
+            enabled: (() => {
+              const today = new Date();
+              const day = today.getDay();
+              const offset = ((8 - day) % 7) || 7;
+              const nextMonday = new Date(today.getTime() + offset * 86400000);
+              return formatDayEventDate(this.singleTargetDate.getTime()) === formatDayEventDate(nextMonday.getTime()) &&
+                this.reminderHour === 9 && this.reminderMinute === 30;
+            })(),
+            onApply: () => {
+              const today = new Date();
+              const day = today.getDay();
+              const offset = ((8 - day) % 7) || 7;
+              this.singleTargetDate = new Date(today.getTime() + offset * 86400000);
+              this.reminderHour = 9;
+              this.reminderMinute = 30;
+            }
+          }
+        ];
       case DayEventType.HABIT:
         return [
           {
@@ -720,6 +785,18 @@ struct DayEventCreatePage {
     if (!this.title.trim()) {
       return false;
     }
+    if (this.selectedType === DayEventType.SINGLE) {
+      const occurrence = new Date(
+        this.singleTargetDate.getFullYear(),
+        this.singleTargetDate.getMonth(),
+        this.singleTargetDate.getDate(),
+        this.reminderHour,
+        this.reminderMinute,
+        0,
+        0
+      ).getTime();
+      return occurrence >= Date.now();
+    }
     if (this.selectedType === DayEventType.COUNTDOWN) {
       return this.countdownTargetDate.getTime() >= Date.now();
     }
@@ -731,6 +808,12 @@ struct DayEventCreatePage {
 
   private buildRule(): ReminderRule | null {
     switch (this.selectedType) {
+      case DayEventType.SINGLE:
+        return {
+          type: ReminderType.SINGLE_AT,
+          hour: this.reminderHour,
+          minute: this.reminderMinute
+        };
       case DayEventType.HABIT:
         if (this.habitMode === 'weekly') {
           const weeklyRule: ReminderRule = {
@@ -831,11 +914,13 @@ struct DayEventCreatePage {
     try {
       const context = this.getUIContext().getHostContext() as Context;
       await db.initialize(context);
-      const startTimestamp = this.selectedType === DayEventType.HABIT
+      const startTimestamp = this.selectedType === DayEventType.SINGLE
+        ? startOfDay(this.singleTargetDate.getTime())
+        : (this.selectedType === DayEventType.HABIT
         ? startOfDay(this.habitStartDate.getTime())
         : (this.selectedType === DayEventType.PERIODIC
           ? startOfDay(this.periodicStartDate.getTime())
-          : (this.selectedType === DayEventType.COUNTER ? startOfDay(this.counterStartDate.getTime()) : startOfDay(Date.now())));
+          : (this.selectedType === DayEventType.COUNTER ? startOfDay(this.counterStartDate.getTime()) : startOfDay(Date.now()))));
       const existingEvent = this.isEditMode() ? db.getDayEventById(this.editingEventId) : undefined;
       const event = existingEvent || new DayEvent(this.title.trim(), this.selectedType, startTimestamp);
       event.title = this.title.trim();
@@ -850,6 +935,9 @@ struct DayEventCreatePage {
 
       if (this.selectedType === DayEventType.PERIODIC) {
         event.endDate = this.hasPeriodicEndDate ? endOfDay(this.periodicEndDate.getTime()) : undefined;
+      }
+      if (this.selectedType === DayEventType.SINGLE) {
+        event.targetDate = startOfDay(this.singleTargetDate.getTime());
       }
       if (this.selectedType === DayEventType.HABIT) {
         event.endDate = this.hasHabitEndDate ? endOfDay(this.habitEndDate.getTime()) : undefined;
@@ -901,7 +989,7 @@ struct DayEventCreatePage {
         .fontWeight(this.selectedType === item.type ? FontWeight.Bold : FontWeight.Medium)
         .fontColor(this.selectedType === item.type ? this.themeColors.primary : this.themeColors.textSecondary)
     }
-    .width('18.5%')
+    .width('31.5%')
     .height(82)
     .justifyContent(FlexAlign.Center)
     .backgroundColor(this.selectedType === item.type ? this.themeColors.primarySubtle : this.themeColors.cardBackground)
@@ -1131,6 +1219,7 @@ struct DayEventCreatePage {
           .fontSize(TYPE_META)
           .fontColor(this.themeColors.textMuted)
           .width('100%')
+          .textAlign(TextAlign.Center)
       }
     }
     .width('100%')
@@ -1201,23 +1290,32 @@ struct DayEventCreatePage {
 
   @Builder
   private TypeSection() {
-    Column({ space: 8 }) {
-      Text('先选一个类型')
+    Column({ space: 12 }) {
+      Text('提醒类型')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
         .width('100%')
-      Text('类型决定后面的提醒建议和配置方式。')
-        .fontSize(TYPE_CAPTION)
-        .fontColor(this.themeColors.textSecondary)
-        .width('100%')
-      Row({ space: 8 }) {
+
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween, alignContent: FlexAlign.SpaceBetween }) {
         ForEach(this.typeCards, (item: TypeCardItem) => {
           this.TypeCard(item)
         }, (item: TypeCardItem) => item.type)
       }
       .width('100%')
-      .justifyContent(FlexAlign.SpaceBetween)
+      .height(174)
+
+      Row() {
+        Text(this.getTypeDescription())
+          .fontSize(TYPE_META)
+          .lineHeight(18)
+          .fontColor(this.themeColors.textSecondary)
+          .width('100%')
+      }
+      .width('100%')
+      .padding(12)
+      .backgroundColor(this.themeColors.surfaceLight)
+      .borderRadius(12)
     }
     .width('100%')
     .padding(14)
@@ -1346,6 +1444,19 @@ struct DayEventCreatePage {
         }
       }
       Text(`当前规则：${this.getPeriodicRuleSummary()}`)
+        .fontSize(TYPE_CAPTION)
+        .fontColor(this.themeColors.textSecondary)
+        .width('100%')
+    }
+    .width('100%')
+  }
+
+  @Builder
+  private SingleSection() {
+    Column({ space: 14 }) {
+      this.DateSelector('提醒日期', this.getActiveDateValueText('singleTarget', ''), 'singleTarget', '')
+      this.TimeSelector()
+      Text(`当前规则：${this.getSingleRuleSummary()}`)
         .fontSize(TYPE_CAPTION)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
@@ -1523,7 +1634,6 @@ struct DayEventCreatePage {
       Column() {
         AppPageHeader({
           title: this.getPageTitle(),
-          subtitle: this.isGoalDraftMode() ? '配置类型、时间和提醒规则，保存后回到目标创建页。' : '配置类型、时间、目标和提醒规则，让提醒真正可执行。',
           insetHorizontal: COMFORTABLE_PAGE_PADDING,
           onBack: () => {
             this.getUIContext().getRouter().back();
@@ -1532,8 +1642,6 @@ struct DayEventCreatePage {
 
         Scroll() {
           Column({ space: COMFORTABLE_SECTION_GAP }) {
-            this.OverviewCard()
-
             if (this.aiFill.shouldShowBanner()) {
               AppAIFillBanner({
                 status: this.aiFill.getBannerComponentStatus(),
@@ -1558,6 +1666,19 @@ struct DayEventCreatePage {
               .width('100%')
             }
 
+            if (this.selectedType === DayEventType.SINGLE) {
+              AppFormCard() {
+                Column({ space: SPACE_MD }) {
+                  Text('单次提醒设置')
+                    .fontSize(TYPE_SECTION_TITLE)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(this.themeColors.textPrimary)
+                  this.SingleSection()
+                }
+                .width('100%')
+              }
+            }
+
             if (this.selectedType === DayEventType.PERIODIC) {
               AppFormCard() {
                 Column({ space: SPACE_MD }) {
@@ -1565,10 +1686,6 @@ struct DayEventCreatePage {
                     .fontSize(TYPE_SECTION_TITLE)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
-                  Text('适合固定频率的重复提醒，例如每周复盘、每月结算或隔几天执行一次。')
-                    .fontSize(TYPE_META)
-                    .lineHeight(20)
-                    .fontColor(this.themeColors.textSecondary)
                   this.PeriodicSection()
                 }
                 .width('100%')
@@ -1582,10 +1699,6 @@ struct DayEventCreatePage {
                     .fontSize(TYPE_SECTION_TITLE)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
-                  Text('适合长期习惯打卡，可按每日、每周次数或每月次数来管理。')
-                    .fontSize(TYPE_META)
-                    .lineHeight(20)
-                    .fontColor(this.themeColors.textSecondary)
                   this.HabitSection()
                 }
                 .width('100%')
@@ -1599,10 +1712,6 @@ struct DayEventCreatePage {
                     .fontSize(TYPE_SECTION_TITLE)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
-                  Text('适合生日、出发日、截止日等重要节点，支持提前若干天提醒。')
-                    .fontSize(TYPE_META)
-                    .lineHeight(20)
-                    .fontColor(this.themeColors.textSecondary)
                   this.MilestoneSection()
                 }
                 .width('100%')
@@ -1616,10 +1725,6 @@ struct DayEventCreatePage {
                     .fontSize(TYPE_SECTION_TITLE)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
-                  Text('适合恋爱纪念日、结婚纪念日等，可按第 X 天或具体日期提醒。')
-                    .fontSize(TYPE_META)
-                    .lineHeight(20)
-                    .fontColor(this.themeColors.textSecondary)
                   this.CounterSection()
                 }
                 .width('100%')
@@ -1633,10 +1738,6 @@ struct DayEventCreatePage {
                     .fontSize(TYPE_SECTION_TITLE)
                     .fontWeight(FontWeight.Bold)
                     .fontColor(this.themeColors.textPrimary)
-                  Text('只记录目标时间，用于首页倒计时卡片展示，不额外生成提醒规则。')
-                    .fontSize(TYPE_META)
-                    .lineHeight(20)
-                    .fontColor(this.themeColors.textSecondary)
                   this.CountdownSection()
                 }
                 .width('100%')

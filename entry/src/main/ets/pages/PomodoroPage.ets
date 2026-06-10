@@ -7,7 +7,6 @@ import { WhiteNoiseService, whiteNoiseService, NoiseOption } from '../services/W
 import { QuotaService } from '../services/QuotaService';
 import backgroundTaskManager from '@ohos.resourceschedule.backgroundTaskManager';
 import { AppButton } from '../ui/base/AppButton';
-import { AppCard } from '../ui/base/AppCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { PAGE_PADDING, SPACE_CARD } from '../foundation/tokens/SpacingTokens';
@@ -43,6 +42,7 @@ struct PomodoroPage {
 
   // --- 白噪音 ---
   @State selectedNoiseKey: string = '';
+  @State previewNoiseKey: string = '';
   @State isNoiseActive: boolean = false;
   @State isPremium: boolean = false;
   @State showNoisePanel: boolean = false;
@@ -129,8 +129,12 @@ struct PomodoroPage {
     const noiseOption = WhiteNoiseService.getOptionByKey(this.selectedNoiseKey);
     if (!noiseOption) {
       this.selectedNoiseKey = '';
+      this.previewNoiseKey = '';
     } else if (this.isPremium) {
+      this.previewNoiseKey = noiseOption.key;
       await this.applyNoiseSelection(noiseOption);
+    } else {
+      this.previewNoiseKey = noiseOption.key;
     }
 
     this.startTimer();
@@ -348,6 +352,10 @@ struct PomodoroPage {
     return WhiteNoiseService.getOptionByKey(this.selectedNoiseKey);
   }
 
+  getPreviewNoiseOption(): NoiseOption | undefined {
+    return WhiteNoiseService.getOptionByKey(this.previewNoiseKey);
+  }
+
   getNatureNoiseOptions(): NoiseOption[] {
     return WhiteNoiseService.getOptionsByCategory('nature');
   }
@@ -361,9 +369,44 @@ struct PomodoroPage {
     return option ? option.label : '选择白噪音';
   }
 
-  getSelectedNoiseIcon(): string {
-    const option = this.getSelectedNoiseOption();
-    return option ? option.icon : 'noise';
+  getNoisePreviewLabel(): string {
+    const option = this.getPreviewNoiseOption();
+    return option ? option.label : '选择白噪音';
+  }
+
+  getNoisePreviewResourceByKey(key: string): Resource {
+    if (key.length === 0) {
+      return $r('app.media.noise_preview_default');
+    }
+
+    switch (key) {
+      case 'light-rain':
+        return $r('app.media.noise_preview_light_rain');
+      case 'thunderstorm':
+        return $r('app.media.noise_preview_thunderstorm');
+      case 'strong-wind':
+        return $r('app.media.noise_preview_strong_wind');
+      case 'stream':
+        return $r('app.media.noise_preview_stream');
+      case 'birds':
+        return $r('app.media.noise_preview_birds');
+      case 'riverside-birds':
+        return $r('app.media.noise_preview_riverside_birds');
+      case 'battery-current':
+        return $r('app.media.noise_preview_battery_current');
+      case 'radio-static':
+        return $r('app.media.noise_preview_radio_static');
+      case 'dial-error':
+        return $r('app.media.noise_preview_dial_error');
+      case 'industrial-loop':
+        return $r('app.media.noise_preview_industrial_loop');
+      case 'spaceship-hum':
+        return $r('app.media.noise_preview_spaceship_hum');
+      case 'rocket-turbine':
+        return $r('app.media.noise_preview_rocket_turbine');
+      default:
+        return $r('app.media.app_icon_unknown');
+    }
   }
 
   getNoiseHintText(): string {
@@ -386,8 +429,6 @@ struct PomodoroPage {
 
   async applyNoiseSelection(option: NoiseOption): Promise<void> {
     const context = this.getUIContext().getHostContext() as Context;
-    const previousKey = this.selectedNoiseKey;
-    const previousActive = this.isNoiseActive;
     this.selectedNoiseKey = option.key;
     this.isNoiseActive = false;
     try {
@@ -395,8 +436,6 @@ struct PomodoroPage {
       this.isNoiseActive = whiteNoiseService.isPlaying();
     } catch (error) {
       logger.error('PomodoroPage applyNoiseSelection error', error as Object);
-      this.selectedNoiseKey = previousKey;
-      this.isNoiseActive = previousActive;
       this.showToast('白噪音切换失败');
     }
   }
@@ -417,6 +456,7 @@ struct PomodoroPage {
   }
 
   async handleNoiseOptionClick(option: NoiseOption): Promise<void> {
+    this.previewNoiseKey = option.key;
     await this.toggleNoise(option);
     this.showNoisePanel = false;
   }
@@ -430,6 +470,56 @@ struct PomodoroPage {
   getPhaseBackgroundColor(): string {
     if (this.isBreakPhase) return this.themeColors.successSubtle;
     return this.themeColors.background;
+  }
+
+  private isCurrentRoundDot(index: number): boolean {
+    return index === this.completedRoundsCount && !this.isBreakPhase && !this.isCompleted;
+  }
+
+  private shouldHighlightResumeAction(): boolean {
+    return this.isPaused && !this.isCompleted;
+  }
+
+  private getPrimaryActionText(): string {
+    if (this.isCompleted) {
+      return '完成';
+    }
+    if (this.isBreakPhase) {
+      return '跳过休息';
+    }
+    return '结束';
+  }
+
+  @Builder
+  private PendingDot() {
+    Row()
+      .width(8).height(8).borderRadius(4)
+      .backgroundColor(this.themeColors.transparent)
+      .border({ width: 1, color: this.themeColors.textMuted })
+  }
+
+  @Builder
+  private CompletedDot() {
+    Row()
+      .width(10).height(10).borderRadius(5)
+      .backgroundColor(this.themeColors.success)
+  }
+
+  @Builder
+  private CurrentRoundDot() {
+    // 外环 + 内芯，两层 Row 绝对坐标居中
+    Stack() {
+      Row()
+        .width(12).height(12).borderRadius(6)
+        .backgroundColor(this.themeColors.primarySubtle)
+        .border({ width: 1, color: this.themeColors.primary })
+      Row()
+        .width(5).height(5).borderRadius(2.5)
+        .backgroundColor(this.themeColors.primary)
+    }
+    .width(14)
+    .height(14)
+    .alignContent(Alignment.Center)
   }
 
   build() {
@@ -487,16 +577,19 @@ struct PomodoroPage {
 
         // 轮次进度指示器
         if (this.continuousMode && this.showControls && this.totalRounds > 1) {
-          Row() {
+          Row({ space: 10 }) {
             ForEach(this.getRoundsArray(), (item: undefined, index: number) => {
-              Text(index < this.completedRoundsCount ? '●' :
-                (index === this.completedRoundsCount && !this.isBreakPhase && !this.isCompleted ? '◉' : '○'))
-                .fontSize(TYPE_SECTION_TITLE)
-                .fontColor(index < this.completedRoundsCount ? this.themeColors.success :
-                  (index === this.completedRoundsCount && !this.isBreakPhase && !this.isCompleted ? this.themeColors.primary : this.themeColors.textMuted))
-                .margin({ left: 6, right: 6 })
+              if (this.isCurrentRoundDot(index)) {
+                this.CurrentRoundDot()
+              } else if (index < this.completedRoundsCount) {
+                this.CompletedDot()
+              } else {
+                this.PendingDot()
+              }
             })
           }
+          .alignItems(VerticalAlign.Center)
+          .justifyContent(FlexAlign.Center)
           .margin({ top: 24 })
         }
       }
@@ -506,15 +599,7 @@ struct PomodoroPage {
       // 白噪音入口
       if (this.showControls && !this.isCompleted) {
         Column() {
-          AppCard({
-            variant: 'soft',
-            spacing: 10,
-            paddingLevel: 'md',
-            interactive: true,
-            tapAction: () => {
-              this.openNoisePanel();
-            }
-          }) {
+          Column({ space: 10 }) {
             Row() {
               Text('白噪音')
                 .fontSize(TYPE_BODY)
@@ -529,28 +614,30 @@ struct PomodoroPage {
 
             Row() {
               Row() {
-                Text(this.getSelectedNoiseIcon())
-                  .fontSize(TYPE_HERO_TITLE)
-                  .fontColor(this.isPremium ? this.themeColors.primary : this.themeColors.textMuted)
-                  .width(36)
-                  .height(36)
-                  .textAlign(TextAlign.Center)
-                  .backgroundColor(this.isPremium ? this.themeColors.primarySubtle : this.themeColors.surfaceLight)
-                  .borderRadius(RADIUS_LG)
-
-                Column() {
-                  Text(this.isPremium ? this.getSelectedNoiseLabel() : '白噪音')
-                    .fontSize(TYPE_BODY)
-                    .fontWeight(FontWeight.Medium)
-                    .fontColor(this.themeColors.textPrimary)
-                  Text(this.getNoiseHintText())
-                    .fontSize(TYPE_CAPTION)
-                    .fontColor(this.isPremium && this.isNoiseActive ? this.themeColors.success : this.themeColors.textMuted)
-                    .margin({ top: 2 })
-                }
-                .alignItems(HorizontalAlign.Start)
-                .margin({ left: 12 })
+                Image(this.getNoisePreviewResourceByKey(this.previewNoiseKey))
+                  .width(30)
+                  .height(30)
+                  .objectFit(ImageFit.Contain)
               }
+              .width(48)
+              .height(48)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(VerticalAlign.Center)
+              .backgroundColor(this.isPremium ? this.themeColors.primarySubtle : this.themeColors.surfaceLight)
+              .borderRadius(RADIUS_LG)
+
+              Column() {
+                Text(this.isPremium ? this.getNoisePreviewLabel() : '白噪音')
+                  .fontSize(TYPE_BODY)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.themeColors.textPrimary)
+                Text(this.getNoiseHintText())
+                  .fontSize(TYPE_CAPTION)
+                  .fontColor(this.isPremium && this.isNoiseActive ? this.themeColors.success : this.themeColors.textMuted)
+                  .margin({ top: 2 })
+              }
+              .alignItems(HorizontalAlign.Start)
+              .margin({ left: 12 })
 
               Blank()
 
@@ -562,7 +649,16 @@ struct PomodoroPage {
               })
             }
             .width('100%')
+            .alignItems(VerticalAlign.Center)
           }
+          .width('100%')
+          .padding(SPACE_CARD)
+          .backgroundColor(this.themeColors.surfaceSoft)
+          .borderRadius(RADIUS_LG)
+          .border({ width: 1, color: this.themeColors.borderLight })
+          .onClick(() => {
+            this.openNoisePanel();
+          })
         }
         .width('100%')
         .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: SPACE_CARD })
@@ -576,14 +672,13 @@ struct PomodoroPage {
             Row() {
               AppButton({
                 text: '-5 分钟',
-                variant: 'secondary',
+                variant: 'ghost',
                 buttonSize: 'sm',
-                iconName: 'warning',
+                iconName: 'minus',
                 tapAction: () => {
                   this.adjustDuration(-5);
                 }
               })
-                .width('30%')
 
               Text('调整时长')
                 .fontSize(TYPE_META)
@@ -591,40 +686,45 @@ struct PomodoroPage {
 
               AppButton({
                 text: '+5 分钟',
-                variant: 'secondary',
+                variant: 'ghost',
                 buttonSize: 'sm',
-                iconName: 'tomato',
+                iconName: 'plus',
                 tapAction: () => {
                   this.adjustDuration(5);
                 }
               })
-                .width('30%')
             }
-            .justifyContent(FlexAlign.SpaceBetween)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(VerticalAlign.Center)
             .width('100%')
-            .margin({ bottom: 16 })
+            .padding({ left: PAGE_PADDING, right: PAGE_PADDING })
+            .margin({ bottom: 20 })
           }
 
           // 暂停和结束按钮
-          Row() {
+          Row({ space: 12 }) {
             if (!this.isCompleted) {
               AppButton({
                 text: this.isPaused ? '继续' : '暂停',
-                variant: 'secondary',
-                buttonSize: 'md',
-                iconName: this.isPaused ? 'focus' : 'warning',
+                variant: this.shouldHighlightResumeAction() ? 'primary' : 'secondary',
+                buttonSize: 'lg',
+                iconName: 'focus',
+                isOutlined: !this.shouldHighlightResumeAction(),
+                fullWidth: true,
                 tapAction: () => {
                   this.isPaused = !this.isPaused;
                 }
               })
-                .width('45%')
+                .layoutWeight(1)
             }
 
             AppButton({
-              text: this.isCompleted ? '完成' : (this.isBreakPhase ? '跳过休息' : '结束'),
+              text: this.getPrimaryActionText(),
               variant: this.isCompleted || this.isBreakPhase ? 'primary' : 'danger',
-              buttonSize: 'md',
-              iconName: this.isCompleted ? 'success' : (this.isBreakPhase ? 'chevron-right' : 'warning'),
+              buttonSize: 'lg',
+              iconName: this.isCompleted ? 'success' : (this.isBreakPhase ? 'chevron-right' : 'close'),
+              isOutlined: !this.isCompleted && !this.isBreakPhase,
+              fullWidth: true,
               tapAction: () => {
                 if (this.isCompleted) {
                   this.getUIContext().getRouter().back({ url: 'pages/MainPage' });
@@ -633,13 +733,15 @@ struct PomodoroPage {
                 }
               }
             })
-              .width(this.isCompleted ? '100%' : '45%')
+              .layoutWeight(1)
           }
           .width('100%')
-          .justifyContent(this.isCompleted ? FlexAlign.Center : FlexAlign.SpaceBetween)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(VerticalAlign.Center)
+          .padding({ left: PAGE_PADDING, right: PAGE_PADDING })
         }
         .width('100%')
-        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, bottom: 40 })
+        .padding({ bottom: 40 })
         .transition(TransitionEffect.OPACITY)
         .animation({ duration: MOTION_DURATION_BASE, curve: MOTION_CURVE_STANDARD })
       }
@@ -700,10 +802,10 @@ struct PomodoroPage {
                       Stack() {
                         AppIcon({ name: option.icon, iconSize: 32, framed: false })
                         if (this.selectedNoiseKey === option.key) {
-                          Text(this.isNoiseActive ? '●' : '○')
-                            .fontSize(TYPE_MICRO)
-                            .fontColor(this.themeColors.primary)
-                            .position({ x: 20, y: -2 })
+                          Row()
+                            .width(6).height(6).borderRadius(3)
+                            .backgroundColor(this.isNoiseActive ? this.themeColors.success : this.themeColors.textMuted)
+                            .position({ x: 28, y: 2 })
                         }
                       }
                       .width(44)
@@ -746,10 +848,10 @@ struct PomodoroPage {
                       Stack() {
                         AppIcon({ name: option.icon, iconSize: 32, framed: false })
                         if (this.selectedNoiseKey === option.key) {
-                          Text(this.isNoiseActive ? '●' : '○')
-                            .fontSize(TYPE_MICRO)
-                            .fontColor(this.themeColors.primary)
-                            .position({ x: 20, y: -2 })
+                          Row()
+                            .width(6).height(6).borderRadius(3)
+                            .backgroundColor(this.isNoiseActive ? this.themeColors.success : this.themeColors.textMuted)
+                            .position({ x: 28, y: 2 })
                         }
                       }
                       .width(44)

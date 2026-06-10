@@ -119,6 +119,8 @@ async function createChatCompletion(options = {}) {
     );
     throw error;
   });
+
+  return response;
 }
 
 module.exports = {

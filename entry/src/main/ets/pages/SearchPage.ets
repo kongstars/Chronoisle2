@@ -22,6 +22,26 @@ interface SearchPageParams {
   keyword?: string;
 }
 
+interface RenderableTaskEntry {
+  renderKey: string;
+  taskId: string;
+  title: string;
+  subtitle: string;
+  deadlineText: string;
+  deadlineColor: string;
+  isOverdue: boolean;
+}
+
+interface SearchListRow {
+  rowKey: string;
+  rowType: 'header' | 'goal' | 'event' | 'task';
+  title?: string;
+  count?: number;
+  goal?: Goal;
+  event?: DayEvent;
+  taskEntry?: RenderableTaskEntry;
+}
+
 @Entry
 @Component
 struct SearchPage {
@@ -30,18 +50,14 @@ struct SearchPage {
   @State goals: Goal[] = [];
   @State tasks: Task[] = [];
   @State events: DayEvent[] = [];
+  @State filteredGoals: Goal[] = [];
+  @State filteredEvents: DayEvent[] = [];
+  @State filteredTaskEntries: RenderableTaskEntry[] = [];
+  @State resultRows: SearchListRow[] = [];
+  @State totalResultCount: number = 0;
   @State isLoading: boolean = true;
   private hasLoadedEntryParams: boolean = false;
   private lastTrackedQuery: string = '';
-  private filteredGoalsCacheSource: Goal[] | null = null;
-  private filteredGoalsCacheQuery: string = '';
-  private filteredGoalsCache: Goal[] = [];
-  private filteredEventsCacheSource: DayEvent[] | null = null;
-  private filteredEventsCacheQuery: string = '';
-  private filteredEventsCache: DayEvent[] = [];
-  private filteredTasksCacheSource: Task[] | null = null;
-  private filteredTasksCacheQuery: string = '';
-  private filteredTasksCache: Task[] = [];
 
   aboutToAppear(): void {
     this.applyEntryParams();
@@ -71,11 +87,13 @@ struct SearchPage {
         .sort((first: Task, second: Task) => (second.updatedAt || second.createdAt) - (first.updatedAt || first.createdAt));
       this.events = db.getAllDayEvents()
         .sort((first: DayEvent, second: DayEvent) => (second.updatedAt || second.createdAt) - (first.updatedAt || first.createdAt));
+      this.refreshResults();
     } catch (error) {
       logger.error('SearchPage load error', error as Object);
       this.goals = [];
       this.tasks = [];
       this.events = [];
+      this.refreshResults();
     } finally {
       this.isLoading = false;
       this.trackSearchIfNeeded();
@@ -98,69 +116,132 @@ struct SearchPage {
     return this.getQuery().length > 0;
   }
 
-  private getFilteredGoals(): Goal[] {
-    const query = this.getQuery();
-    if (this.filteredGoalsCacheSource === this.goals && this.filteredGoalsCacheQuery === query) {
-      return this.filteredGoalsCache;
-    }
+  private buildFilteredGoals(query: string): Goal[] {
     if (!query) {
-      this.filteredGoalsCache = [];
-      this.filteredGoalsCacheSource = this.goals;
-      this.filteredGoalsCacheQuery = query;
-      return this.filteredGoalsCache;
+      return [];
     }
-    this.filteredGoalsCache = this.goals.filter((goal: Goal) => {
+    return this.goals.filter((goal: Goal) => {
       return this.containsQuery(goal.title, query) ||
         this.containsQuery(goal.description, query) ||
         this.containsQuery(goal.category as string, query);
     });
-    this.filteredGoalsCacheSource = this.goals;
-    this.filteredGoalsCacheQuery = query;
-    return this.filteredGoalsCache;
   }
 
-  private getFilteredEvents(): DayEvent[] {
-    const query = this.getQuery();
-    if (this.filteredEventsCacheSource === this.events && this.filteredEventsCacheQuery === query) {
-      return this.filteredEventsCache;
-    }
+  private buildFilteredEvents(query: string): DayEvent[] {
     if (!query) {
-      this.filteredEventsCache = [];
-      this.filteredEventsCacheSource = this.events;
-      this.filteredEventsCacheQuery = query;
-      return this.filteredEventsCache;
+      return [];
     }
-    this.filteredEventsCache = this.events.filter((event: DayEvent) => {
+    return this.events.filter((event: DayEvent) => {
       return this.containsQuery(event.title, query) || this.containsQuery(event.goalTitle, query);
     });
-    this.filteredEventsCacheSource = this.events;
-    this.filteredEventsCacheQuery = query;
-    return this.filteredEventsCache;
   }
 
-  private getFilteredTasks(): Task[] {
-    const query = this.getQuery();
-    if (this.filteredTasksCacheSource === this.tasks && this.filteredTasksCacheQuery === query) {
-      return this.filteredTasksCache;
-    }
+  private dedupeTasksById(tasks: Task[]): Task[] {
+    const seenTaskIds: Set<string> = new Set();
+    const uniqueTasks: Task[] = [];
+    tasks.forEach((task: Task) => {
+      if (seenTaskIds.has(task.id)) {
+        return;
+      }
+      seenTaskIds.add(task.id);
+      uniqueTasks.push(task);
+    });
+    return uniqueTasks;
+  }
+
+  private buildFilteredTasks(query: string): Task[] {
     if (!query) {
-      this.filteredTasksCache = [];
-      this.filteredTasksCacheSource = this.tasks;
-      this.filteredTasksCacheQuery = query;
-      return this.filteredTasksCache;
+      return [];
     }
-    this.filteredTasksCache = this.tasks.filter((task: Task) => {
+    const matchedTasks = this.tasks.filter((task: Task) => {
       return this.containsQuery(task.title, query) ||
         this.containsQuery(task.description, query) ||
         this.containsQuery(task.goalTitle, query);
     });
-    this.filteredTasksCacheSource = this.tasks;
-    this.filteredTasksCacheQuery = query;
-    return this.filteredTasksCache;
+    return this.dedupeTasksById(matchedTasks);
   }
 
-  private getTotalResultCount(): number {
-    return this.getFilteredGoals().length + this.getFilteredEvents().length + this.getFilteredTasks().length;
+  private canRenderTask(task: Task): boolean {
+    try {
+      const title = task.title || '';
+      const goalText = this.getTaskGoalText(task);
+      const description = this.getTaskDescriptionText(task);
+      const statusText = this.getTaskStatusText(task);
+      const tone = this.getTaskTone(task);
+      const iconName = this.getTaskStatusIconName(task);
+      const deadlineText = task.deadline && task.deadline.length > 0 ? task.deadline : '未设置日期';
+      return title.length >= 0 &&
+        goalText.length >= 0 &&
+        description.length >= 0 &&
+        statusText.length >= 0 &&
+        tone.length >= 0 &&
+        iconName.length >= 0 &&
+        deadlineText.length >= 0;
+    } catch (error) {
+      logger.warn('SearchPage skip invalid task', error as Object);
+      return false;
+    }
+  }
+
+  private buildRenderableTaskEntries(tasks: Task[]): RenderableTaskEntry[] {
+    return tasks.filter((task: Task) => this.canRenderTask(task)).map((task: Task, index: number) => {
+      const entry: RenderableTaskEntry = {
+        renderKey: `${task.id}_${task.status}_${task.updatedAt}_${index}`,
+        taskId: task.id,
+        title: task.title || '',
+        subtitle: this.getTaskRowSubtitle(task),
+        deadlineText: task.deadline && task.deadline.length > 0 ? task.deadline : '未设置日期',
+        deadlineColor: this.getTaskTrailingColor(task),
+        isOverdue: task.isOverdue
+      };
+      return entry;
+    });
+  }
+
+  private buildResultRows(goals: Goal[], events: DayEvent[], taskEntries: RenderableTaskEntry[], totalResultCount: number): SearchListRow[] {
+    const rows: SearchListRow[] = [];
+
+    if (totalResultCount === 0) {
+      return rows;
+    }
+
+    if (goals.length > 0) {
+      rows.push({ rowKey: `header_goals_${goals.length}`, rowType: 'header', title: '目标', count: goals.length });
+      goals.forEach((goal: Goal) => {
+        rows.push({ rowKey: `goal_${goal.id}`, rowType: 'goal', goal });
+      });
+    }
+
+    if (events.length > 0) {
+      rows.push({ rowKey: `header_events_${events.length}`, rowType: 'header', title: '提醒', count: events.length });
+      events.forEach((event: DayEvent) => {
+        rows.push({ rowKey: `event_${event.id}`, rowType: 'event', event });
+      });
+    }
+
+    if (taskEntries.length > 0) {
+      rows.push({ rowKey: `header_tasks_${taskEntries.length}`, rowType: 'header', title: '任务', count: taskEntries.length });
+      taskEntries.forEach((taskEntry: RenderableTaskEntry) => {
+        rows.push({ rowKey: `task_${taskEntry.renderKey}`, rowType: 'task', taskEntry });
+      });
+    }
+
+    return rows;
+  }
+
+  private refreshResults(): void {
+    const query = this.getQuery();
+    const nextGoals = this.buildFilteredGoals(query);
+    const nextEvents = this.buildFilteredEvents(query);
+    const nextTasks = this.buildFilteredTasks(query);
+    const nextTaskEntries = this.buildRenderableTaskEntries(nextTasks);
+    const nextTotalResultCount = nextGoals.length + nextEvents.length + nextTaskEntries.length;
+
+    this.filteredGoals = nextGoals;
+    this.filteredEvents = nextEvents;
+    this.filteredTaskEntries = nextTaskEntries;
+    this.totalResultCount = nextTotalResultCount;
+    this.resultRows = this.buildResultRows(nextGoals, nextEvents, nextTaskEntries, nextTotalResultCount);
   }
 
   private getGoalStatusText(goal: Goal): string {
@@ -169,6 +250,10 @@ struct SearchPage {
 
   private getTaskGoalText(task: Task): string {
     return task.goalTitle && task.goalTitle.length > 0 ? task.goalTitle : '未关联目标';
+  }
+
+  private getTaskDescriptionText(task: Task): string {
+    return (task.description || '').trim();
   }
 
   private getTaskStatusText(task: Task): string {
@@ -201,8 +286,43 @@ struct SearchPage {
     return 'task';
   }
 
+  private getTaskRowSubtitle(task: Task): string {
+    const parts: string[] = [];
+    const goalText = this.getTaskGoalText(task);
+    const description = this.getTaskDescriptionText(task);
+    if (goalText.length > 0) {
+      parts.push(goalText);
+    }
+    if (description.length > 0) {
+      parts.push(description);
+    }
+    return parts.join(' · ');
+  }
+
+  private getTaskTrailingColor(task: Task): string {
+    if (task.status === TaskStatus.COMPLETED) {
+      return this.themeColors.success;
+    }
+    if (task.isOverdue) {
+      return this.themeColors.warning;
+    }
+    return this.themeColors.textMuted;
+  }
+
+  private getTaskIndicatorColor(task: Task): string {
+    if (task.status === TaskStatus.COMPLETED) {
+      return this.themeColors.success;
+    }
+    if (task.isOverdue) {
+      return this.themeColors.warning;
+    }
+    return this.themeColors.primary;
+  }
+
   private getEventTypeText(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return '单次提醒';
       case DayEventType.HABIT:
         return '习惯';
       case DayEventType.MILESTONE:
@@ -219,6 +339,7 @@ struct SearchPage {
   private clearKeyword(): void {
     this.keyword = '';
     this.lastTrackedQuery = '';
+    this.refreshResults();
   }
 
   private trackSearchIfNeeded(): void {
@@ -231,7 +352,7 @@ struct SearchPage {
     }
     this.lastTrackedQuery = query;
     const searchProps: TelemetryProperties = {
-      "resultCount": this.getTotalResultCount()
+      "resultCount": this.totalResultCount
     };
     TelemetryService.track('search_performed', searchProps, 'search');
   }
@@ -240,14 +361,14 @@ struct SearchPage {
     this.getUIContext().getRouter().pushUrl({ url: 'pages/GoalDetailPage', params: { goalId: goal.id } });
   }
 
-  private openTask(task: Task): void {
-    this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId: task.id } });
+  private openTaskById(taskId: string): void {
+    this.getUIContext().getRouter().pushUrl({ url: 'pages/TaskDetailPage', params: { taskId } });
   }
 
   private openEvent(event: DayEvent): void {
     this.getUIContext().getRouter().pushUrl({
-      url: 'pages/DayEventListPage',
-      params: { eventId: event.id, keyword: event.title }
+      url: 'pages/DayEventDetailPage',
+      params: { eventId: event.id }
     });
   }
 
@@ -292,6 +413,7 @@ struct SearchPage {
           .padding({ left: 0, right: 0, top: 0, bottom: 0 })
           .onChange((value: string) => {
             this.keyword = value;
+            this.refreshResults();
             this.trackSearchIfNeeded();
           })
 
@@ -409,40 +531,65 @@ struct SearchPage {
   }
 
   @Builder
-  private TaskCard(task: Task) {
-    AppCard({ variant: task.isOverdue ? 'danger' : 'base', spacing: SPACE_SM, interactive: true, tapAction: () => { this.openTask(task); } }) {
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        AppStatusBadge({ text: this.getTaskGoalText(task), tone: 'neutral', iconName: 'goal' })
-        AppStatusBadge({
-          text: this.getTaskStatusText(task),
-          tone: this.getTaskTone(task),
-          iconName: this.getTaskStatusIconName(task)
-        })
+  private TaskCard(taskEntry: RenderableTaskEntry) {
+    AppCard({
+      variant: taskEntry.isOverdue ? 'danger' : 'base',
+      spacing: SPACE_SM,
+      interactive: true,
+      tapAction: () => {
+        this.openTaskById(taskEntry.taskId);
+      }
+    }) {
+      Row({ space: SPACE_SM }) {
+        Column()
+          .width(4)
+          .height(54)
+          .borderRadius(RADIUS_PILL)
+          .backgroundColor(taskEntry.isOverdue ? this.themeColors.warning : this.themeColors.primary)
+
+        Column({ space: SPACE_XS }) {
+          Text(taskEntry.title && taskEntry.title.length > 0 ? taskEntry.title : '未命名任务')
+            .fontSize(TYPE_BODY)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeColors.textPrimary)
+            .width('100%')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+          if (taskEntry.subtitle.length > 0) {
+            Text(taskEntry.subtitle)
+              .fontSize(TYPE_META)
+              .fontColor(this.themeColors.textSecondary)
+              .width('100%')
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+
+          Text(taskEntry.deadlineText)
+            .fontSize(TYPE_META)
+            .fontColor(taskEntry.deadlineColor)
+            .width('100%')
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
       }
       .width('100%')
+      .alignItems(VerticalAlign.Top)
+    }
+  }
 
-      Text(task.title)
-        .fontSize(TYPE_BODY)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.themeColors.textPrimary)
-        .width('100%')
-        .maxLines(2)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      if (task.description.trim().length > 0) {
-        Text(task.description)
-          .fontSize(TYPE_BODY)
-          .lineHeight(22)
-          .fontColor(this.themeColors.textSecondary)
-          .width('100%')
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      }
-
-      Text(task.deadline && task.deadline.length > 0 ? task.deadline : '未设置日期')
-        .fontSize(TYPE_META)
-        .fontColor(this.themeColors.textMuted)
-        .width('100%')
+  @Builder
+  private ResultListRow(row: SearchListRow) {
+    if (row.rowType === 'header') {
+      this.SectionHeader(row.title || '', row.count || 0)
+    } else if (row.rowType === 'goal' && row.goal) {
+      this.GoalCard(row.goal)
+    } else if (row.rowType === 'event' && row.event) {
+      this.EventCard(row.event)
+    } else if (row.rowType === 'task' && row.taskEntry) {
+      this.TaskCard(row.taskEntry)
+    } else {
+      Row().width('100%').height(0)
     }
   }
 
@@ -459,44 +606,19 @@ struct SearchPage {
         .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: PAGE_PADDING })
         .backgroundColor(this.themeColors.background)
       } else {
-        Scroll() {
-          Column({ space: SECTION_GAP }) {
-            if (this.getTotalResultCount() > 0) {
-              if (this.getFilteredGoals().length > 0) {
-                Column({ space: SPACE_SM }) {
-                  this.SectionHeader('目标', this.getFilteredGoals().length)
-                  ForEach(this.getFilteredGoals(), (goal: Goal) => {
-                    this.GoalCard(goal);
-                  }, (goal: Goal) => goal.id)
-                }
-                .width('100%')
-              }
-
-              if (this.getFilteredEvents().length > 0) {
-                Column({ space: SPACE_SM }) {
-                  this.SectionHeader('提醒', this.getFilteredEvents().length)
-                  ForEach(this.getFilteredEvents(), (event: DayEvent) => {
-                    this.EventCard(event);
-                  }, (event: DayEvent) => event.id)
-                }
-                .width('100%')
-              }
-
-              if (this.getFilteredTasks().length > 0) {
-                Column({ space: SPACE_SM }) {
-                  this.SectionHeader('任务', this.getFilteredTasks().length)
-                  ForEach(this.getFilteredTasks(), (task: Task) => {
-                    this.TaskCard(task);
-                  }, (task: Task) => task.id)
-                }
-                .width('100%')
-              }
+        List({ space: SPACE_SM }) {
+          ForEach(this.resultRows, (row: SearchListRow) => {
+            ListItem() {
+              this.ResultListRow(row)
             }
-          }
-          .width('100%')
-          .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: PAGE_PADDING + 16 })
+          }, (row: SearchListRow) => row.rowKey)
         }
+        .width('100%')
+        .layoutWeight(1)
+        .listDirection(Axis.Vertical)
         .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.None)
+        .padding({ left: PAGE_PADDING, right: PAGE_PADDING, top: 8, bottom: PAGE_PADDING + 32 })
         .backgroundColor(this.themeColors.background)
       }
     }

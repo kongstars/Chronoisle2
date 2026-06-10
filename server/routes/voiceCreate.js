@@ -110,34 +110,164 @@ async function callAgent(systemPrompt, userPrompt, options = {}) {
 }
 
 // ========================
-// 获取用户活跃目标列表（用于 Agent 上下文）
+// 获取用户活跃目标列表（用于 Agent 上下文和本地匹配）
 // ========================
-async function getUserGoalsContext(userId) {
+async function getUserActiveGoals(userId) {
   try {
     const syncData = await SyncData.findOne({ userId });
     if (!syncData || !syncData.goals || syncData.goals.length === 0) {
-      return '当前用户无活跃目标。';
+      return [];
     }
 
     const activeGoals = syncData.goals.filter(g => !g.isArchived);
-    if (activeGoals.length === 0) {
-      return '当前用户无活跃目标。';
-    }
-
-    let ctx = '以下是当前用户的活跃目标及关键结果列表（请精准匹配ID，若无关请留空）：\n';
-    activeGoals.forEach(goal => {
-      ctx += `- [目标 ID: ${goal.id}] 名称: ${goal.title}\n`;
-      if (goal.keyResults && goal.keyResults.length > 0) {
-        goal.keyResults.forEach(kr => {
-          ctx += `    - [KR ID: ${kr.id}] KR标题: ${kr.title}\n`;
-        });
-      }
-    });
-    return ctx;
+    return activeGoals.map(goal => ({
+      id: goal.id,
+      title: goal.title || '',
+      description: goal.description || '',
+      keyResults: Array.isArray(goal.keyResults) ? goal.keyResults.map(kr => ({
+        id: kr.id,
+        title: kr.title || ''
+      })).filter(kr => kr.id || kr.title) : []
+    }));
   } catch (e) {
     console.error('[voiceCreate] 获取用户目标失败:', e.message);
+    return [];
+  }
+}
+
+function scoreGoalForTask(text, goal) {
+  if (!goal || !goal.id) {
+    return 0;
+  }
+
+  const queryTerms = extractMatchTerms(text);
+  if (queryTerms.length === 0) {
+    return 0;
+  }
+
+  const compactQuery = compactMatchText(text);
+  const compactTitle = compactMatchText(goal.title);
+  const compactDescription = compactMatchText(goal.description);
+  const compactKrTitles = compactMatchText(Array.isArray(goal.keyResults) ? goal.keyResults.map(kr => kr.title).join(' ') : '');
+
+  let score = 0;
+  if (compactQuery && compactTitle && compactTitle.includes(compactQuery)) {
+    score += 5;
+  }
+  score += scoreFieldMatch(queryTerms, compactTitle, 6.5);
+  score += scoreFieldMatch(queryTerms, compactDescription, 2.2);
+  score += scoreFieldMatch(queryTerms, compactKrTitles, 3.5);
+
+  return Number(score.toFixed(3));
+}
+
+function rankGoalsForTask(text, activeGoals) {
+  if (!Array.isArray(activeGoals) || activeGoals.length === 0) {
+    return [];
+  }
+
+  return activeGoals
+    .map(goal => ({ goal, score: scoreGoalForTask(text, goal) }))
+    .sort((first, second) => second.score - first.score);
+}
+
+function scoreKrForTask(text, kr) {
+  if (!kr || !kr.id) {
+    return 0;
+  }
+
+  const queryTerms = extractMatchTerms(text);
+  if (queryTerms.length === 0) {
+    return 0;
+  }
+
+  return Number(scoreFieldMatch(queryTerms, compactMatchText(kr.title), 5).toFixed(3));
+}
+
+function pickBestGoalMatchForTask(text, activeGoals) {
+  const ranked = rankGoalsForTask(text, activeGoals);
+  if (ranked.length === 0) {
+    return null;
+  }
+
+  const best = ranked[0];
+  const runnerUp = ranked[1];
+  const leadScore = best.score - (runnerUp?.score || 0);
+  if (best.score < 1.8) {
+    return null;
+  }
+  if (best.score < 2.6 && leadScore < 0.5) {
+    return null;
+  }
+
+  return best;
+}
+
+function buildGoalsContext(activeGoals, inputText) {
+  if (!Array.isArray(activeGoals) || activeGoals.length === 0) {
     return '当前用户无活跃目标。';
   }
+
+  const rankedGoals = rankGoalsForTask(inputText, activeGoals);
+  let ctx = '以下是当前用户的活跃目标及关键结果列表（请优先结合语义和主题进行匹配，若无关请留空）：\n';
+  rankedGoals.slice(0, 20).forEach(({ goal, score }) => {
+    ctx += `- [目标 ID: ${goal.id}] 名称: ${goal.title || '未命名目标'} | 匹配分: ${score}\n`;
+    if (goal.description) {
+      ctx += `    - 目标描述: ${goal.description.substring(0, 80)}\n`;
+    }
+    if (goal.keyResults && goal.keyResults.length > 0) {
+      goal.keyResults.forEach(kr => {
+        ctx += `    - [KR ID: ${kr.id}] KR标题: ${kr.title}\n`;
+      });
+    }
+  });
+  return ctx;
+}
+
+function normalizeTaskParsedResult(rawParsed, inputText, activeGoals) {
+  const parsed = rawParsed && typeof rawParsed === 'object' ? { ...rawParsed } : {};
+  const result = {
+    title: normalizeTaskTitle(String(parsed.title || '').trim(), inputText),
+    description: String(parsed.description || '').trim() || inputText,
+    priority: ['high', 'normal', 'low'].includes(parsed.priority) ? parsed.priority : 'normal',
+    dueDate: resolveTaskDueDate(String(parsed.dueDate || '').trim(), inputText),
+    goalId: String(parsed.goalId || '').trim(),
+    krId: String(parsed.krId || '').trim(),
+    estimatedHours: Number.isFinite(Number(parsed.estimatedHours)) && Number(parsed.estimatedHours) > 0
+      ? Number(parsed.estimatedHours)
+      : 1
+  };
+
+  const llmGoal = Array.isArray(activeGoals) ? activeGoals.find(goal => String(goal.id) === result.goalId) : null;
+  const localGoalMatch = pickBestGoalMatchForTask(`${inputText} ${result.title} ${result.description}`, activeGoals);
+  const llmGoalScore = llmGoal ? scoreGoalForTask(`${inputText} ${result.title} ${result.description}`, llmGoal) : 0;
+
+  if (localGoalMatch && (!llmGoal || localGoalMatch.score >= llmGoalScore + 1)) {
+    result.goalId = localGoalMatch.goal.id;
+    if (!result.krId && Array.isArray(localGoalMatch.goal.keyResults) && localGoalMatch.goal.keyResults.length > 0) {
+      const rankedKrs = localGoalMatch.goal.keyResults
+        .map(kr => ({ kr, score: scoreKrForTask(`${inputText} ${result.title} ${result.description}`, kr) }))
+        .sort((first, second) => second.score - first.score);
+      if (rankedKrs[0] && rankedKrs[0].score >= 1.5) {
+        result.krId = rankedKrs[0].kr.id;
+      }
+    }
+  }
+
+  const selectedGoal = Array.isArray(activeGoals) ? activeGoals.find(goal => String(goal.id) === result.goalId) : null;
+  if (result.goalId && !selectedGoal) {
+    result.goalId = '';
+    result.krId = '';
+  } else if (selectedGoal && result.krId) {
+    const selectedKr = Array.isArray(selectedGoal.keyResults)
+      ? selectedGoal.keyResults.find(kr => String(kr.id) === result.krId)
+      : null;
+    if (!selectedKr) {
+      result.krId = '';
+    }
+  }
+
+  return result;
 }
 
 // ========================
@@ -150,7 +280,15 @@ async function getUserPendingTasks(userId) {
     return syncData.tasks.filter(t => t.status === 'pending').map(t => ({
       id: t.id,
       title: t.title,
-      goalTitle: t.goalTitle || ''
+      description: t.description || '',
+      goalTitle: t.goalTitle || '',
+      krTitle: t.krTitle || '',
+      subtaskTitles: Array.isArray(t.subtasks) ? t.subtasks.map(subtask => subtask?.title).filter(Boolean) : [],
+      priority: t.priority || 'normal',
+      isPinned: Boolean(t.isPinned),
+      isImportant: Boolean(t.isImportant),
+      dueDate: t.dueDate || 0,
+      updatedAt: t.updatedAt || 0
     }));
   } catch (e) {
     return [];
@@ -201,25 +339,294 @@ function isVoiceFillerSegment(segment) {
   return /^(喂+|嗯+|呃+|额+|啊+|哦+|噢+|诶+|欸+|哈+|测试一下|测试|听得到吗|能听到吗|你听得到吗|在吗|你好|hello|hi)$/.test(normalized);
 }
 
-function detectIntentByRules(text) {
+function normalizeMatchText(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/application/g, ' application app 应用 ')
+    .replace(/ios/g, ' ios 苹果 ios ')
+    .replace(/iphone/g, ' iphone ios 苹果 ')
+    .replace(/android/g, ' android 安卓 ')
+    .replace(/app/g, ' app 应用 ')
+    .replace(/[《》【】（）()[\]{}"'`]/g, ' ')
+    .replace(/[\s，。！？、,.!?；;：:_\-\\/|]+/g, ' ')
+    .trim();
+}
+
+function compactMatchText(text) {
+  return normalizeMatchText(text).replace(/\s+/g, '');
+}
+
+function pushUniqueTerm(result, seen, value) {
+  const term = String(value || '').trim();
+  if (!term || seen.has(term)) {
+    return;
+  }
+  seen.add(term);
+  result.push(term);
+}
+
+function extractMatchTerms(text) {
+  const normalized = normalizeMatchText(text);
+  if (!normalized) {
+    return [];
+  }
+
+  const result = [];
+  const seen = new Set();
+  const asciiTerms = normalized.match(/[a-z0-9+#]+/g) || [];
+  asciiTerms.forEach((term) => {
+    if (term.length >= 2) {
+      pushUniqueTerm(result, seen, term);
+    }
+  });
+
+  const chineseSegments = normalized.match(/[\u4e00-\u9fa5]+/g) || [];
+  chineseSegments.forEach((segment) => {
+    const compactSegment = segment.replace(/(现在|马上|立刻|一下|的|了|呢|吧|呀|啊|嘛|与|和|及|并|去|来|先|再|把|将|我|你|他|她|它|们)/g, '');
+    if (compactSegment.length >= 2) {
+      pushUniqueTerm(result, seen, compactSegment);
+    }
+    for (let size = 2; size <= 4; size += 1) {
+      for (let index = 0; index <= compactSegment.length - size; index += 1) {
+        pushUniqueTerm(result, seen, compactSegment.slice(index, index + size));
+      }
+    }
+  });
+
+  return result.slice(0, 36);
+}
+
+function extractFocusSubjectByRules(text) {
   const normalized = String(text || '').trim();
   if (!normalized) {
     return '';
   }
 
-  if (/(开始)?专注|番茄|pomodoro|计时|工作\d+分钟/i.test(normalized)) {
-    return 'focus';
+  return normalized
+    .replace(/^(?:我)?(?:现在|马上|立刻|这就|先)?\s*(?:开始|进入|切到|切换到|准备|想要|我要)\s*/i, '')
+    .replace(/^(?:开始)?\s*(?:专注|番茄|pomodoro|计时|工作)\s*/i, '')
+    .replace(/(?:\d+|[零一二两三四五六七八九十百半]+)\s*(?:分钟|分|小时|个小时)\s*$/i, '')
+    .replace(/[，。！？、,.!?；;：:]+$/g, '')
+    .trim();
+}
+
+function parseChineseNumber(text) {
+  const normalized = String(text || '').trim();
+  if (!normalized) {
+    return NaN;
+  }
+  if (/^\d+(?:\.\d+)?$/.test(normalized)) {
+    return Number(normalized);
+  }
+  if (normalized === '半') {
+    return 0.5;
   }
 
-  if (/(提醒|叫我|闹钟|倒计时|纪念日|打卡|每[天周月年]|距离.*还有)/i.test(normalized)) {
-    return 'reminder';
+  const digitMap = { '零': 0, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+  let total = 0;
+  let current = 0;
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const char = normalized[index];
+    if (digitMap[char] !== undefined) {
+      current = digitMap[char];
+      if (index === normalized.length - 1) {
+        total += current;
+      }
+      continue;
+    }
+
+    if (char === '十') {
+      total += (current || 1) * 10;
+      current = 0;
+      continue;
+    }
+
+    if (char === '百') {
+      total += (current || 1) * 100;
+      current = 0;
+      continue;
+    }
+
+    return NaN;
   }
 
-  if (/(目标|计划|长期|阶段|坚持|养成|提升|减肥|考研|考公|学习.*达到|今年想|今年要)/i.test(normalized)) {
-    return 'goal';
+  return total || current;
+}
+
+function extractFocusDurationByRules(text) {
+  const normalized = String(text || '').trim();
+  if (!normalized) {
+    return 25;
   }
 
-  return '';
+  if (/半小时/.test(normalized)) {
+    return 30;
+  }
+
+  let match = normalized.match(/(\d+(?:\.\d+)?|[零一二两三四五六七八九十百半]+)\s*(分钟|分|小时|个小时)/);
+  if (!match) {
+    return 25;
+  }
+
+  const amount = parseChineseNumber(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return 25;
+  }
+
+  if (match[2].includes('小时')) {
+    return Math.max(5, Math.min(180, Math.round(amount * 60)));
+  }
+
+  return Math.max(5, Math.min(180, Math.round(amount)));
+}
+
+function getTermWeight(term) {
+  const length = String(term || '').length;
+  if (length >= 6) {
+    return 2.6;
+  }
+  if (length >= 4) {
+    return 1.8;
+  }
+  if (length >= 3) {
+    return 1.3;
+  }
+  return 1;
+}
+
+function scoreFieldMatch(queryTerms, fieldText, weight) {
+  if (!fieldText || !Array.isArray(queryTerms) || queryTerms.length === 0) {
+    return 0;
+  }
+
+  let matchedWeight = 0;
+  let totalWeight = 0;
+  queryTerms.forEach((term) => {
+    const termWeight = getTermWeight(term);
+    totalWeight += termWeight;
+    if (fieldText.includes(term)) {
+      matchedWeight += termWeight;
+    }
+  });
+
+  if (!totalWeight || !matchedWeight) {
+    return 0;
+  }
+  return (matchedWeight / totalWeight) * weight;
+}
+
+function scoreTaskForFocus(text, task) {
+  if (!task || !task.id) {
+    return 0;
+  }
+
+  const focusSubject = extractFocusSubjectByRules(text) || String(text || '').trim();
+  const queryTerms = extractMatchTerms(`${focusSubject} ${text}`);
+  if (queryTerms.length === 0) {
+    return 0;
+  }
+
+  const compactSubject = compactMatchText(focusSubject);
+  const compactTitle = compactMatchText(task.title);
+  const compactGoalTitle = compactMatchText(task.goalTitle);
+  const compactKrTitle = compactMatchText(task.krTitle);
+  const compactDescription = compactMatchText(task.description);
+  const compactSubtasks = compactMatchText(Array.isArray(task.subtaskTitles) ? task.subtaskTitles.join(' ') : '');
+
+  let score = 0;
+  if (compactSubject && compactTitle.includes(compactSubject)) {
+    score += 6.5;
+  } else if (compactSubject && compactTitle && compactSubject.includes(compactTitle) && compactTitle.length >= 4) {
+    score += 4;
+  }
+
+  if (compactSubject && compactGoalTitle.includes(compactSubject)) {
+    score += 3;
+  }
+
+  score += scoreFieldMatch(queryTerms, compactTitle, 7);
+  score += scoreFieldMatch(queryTerms, compactGoalTitle, 4);
+  score += scoreFieldMatch(queryTerms, compactKrTitle, 3);
+  score += scoreFieldMatch(queryTerms, compactDescription, 2.5);
+  score += scoreFieldMatch(queryTerms, compactSubtasks, 2);
+
+  if (task.isPinned) {
+    score += 0.2;
+  }
+  if (task.isImportant) {
+    score += 0.2;
+  }
+  if (task.priority === 'high') {
+    score += 0.15;
+  }
+
+  return Number(score.toFixed(3));
+}
+
+function rankPendingTasksForFocus(text, pendingTasks) {
+  if (!Array.isArray(pendingTasks) || pendingTasks.length === 0) {
+    return [];
+  }
+
+  return pendingTasks
+    .map(task => ({ task, score: scoreTaskForFocus(text, task) }))
+    .sort((first, second) => {
+      if (second.score !== first.score) {
+        return second.score - first.score;
+      }
+      return (second.task.updatedAt || 0) - (first.task.updatedAt || 0);
+    });
+}
+
+function pickBestPendingTaskForFocus(text, pendingTasks) {
+  const ranked = rankPendingTasksForFocus(text, pendingTasks);
+  if (ranked.length === 0) {
+    return null;
+  }
+
+  const best = ranked[0];
+  const runnerUp = ranked[1];
+  const leadScore = best.score - (runnerUp?.score || 0);
+  if (best.score < 2.6) {
+    return null;
+  }
+  if (best.score < 3.2 && leadScore < 0.6) {
+    return null;
+  }
+
+  return best;
+}
+
+function normalizeFocusParsedResult(parsed, text, pendingTasks) {
+  const result = parsed && typeof parsed === 'object' ? { ...parsed } : {};
+  const fallbackSubject = extractFocusSubjectByRules(text) || String(text || '').trim().substring(0, 20);
+  const requestedSubject = String(result.focusSubject || '').trim();
+  const matchingText = requestedSubject || fallbackSubject || String(text || '').trim();
+  const localMatch = pickBestPendingTaskForFocus(matchingText, pendingTasks);
+  const llmTaskId = String(result.matchedTaskId || '').trim();
+  const llmTask = pendingTasks.find(task => String(task.id) === llmTaskId);
+  const llmScore = llmTask ? scoreTaskForFocus(matchingText, llmTask) : 0;
+
+  result.focusSubject = requestedSubject || fallbackSubject;
+  result.duration = toPositiveInteger(result.duration, extractFocusDurationByRules(text), 5, 180);
+
+  if (llmTask) {
+    result.matchedTaskId = llmTask.id;
+    result.matchedTaskTitle = llmTask.title;
+  }
+
+  if (localMatch && (!llmTask || localMatch.score >= llmScore + 1.2 || !String(result.matchedTaskTitle || '').trim())) {
+    result.matchedTaskId = localMatch.task.id;
+    result.matchedTaskTitle = localMatch.task.title;
+  }
+
+  if (!String(result.matchedTaskId || '').trim()) {
+    result.matchedTaskId = '';
+    result.matchedTaskTitle = '';
+  }
+
+  return result;
 }
 
 function isLowQualityTaskParse(parsed, inputText) {
@@ -244,31 +651,6 @@ function isLowQualityTaskParse(parsed, inputText) {
   }
 
   return title === input && description === input;
-}
-
-// ========================
-// Agent 1: 意图分流 Router
-// ========================
-const ROUTER_SYSTEM_PROMPT = `你是四时清单的语音创建智能助手。用户通过语音输入了一段话，你需要判断用户的意图属于以下四种之一：
-
-1. "goal" — 用户描述的是一个长期目标、宏观愿景、需要拆解的规划（如"考研"、"减肥20斤"、"学好英语"、"今年存10万"）
-2. "reminder" — 用户描述的是习惯打卡、周期提醒、倒计时、纪念日（如"每天晚上9点提醒我吃药"、"距离考试还有30天"、"每周一三五跑步"）
-3. "task" — 用户描述的是一个具体的、单次可完成的待办事项（如"明天提交报告"、"买牛奶"、"给老师发邮件"）
-4. "focus" — 用户想立即开始专注/番茄钟（如"专注写论文30分钟"、"开始工作"、"番茄钟背单词"）
-
-强制输出纯 JSON，不要任何解释：
-{
-  "intent": "task | reminder | goal | focus",
-  "confidence": 0.95,
-  "reasoning": "简短一句话说明判断理由"
-}`;
-
-async function routeIntent(text) {
-  return await callAgent(ROUTER_SYSTEM_PROMPT, `用户语音输入：${text}`, {
-    model: VOICE_CLASSIFY_MODEL,
-    timeoutMs: VOICE_CLASSIFY_TIMEOUT_MS,
-    traceLabel: 'voiceCreate.routeIntent'
-  });
 }
 
 // ========================
@@ -333,18 +715,69 @@ ${taskListStr}
 // ========================
 // 主接口：POST /analyze
 // ========================
-const ROUTER_SYSTEM_PROMPT_V2 = `You are the voice-create classifier for a productivity app.
-Classify the user's voice input into exactly one intent:
-1. "goal": a long-term objective, plan, or direction.
-2. "reminder": a reminder, recurring reminder, countdown, anniversary, or routine check-in.
-3. "task": a specific actionable to-do that can be completed once.
-4. "focus": an immediate focus session or pomodoro request.
+const ROUTER_SYSTEM_PROMPT_V2 = `你是四时清单的语音创建意图分流助手。
+请把用户的语音文本严格判断为且仅判断为以下四种类型之一：
+1. "goal"：长期目标、方向、阶段计划、需要进一步拆解的愿景。
+2. "reminder"：提醒、单次提醒、周期提醒、习惯打卡、倒计时、纪念日、固定节奏的提示事项。
+3. "task"：一次性、可执行、可完成的具体待办事项。
+4. "focus"：用户想立刻开始专注、进入番茄钟、开始做某件事。
 
-Return pure JSON only:
+判断要求：
+- 必须四选一，不允许返回其它类型。
+- 优先理解用户当前想“创建什么”，而不是只看关键词。
+- 如果一句话表达的是“我现在就开始做某事”，即使内容像任务主题，也优先判断为 "focus"。
+- 如果一句话表达的是“帮我记得、到时候提醒我、每天/每周/每月提醒、还有多少天”，判断为 "reminder"。
+- 如果一句话表达的是“我要达成什么结果、长期提升什么、今年/这阶段想做到什么”，判断为 "goal"。
+- 如果一句话表达的是“要新增一个待办事项，之后找时间完成”，判断为 "task"。
+
+边界判断：
+- "focus" vs "task"：关键区别在于是否“立刻开始”。例如“开始写方案”“我现在做 APP 架构设计”是 "focus"；“写方案”“明天做 APP 架构设计”是 "task"。
+- "task" vs "reminder"：关键区别在于是否要“提醒”。例如“明天下午提交周报”是 "task"；“明天下午提醒我提交周报”是 "reminder"。
+- "goal" vs "task"：关键区别在于是否是长期结果。例“今年完成首个 APP 上架”是 "goal"；“本周输出上架材料”是 "task"。
+- 当句子同时包含主题和动作时，优先看用户是要“马上开始”、“新建待办”、“新建提醒”还是“定义长期目标”。
+
+few-shot 示例：
+示例 1
+输入：我现在开始 APP 的架构设计
+输出：{"intent":"focus","confidence":0.96,"reasoning":"表达的是立刻开始做某事"}
+
+示例 2
+输入：开始专注做预算表二十五分钟
+输出：{"intent":"focus","confidence":0.98,"reasoning":"明确要求立即进入专注状态"}
+
+示例 3
+输入：明天下午三点提交周报
+输出：{"intent":"task","confidence":0.95,"reasoning":"一次性待完成事项，不是提醒"}
+
+示例 4
+输入：这周把 iOS 提审材料补齐
+输出：{"intent":"task","confidence":0.94,"reasoning":"本周内完成的具体待办"}
+
+示例 5
+输入：明天下午提醒我提交周报
+输出：{"intent":"reminder","confidence":0.98,"reasoning":"核心诉求是到时提醒"}
+
+示例 6
+输入：每天晚上九点提醒我吃药
+输出：{"intent":"reminder","confidence":0.99,"reasoning":"周期性提醒事项"}
+
+示例 7
+输入：下周五下午两点提醒我开产品会
+输出：{"intent":"reminder","confidence":0.98,"reasoning":"明确要求在具体时间提醒"}
+
+示例 8
+输入：今年完成首个 APP 的开发与上架
+输出：{"intent":"goal","confidence":0.97,"reasoning":"描述的是年度长期结果"}
+
+示例 9
+输入：今年把英语口语提升到可以流畅开会
+输出：{"intent":"goal","confidence":0.96,"reasoning":"描述的是长期能力提升目标"}
+
+只返回纯 JSON，不要输出任何解释：
 {
   "intent": "task | reminder | goal | focus",
   "confidence": 0.95,
-  "reasoning": "short reason"
+  "reasoning": "一句中文简短理由"
 }`;
 
 async function routeIntentV2(text, options = {}) {
@@ -355,20 +788,53 @@ async function routeIntentV2(text, options = {}) {
   });
 }
 
+async function classifyIntentWithRetry(text, options = {}) {
+  try {
+    return await routeIntentV2(text, {
+      model: options.primaryModel || VOICE_CLASSIFY_MODEL,
+      timeoutMs: options.primaryTimeoutMs || VOICE_CLASSIFY_TIMEOUT_MS,
+      traceLabel: options.primaryTraceLabel || 'voiceCreate.routeIntentV2.primary'
+    });
+  } catch (primaryError) {
+    const fallbackModel = options.fallbackModel || VOICE_PARSE_MODEL || VOICE_CREATE_MODEL;
+    const fallbackTimeoutMs = options.fallbackTimeoutMs || Math.max(VOICE_CLASSIFY_TIMEOUT_MS * 2, VOICE_PARSE_TIMEOUT_MS);
+    try {
+      return await routeIntentV2(text, {
+        model: fallbackModel,
+        timeoutMs: fallbackTimeoutMs,
+        traceLabel: options.fallbackTraceLabel || 'voiceCreate.routeIntentV2.retry'
+      });
+    } catch (retryError) {
+      retryError.message = `${primaryError.message}; retry=${retryError.message}`;
+      throw retryError;
+    }
+  }
+}
+
 async function parseTaskV2(text, goalsContext, options = {}) {
   const currentTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const systemPrompt = `You extract a structured task from the user's voice input for a productivity app.
+  const systemPrompt = `你是四时清单的任务创建助手，请从用户语音中提取结构化待办信息，并尽量关联到最相关的目标或 KR。
 ${buildCurrentTimeContext(currentTime)}
 ${goalsContext}
 
-Return pure JSON only:
+要求：
+- 标题要简洁自然，适合作为待办名称，不要保留“今天/明天/后天/下周三/本周五”等相对时间字样。
+- description 用一句话补充任务背景或执行动作。
+- 如果这条任务明显服务于某个目标，请返回对应 goalId。
+- 如果能明确对应到某个 KR，再返回 krId；否则留空。
+- 例如“明天要买一把吉他”如果用户存在“学习吉他”这类目标，应优先关联到该目标。
+- 如果用户说了时间，请把时间换算后填入 dueDate，不要继续保留在标题里。
+- dueDate 必须严格基于当前系统时间换算成准确日期；例如当前是 2026-06-08（周一）时，“下周三”应换算为 2026-06-17。
+- 如果只提到了日期未提具体时刻，dueDate 返回 YYYY-MM-DD；只有用户明确说了几点几分，才返回 YYYY-MM-DD HH:mm:ss。
+- 只返回纯 JSON，不要输出任何解释。
+
 {
-  "title": "concise task title within 20 Chinese characters",
-  "description": "brief helpful description",
+  "title": "20字以内的任务标题",
+  "description": "简短补充描述",
   "priority": "high | normal | low",
-  "dueDate": "YYYY-MM-DD HH:mm:ss or empty string",
-  "goalId": "matched goal ID or empty string",
-  "krId": "matched key result ID or empty string",
+  "dueDate": "YYYY-MM-DD HH:mm:ss 或空字符串",
+  "goalId": "匹配到的目标ID或空字符串",
+  "krId": "匹配到的KR ID或空字符串",
   "estimatedHours": 1.0
 }`;
 
@@ -383,8 +849,21 @@ async function parseFocusV2(text, pendingTasks, options = {}) {
   let taskListStr = 'No pending tasks.';
   if (pendingTasks.length > 0) {
     taskListStr = 'Pending tasks:\\n';
-    pendingTasks.slice(0, 20).forEach(t => {
-      taskListStr += `- [ID: ${t.id}] ${t.title}${t.goalTitle ? ` (Goal: ${t.goalTitle})` : ''}\\n`;
+    rankPendingTasksForFocus(text, pendingTasks).slice(0, 30).forEach(({ task, score }) => {
+      taskListStr += `- [ID: ${task.id}] ${task.title}`;
+      if (task.goalTitle) {
+        taskListStr += ` (Goal: ${task.goalTitle})`;
+      }
+      if (task.krTitle) {
+        taskListStr += ` (KR: ${task.krTitle})`;
+      }
+      if (task.description) {
+        taskListStr += ` | Desc: ${task.description.substring(0, 60)}`;
+      }
+      if (Array.isArray(task.subtaskTitles) && task.subtaskTitles.length > 0) {
+        taskListStr += ` | Subtasks: ${task.subtaskTitles.slice(0, 3).join(' / ')}`;
+      }
+      taskListStr += ` | Score: ${score}\\n`;
     });
   }
 
@@ -399,11 +878,13 @@ Return pure JSON only:
   "matchedTaskTitle": "best matched task title or empty string"
 }`;
 
-  return await callAgent(systemPrompt, buildVoiceInputPrompt(text), {
+  const parsed = await callAgent(systemPrompt, buildVoiceInputPrompt(text), {
     model: options.model || VOICE_PARSE_MODEL,
     timeoutMs: options.timeoutMs || VOICE_PARSE_TIMEOUT_MS,
     traceLabel: options.traceLabel || 'voiceCreate.parseFocusV2'
   });
+
+  return normalizeFocusParsedResult(parsed, text, pendingTasks);
 }
 
 function padDateValue(value) {
@@ -581,6 +1062,63 @@ function extractReminderTime(text) {
   return { hour: defaultHour, minute: 0 };
 }
 
+function hasExplicitClockTime(text) {
+  const normalized = String(text || '').trim();
+  return /(\d{1,2})\s*[:：]\s*(\d{1,2})|(\d{1,2})\s*点半|(\d{1,2})\s*点(\d{1,2})?分?/.test(normalized);
+}
+
+function stripTaskTemporalInfo(text) {
+  return String(text || '')
+    .replace(/(?:今天|明天|后天|今晚|今早|今晨|本周[一二三四五六日天]|这周[一二三四五六日天]|下周[一二三四五六日天]|周[一二三四五六日天]|星期[一二三四五六日天])/g, ' ')
+    .replace(/(?:\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}月\d{1,2}[日号]?)/g, ' ')
+    .replace(/(?:凌晨|清晨|早上|上午|中午|下午|晚上|今晚|夜里|夜间|夜晚)/g, ' ')
+    .replace(/(?:\d{1,2}\s*[:：]\s*\d{1,2}|\d{1,2}\s*点半|\d{1,2}\s*点(?:\d{1,2})?分?)/g, ' ')
+    .replace(/(?:前|之前|当天|那天|时候|左右|前后)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeTaskTitle(title, inputText) {
+  let cleaned = stripTaskTemporalInfo(title)
+    .replace(/^(请|帮我|麻烦|记得|需要|我要|我想|准备|打算|计划|安排|要)\s*/, '')
+    .replace(/[，。！？、,.!?；;：:]+$/, '')
+    .trim();
+
+  if (!cleaned) {
+    cleaned = stripTaskTemporalInfo(inputText)
+      .replace(/^(请|帮我|麻烦|记得|需要|我要|我想|准备|打算|计划|安排|要)\s*/, '')
+      .replace(/[，。！？、,.!?；;：:]+$/, '')
+      .trim();
+  }
+
+  if (!cleaned) {
+    cleaned = String(title || inputText || '').trim();
+  }
+
+  return cleaned.substring(0, 30);
+}
+
+function resolveTaskDueDate(existingDueDate, inputText) {
+  const normalizedText = String(inputText || '').trim();
+  const baseDate = new Date();
+  const explicitDate = extractExplicitDate(normalizedText, baseDate);
+  const relativeDate = extractRelativeDate(normalizedText, baseDate);
+  const resolvedDate = explicitDate || relativeDate;
+
+  if (!resolvedDate) {
+    return String(existingDueDate || '').trim();
+  }
+
+  if (!hasExplicitClockTime(normalizedText)) {
+    return resolvedDate;
+  }
+
+  const time = extractReminderTime(normalizedText);
+  const hour = String(time.hour).padStart(2, '0');
+  const minute = String(time.minute).padStart(2, '0');
+  return `${resolvedDate} ${hour}:${minute}:00`;
+}
+
 function extractWeekdays(text) {
   const normalized = String(text || '').trim();
   const weekdayMap = { '日': 0, '天': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
@@ -634,7 +1172,7 @@ function toBooleanValue(value) {
 }
 
 function isValidReminderType(value) {
-  return ['periodic', 'habit', 'milestone', 'counter', 'countdown'].includes(value);
+  return ['single', 'periodic', 'habit', 'milestone', 'counter', 'countdown'].includes(value);
 }
 
 function extractReminderTitle(text) {
@@ -703,6 +1241,7 @@ function buildReminderFallback(text, baseDate) {
   const leadDayMatch = normalized.match(/提前\s*(\d+)\s*天/);
   const counterIntervalMatch = normalized.match(/(?:第|满)?\s*(\d+)\s*(天|个月|月|年)/);
   const startDateMatch = normalized.match(/[从自](\d{4}[-/.年]\d{1,2}[-/.月]\d{1,2}(?:日)?|\d{1,2}月\d{1,2}[日号]?)/);
+  const milestoneKeyword = /(生日|除夕|春节|跨年|出发|出行|婚礼|婚宴|纪念|周年|演唱会|发布会|考试|面试|开学|毕业|ddl|截止日|大日子|重要日子)/.test(normalized);
 
   if (countdownKeyword) {
     fallback.eventType = 'countdown';
@@ -747,7 +1286,7 @@ function buildReminderFallback(text, baseDate) {
   }
 
   if (explicitDate || relativeDate) {
-    fallback.eventType = 'milestone';
+    fallback.eventType = (leadDayMatch || milestoneKeyword) ? 'milestone' : 'single';
     fallback.targetDate = explicitDate || relativeDate;
     fallback.leadDays = leadDayMatch ? toPositiveInteger(leadDayMatch[1], 0, 0, 365) : 0;
     return fallback;
@@ -848,6 +1387,9 @@ function normalizeReminderParsed(rawParsed, fallback, inputText, baseDate) {
   if (result.eventType === 'countdown' && !result.targetDate) {
     result.targetDate = fallback.targetDate || formatDateValue(addDateUnit(baseDate, 30, 'day'));
   }
+  if (result.eventType === 'single' && !result.targetDate) {
+    result.targetDate = fallback.targetDate || formatDateValue(addDateUnit(baseDate, 1, 'day'));
+  }
   if (result.eventType === 'milestone' && !result.targetDate) {
     result.targetDate = fallback.targetDate || formatDateValue(addDateUnit(baseDate, 7, 'day'));
   }
@@ -874,6 +1416,7 @@ async function parseReminderV2(text, options = {}) {
 ${buildCurrentTimeContext(currentTime)}
 
 The app only supports these reminder types:
+- "single": one-time reminder at a specific date and time, targetDate required
 - "periodic": periodic reminder with periodicMode = daily | weekly | monthly | interval
 - "habit": habit reminder with habitMode = daily | weekly | monthly
 - "milestone": one important date, targetDate required
@@ -883,7 +1426,7 @@ The app only supports these reminder types:
 Return pure JSON only:
 {
   "title": "short reminder title",
-  "eventType": "periodic | habit | milestone | counter | countdown",
+  "eventType": "single | periodic | habit | milestone | counter | countdown",
   "periodicMode": "daily | weekly | monthly | interval",
   "habitMode": "daily | weekly | monthly",
   "counterMode": "interval | date",
@@ -903,9 +1446,11 @@ Return pure JSON only:
 }
 
 Rules:
+- If the user says "明天下午提醒我交材料" or another one-time reminder at a specific date and time, use "single".
 - If the user says multiple weekdays like "每周一三五跑步", use habit weekly and set timesPerPeriod to the count.
 - If the user says "距离考试还有30天", use countdown and calculate targetDate.
-- If the user gives a specific date like "5月20日提醒我...", use milestone unless the text clearly means an anniversary counter.
+- If the user gives a specific date like "5月20日提醒我..." and there is no "提前几天" or important-day meaning, use "single".
+- If the text is about a key date such as birthday, departure day, exam day, wedding day or says "提前几天提醒", use "milestone".
 - Keep fields compatible with the supported schema only.`;
 
   try {
@@ -926,11 +1471,7 @@ function extractQuickTitle(text, intent) {
   if (!normalized) return normalized;
 
   if (intent === 'task') {
-    return normalized
-      .replace(/^(请|帮我|麻烦|记得|我要|我想|需要|去|来)/, '')
-      .replace(/[，。！？、,.!?；;：:]+$/, '')
-      .trim()
-      .substring(0, 30);
+    return normalizeTaskTitle(normalized, normalized);
   }
   if (intent === 'reminder') {
     return extractReminderTitle(normalized);
@@ -977,21 +1518,13 @@ router.post('/analyze', async (req, res) => {
       });
     }
 
-    // Step 1: 意图分流
+    // Step 1: 意图分流（直接调用 LLM）
     let intentResult;
     try {
-      const ruleIntent = detectIntentByRules(inputText);
-      if (ruleIntent) {
-        intentResult = {
-          intent: ruleIntent,
-          confidence: 0.99,
-          reasoning: 'rule_based'
-        };
-      } else {
-        intentResult = await routeIntentV2(inputText, {
-          timeoutMs: VOICE_CLASSIFY_TIMEOUT_MS
-        });
-      }
+      intentResult = await classifyIntentWithRetry(inputText, {
+        primaryTimeoutMs: VOICE_CLASSIFY_TIMEOUT_MS,
+        fallbackTimeoutMs: Math.max(VOICE_ANALYZE_TIMEOUT_MS, VOICE_CLASSIFY_TIMEOUT_MS * 2)
+      });
     } catch (e) {
       const errorCode = getAgentErrorCode(e, 'classify_timeout', 'router_failed');
       console.error(`[voiceCreate] trace=${traceId} 意图分流 Agent 失败:`, e.message);
@@ -1019,13 +1552,15 @@ router.post('/analyze', async (req, res) => {
     let parsed = {};
 
     if (intent === 'task') {
-      const goalsContext = await getUserGoalsContext(userId);
+      const activeGoals = await getUserActiveGoals(userId);
+      const goalsContext = buildGoalsContext(activeGoals, inputText);
       try {
         parsed = await parseTaskV2(inputText, goalsContext, {
           timeoutMs: VOICE_ANALYZE_TIMEOUT_MS
         });
+        parsed = normalizeTaskParsedResult(parsed, inputText, activeGoals);
         if (isLowQualityTaskParse(parsed, inputText)) {
-          parsed = {
+          parsed = normalizeTaskParsedResult({
             title: inputText.substring(0, 30),
             description: inputText,
             priority: 'normal',
@@ -1033,12 +1568,12 @@ router.post('/analyze', async (req, res) => {
             goalId: '',
             krId: '',
             estimatedHours: 1
-          };
+          }, inputText, activeGoals);
         }
       } catch (e) {
         console.error(`[voiceCreate] trace=${traceId} 任务解析 Agent 失败:`, e.message);
         // fallback：用原始文本作为标题
-        parsed = { title: inputText.substring(0, 30), description: inputText, priority: 'normal' };
+        parsed = normalizeTaskParsedResult({ title: inputText.substring(0, 30), description: inputText, priority: 'normal' }, inputText, activeGoals);
       }
 
     } else if (intent === 'goal') {
@@ -1059,7 +1594,7 @@ router.post('/analyze', async (req, res) => {
         });
       } catch (e) {
         console.error(`[voiceCreate] trace=${traceId} 番茄解析 Agent 失败:`, e.message);
-        parsed = { focusSubject: inputText.substring(0, 20), duration: 25 };
+        parsed = normalizeFocusParsedResult({ focusSubject: inputText.substring(0, 20), duration: 25 }, inputText, pendingTasks);
       }
     }
 
@@ -1114,26 +1649,11 @@ router.post('/classify', async (req, res) => {
       });
     }
 
-    // Step 1: 规则前置快速分流（跳过 LLM）
-    const ruleIntent = detectIntentByRules(inputText);
-    if (ruleIntent) {
-      console.log(`[voiceCreate:classify] trace=${traceId} source=rule intent=${ruleIntent} latency=${Date.now() - startedAt}ms`);
-      return res.json({
-        success: true,
-        data: {
-          intent: ruleIntent,
-          confidence: 0.99,
-          title_candidate: extractQuickTitle(inputText, ruleIntent),
-          source: 'rule',
-          traceId
-        }
-      });
-    }
-
-    // Step 2: LLM 分流（使用快速模型）
+    // Step 1: LLM 分流（使用快速模型）
     try {
-      const intentResult = await routeIntentV2(inputText, {
-        timeoutMs: VOICE_CLASSIFY_TIMEOUT_MS
+      const intentResult = await classifyIntentWithRetry(inputText, {
+        primaryTimeoutMs: VOICE_CLASSIFY_TIMEOUT_MS,
+        fallbackTimeoutMs: Math.max(VOICE_PARSE_TIMEOUT_MS, VOICE_CLASSIFY_TIMEOUT_MS * 2)
       });
       const intent = intentResult?.intent;
       const confidence = intentResult?.confidence || 0;
@@ -1223,13 +1743,15 @@ router.post('/parse', async (req, res) => {
     let parsed = {};
 
     if (intent === 'task') {
-      const goalsContext = await getUserGoalsContext(userId);
+      const activeGoals = await getUserActiveGoals(userId);
+      const goalsContext = buildGoalsContext(activeGoals, inputText);
       try {
         parsed = await parseTaskV2(inputText, goalsContext, {
           timeoutMs: VOICE_PARSE_TIMEOUT_MS
         });
+        parsed = normalizeTaskParsedResult(parsed, inputText, activeGoals);
         if (isLowQualityTaskParse(parsed, inputText)) {
-          parsed = {
+          parsed = normalizeTaskParsedResult({
             title: inputText.substring(0, 30),
             description: inputText,
             priority: 'normal',
@@ -1237,12 +1759,12 @@ router.post('/parse', async (req, res) => {
             goalId: '',
             krId: '',
             estimatedHours: 1
-          };
+          }, inputText, activeGoals);
         }
       } catch (e) {
         const errorCode = getAgentErrorCode(e, 'parse_timeout', 'task_parse_failed');
         console.error(`[voiceCreate:parse] trace=${traceId} errorCode=${errorCode} 任务解析 Agent 失败:`, e.message);
-        parsed = { title: inputText.substring(0, 30), description: inputText, priority: 'normal' };
+        parsed = normalizeTaskParsedResult({ title: inputText.substring(0, 30), description: inputText, priority: 'normal' }, inputText, activeGoals);
       }
 
     } else if (intent === 'goal') {
@@ -1263,7 +1785,7 @@ router.post('/parse', async (req, res) => {
       } catch (e) {
         const errorCode = getAgentErrorCode(e, 'parse_timeout', 'focus_parse_failed');
         console.error(`[voiceCreate:parse] trace=${traceId} errorCode=${errorCode} 番茄解析 Agent 失败:`, e.message);
-        parsed = { focusSubject: inputText.substring(0, 20), duration: 25 };
+        parsed = normalizeFocusParsedResult({ focusSubject: inputText.substring(0, 20), duration: 25 }, inputText, pendingTasks);
       }
     }
 

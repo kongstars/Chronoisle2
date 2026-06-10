@@ -2,12 +2,15 @@ import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { Goal, GoalCategory, KeyResult } from '../models/Goal';
 import { Task, TaskStatus } from '../models/Task';
 import { db } from '../storage/Database';
+import { CATEGORY_COLORS, getGoalCategoryIconResource } from '../common/Constants';
 import { AppEmptyState } from '../ui/base/AppEmptyState';
 import { AppGoalCard } from '../ui/base/AppGoalCard';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
-import { AppPanelSection } from '../ui/base/AppPanelSection';
-import { PAGE_PADDING, SECTION_GAP, SPACE_MD } from '../foundation/tokens/SpacingTokens';
+import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
+import { RADIUS_PILL } from '../foundation/tokens/RadiusTokens';
+import { TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('ActiveGoalsPage');
@@ -44,9 +47,6 @@ struct ActiveGoalsPage {
       await db.initialize(context);
       this.goals = db.getActiveGoals()
         .sort((first: Goal, second: Goal) => {
-          if (first.isPriority !== second.isPriority) {
-            return first.isPriority ? -1 : 1;
-          }
           if (first.progress !== second.progress) {
             return second.progress - first.progress;
           }
@@ -84,6 +84,25 @@ struct ActiveGoalsPage {
     return this.tasks.filter((task: Task) => task.goalId === goal.id && task.status === TaskStatus.PENDING).length;
   }
 
+  private getCategoryBadgeBackground(category: GoalCategory): string {
+    switch (category) {
+      case GoalCategory.HEALTH:
+        return this.themeColors.successSubtle;
+      case GoalCategory.LEARNING:
+        return this.themeColors.primarySubtle;
+      case GoalCategory.FINANCE:
+        return this.themeColors.warningSubtle;
+      case GoalCategory.FUN:
+        return this.themeColors.premiumSurface;
+      default:
+        return this.themeColors.primarySubtle;
+    }
+  }
+
+  private getCategoryTextColor(category: GoalCategory): string {
+    return CATEGORY_COLORS[category] || this.themeColors.primary;
+  }
+
   private getVisibleKeyResults(goal: Goal): KeyResult[] {
     if (!goal.keyResults || goal.keyResults.length === 0) {
       return [];
@@ -108,54 +127,21 @@ struct ActiveGoalsPage {
   }
 
   private getGoalTagBackground(goal: Goal): string {
-    switch (goal.category) {
-      case GoalCategory.HEALTH:
-        return this.themeColors.successSubtle;
-      case GoalCategory.LEARNING:
-        return this.themeColors.primarySubtle;
-      case GoalCategory.FINANCE:
-        return this.themeColors.warningSubtle;
-      case GoalCategory.FUN:
-        return this.themeColors.premiumSurface;
-      default:
-        return this.themeColors.primarySubtle;
-    }
+    return this.getCategoryBadgeBackground(goal.category);
   }
 
   private getGoalTagTextColor(goal: Goal): string {
-    switch (goal.category) {
-      case GoalCategory.HEALTH:
-        return this.themeColors.success;
-      case GoalCategory.LEARNING:
-        return this.themeColors.primary;
-      case GoalCategory.FINANCE:
-        return this.themeColors.warning;
-      case GoalCategory.FUN:
-        return this.themeColors.premiumText;
-      default:
-        return this.themeColors.primary;
-    }
+    return this.getCategoryTextColor(goal.category);
   }
 
   private getGoalMetricColor(goal: Goal): string {
-    switch (goal.category) {
-      case GoalCategory.HEALTH:
-        return this.themeColors.success;
-      case GoalCategory.LEARNING:
-        return this.themeColors.primary;
-      case GoalCategory.FINANCE:
-        return this.themeColors.warning;
-      case GoalCategory.FUN:
-        return this.themeColors.primaryLight;
-      default:
-        return this.themeColors.primary;
-    }
+    return CATEGORY_COLORS[goal.category] || this.themeColors.primary;
   }
 
   @Builder
   private GoalCard(goal: Goal) {
     AppGoalCard({
-      badgeText: this.getCategoryLabel(goal.category),
+      markerText: goal.isPriority ? '优先' : '',
       title: goal.title,
       progressText: `今天还有 ${this.getGoalTaskCount(goal)} 件行动`,
       percentText: `${Math.min(100, Math.max(0, goal.progress))}%`,
@@ -173,12 +159,55 @@ struct ActiveGoalsPage {
   }
 
   @Builder
+  private CategoryHeader(category: GoalCategory) {
+    Row({ space: SPACE_SM }) {
+      Stack({ alignContent: Alignment.Center }) {
+        Row()
+          .width(28)
+          .height(28)
+          .backgroundColor(this.themeColors.surfaceRaised)
+          .borderRadius(14)
+          .border({ width: BORDER_DEFAULT, color: this.getCategoryBadgeBackground(category) })
+        Image(getGoalCategoryIconResource(category, 'selected'))
+          .width(16)
+          .height(16)
+          .objectFit(ImageFit.Contain)
+      }
+      .width(28)
+      .height(28)
+
+      Column({ space: 2 }) {
+        Row({ space: SPACE_XS }) {
+          Text(this.getCategoryLabel(category))
+            .fontSize(TYPE_SECTION_TITLE)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.getCategoryTextColor(category))
+
+          Text(`${this.getCategoryGoals(category).length}`)
+            .fontSize(TYPE_CAPTION)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.getCategoryTextColor(category))
+            .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+            .backgroundColor(this.getCategoryBadgeBackground(category))
+            .borderRadius(RADIUS_PILL)
+        }
+        .alignItems(VerticalAlign.Center)
+
+        Text(this.getCategorySubtitle(category))
+          .fontSize(TYPE_META)
+          .fontColor(this.themeColors.textSecondary)
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Center)
+  }
+
+  @Builder
   private CategorySection(category: GoalCategory) {
-    AppPanelSection({
-      title: this.getCategoryLabel(category),
-      subtitle: this.getCategorySubtitle(category),
-      insetHorizontal: 0
-    }) {
+    Column({ space: SPACE_MD }) {
+      this.CategoryHeader(category)
       Column({ space: SPACE_MD }) {
         ForEach(this.getCategoryGoals(category), (goal: Goal) => {
           this.GoalCard(goal)
@@ -186,6 +215,7 @@ struct ActiveGoalsPage {
       }
       .width('100%')
     }
+    .width('100%')
   }
 
   build() {

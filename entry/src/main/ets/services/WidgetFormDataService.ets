@@ -230,7 +230,8 @@ export class WidgetFormDataService {
       .filter((event: DayEventData) => {
         const isCountdownType = event.type === DayEventType.MILESTONE ||
           event.type === DayEventType.COUNTDOWN ||
-          event.type === DayEventType.COUNTER;
+          event.type === DayEventType.COUNTER ||
+          event.type === DayEventType.SINGLE;
         return isCountdownType && event.isEnabled && event.targetDate !== undefined;
       })
       .sort((left: DayEventData, right: DayEventData) => (left.targetDate || 0) - (right.targetDate || 0))
@@ -254,6 +255,9 @@ export class WidgetFormDataService {
   private static getCountdownType(type: DayEventType): WidgetCountdownType {
     if (type === DayEventType.MILESTONE) {
       return 'milestone';
+    }
+    if (type === DayEventType.SINGLE) {
+      return 'reminder';
     }
     if (type === DayEventType.COUNTER) {
       return 'anniversary';

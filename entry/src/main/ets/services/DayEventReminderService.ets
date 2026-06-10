@@ -4,7 +4,7 @@ import notificationManager from '@ohos.notificationManager';
 import reminderAgentManager from '@ohos.reminderAgentManager';
 import wantAgent from '@ohos.wantAgent';
 import hilog from '@ohos.hilog';
-import { formatDayEventDate, getCounterTargetDate, getReminderSummary, matchesReminderRuleOnDate } from '../common/DayEventUtils';
+import { formatDayEventDate, formatDayEventTime, getCounterTargetDate, getReminderSummary, isDayEventSkippedOnDate, matchesReminderRuleOnDate } from '../common/DayEventUtils';
 
 const TAG = 'DayEventReminder';
 const DOMAIN = 0x0001;
@@ -69,6 +69,9 @@ export class DayEventReminderService {
         if (!event.isEnabled) {
           continue;
         }
+        if (isDayEventSkippedOnDate(event, now)) {
+          continue;
+        }
 
         for (const rule of event.reminderRules) {
           if (remindersPublished >= 30) {
@@ -130,6 +133,8 @@ export class DayEventReminderService {
 
   private getNotificationTitle(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return `单次提醒：${event.title}`;
       case DayEventType.PERIODIC:
         return `周期提醒：${event.title}`;
       case DayEventType.HABIT:
@@ -146,6 +151,10 @@ export class DayEventReminderService {
   }
 
   private getNotificationText(event: DayEvent, rule: ReminderRule): string {
+    if (event.type === DayEventType.SINGLE) {
+      const targetDate = event.targetDate || event.startDate;
+      return `${formatDayEventDate(targetDate)} ${formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0)} 提醒你：${event.title}`;
+    }
     if (event.type === DayEventType.MILESTONE) {
       const targetDate = event.targetDate || event.startDate;
       const leadDays = rule.leadDays || 0;

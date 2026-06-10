@@ -2,7 +2,7 @@
  * GoalsTab — 目标 Tab
  *
  * 顶部 Header（标题 + 新建）
- * Hero 卡（焦点目标，展示进度环 / 关键结果 / 今日待办）
+ * 目标卡列表（按分类展示进度 / 关键结果 / 今日待办）
  * 段切换（进行中 / 已完成 / 全部）
  * 分类列表（健康 / 成长 / 理财 / 快乐）
  *
@@ -33,6 +33,7 @@ import {
 import { BOTTOM_CONTENT_SPACER } from '../foundation/tokens/ComponentSizeTokens';
 import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 import { getCardShadow, getRaisedCardShadow } from '../foundation/tokens/ElevationTokens';
+import { CATEGORY_COLORS, getGoalCategoryIconResource } from '../common/Constants';
 
 @Component
 struct GoalsTabHeaderButton {
@@ -114,9 +115,6 @@ export struct GoalsTab {
 
   private sortByPriority(items: Goal[]): Goal[] {
     return items.slice().sort((first: Goal, second: Goal) => {
-      if (first.isPriority !== second.isPriority) {
-        return first.isPriority ? -1 : 1;
-      }
       if (first.progress !== second.progress) {
         return second.progress - first.progress;
       }
@@ -132,14 +130,8 @@ export struct GoalsTab {
     return this.sortByPriority(this.getDisplayGoals().filter((g: Goal) => g.category === category));
   }
 
-  // 分类列表展示用：进行中模式下，把焦点目标从分类列表里去掉，避免重复显示
   private getCategoryGoalsForDisplay(category: GoalCategory): Goal[] {
-    const focusGoal = this.statusIndex === 0 ? this.getFocusGoal() : null;
-    const items = this.getCategoryGoals(category);
-    if (focusGoal === null) {
-      return items;
-    }
-    return items.filter((g: Goal) => g.id !== focusGoal!.id);
+    return this.getCategoryGoals(category);
   }
 
   private getFocusGoal(): Goal | null {
@@ -187,44 +179,15 @@ export struct GoalsTab {
     return category as string;
   }
 
-  private getCategoryIconName(category: GoalCategory): string {
-    switch (category) {
-      case GoalCategory.HEALTH:
-        return 'health';
-      case GoalCategory.LEARNING:
-        return 'growth';
-      case GoalCategory.FINANCE:
-        return 'finance';
-      case GoalCategory.FUN:
-        return 'joy';
-      default:
-        return 'goal';
-    }
-  }
-
   private getCategoryAccent(category: GoalCategory): string {
-    switch (category) {
-      case GoalCategory.HEALTH:
-        return this.themeColors.success;
-      case GoalCategory.LEARNING:
-        return this.themeColors.primary;
-      case GoalCategory.FINANCE:
-        return this.themeColors.warning;
-      case GoalCategory.FUN:
-        return this.themeColors.premium;
-      default:
-        return this.themeColors.primary;
-    }
+    return CATEGORY_COLORS[category] || this.themeColors.primary;
   }
 
   private getGoalCardAccent(goal: Goal): string {
     if (goal.isArchived) {
       return this.themeColors.textMuted;
     }
-    if (goal.isPriority) {
-      return this.themeColors.primary;
-    }
-    return this.themeColors.primaryLight;
+    return this.getCategoryAccent(goal.category);
   }
 
   private getCategoryBadgeBackground(category: GoalCategory): string {
@@ -243,18 +206,7 @@ export struct GoalsTab {
   }
 
   private getCategoryBadgeTextColor(category: GoalCategory): string {
-    switch (category) {
-      case GoalCategory.HEALTH:
-        return this.themeColors.success;
-      case GoalCategory.LEARNING:
-        return this.themeColors.primary;
-      case GoalCategory.FINANCE:
-        return this.themeColors.warning;
-      case GoalCategory.FUN:
-        return this.themeColors.premiumText;
-      default:
-        return this.themeColors.primary;
-    }
+    return CATEGORY_COLORS[category] || this.themeColors.primary;
   }
 
   private getStatusTabs(): string[] {
@@ -313,12 +265,10 @@ export struct GoalsTab {
       Row({ space: SPACE_SM }) {
         // 分类徽章
         Row({ space: SPACE_2XS }) {
-          AppIcon({
-            name: this.getCategoryIconName(goal.category),
-            iconSize: 12,
-            framed: false,
-            color: this.getCategoryBadgeTextColor(goal.category)
-          })
+          Image(getGoalCategoryIconResource(goal.category, 'selected'))
+            .width(12)
+            .height(12)
+            .objectFit(ImageFit.Contain)
           Text(this.getCategoryLabel(goal.category))
             .fontSize(TYPE_CAPTION)
             .fontWeight(FontWeight.Medium)
@@ -443,33 +393,37 @@ export struct GoalsTab {
 
   @Builder
   private CategorySectionHeader(category: GoalCategory, count: number) {
-    Row({ space: SPACE_XS }) {
+    Row({ space: SPACE_SM }) {
       Stack({ alignContent: Alignment.Center }) {
         Row()
-          .width(20)
-          .height(20)
+          .width(28)
+          .height(28)
           .backgroundColor(this.themeColors.surfaceRaised)
-          .borderRadius(RADIUS_PILL)
+          .borderRadius(14)
           .border({ width: BORDER_DEFAULT, color: this.getCategoryBadgeBackground(category) })
-        AppIcon({
-          name: this.getCategoryIconName(category),
-          iconSize: 12,
-          framed: false,
-          color: this.getCategoryBadgeTextColor(category)
-        })
+        Image(getGoalCategoryIconResource(category, 'selected'))
+          .width(16)
+          .height(16)
+          .objectFit(ImageFit.Contain)
       }
-      .width(20)
-      .height(20)
+      .width(28)
+      .height(28)
 
-      Text(this.getCategoryLabel(category))
-        .fontSize(TYPE_SECTION_TITLE)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.themeColors.textPrimary)
+      Row({ space: SPACE_XS }) {
+        Text(this.getCategoryLabel(category))
+          .fontSize(TYPE_SECTION_TITLE)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.getCategoryAccent(category))
 
-      Text(`${count}`)
-        .fontSize(TYPE_CAPTION)
-        .fontColor(this.themeColors.textMuted)
-        .padding({ left: SPACE_2XS })
+        Text(`${count}`)
+          .fontSize(TYPE_CAPTION)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.getCategoryAccent(category))
+          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+          .backgroundColor(this.getCategoryBadgeBackground(category))
+          .borderRadius(RADIUS_PILL)
+      }
+      .alignItems(VerticalAlign.Center)
 
       Blank()
     }
@@ -481,7 +435,7 @@ export struct GoalsTab {
   @Builder
   private GoalCardItem(goal: Goal) {
     AppGoalCard({
-      badgeText: this.getCategoryLabel(goal.category),
+      markerText: goal.isPriority ? '优先' : '',
       title: goal.title,
       progressText: goal.isArchived
         ? '已完成'
@@ -491,7 +445,7 @@ export struct GoalsTab {
       accentColor: this.getGoalCardAccent(goal),
       badgeTextColor: this.getCategoryBadgeTextColor(goal.category),
       badgeBackgroundColor: this.getCategoryBadgeBackground(goal.category),
-      surfaceColor: goal.isPriority ? this.themeColors.announcementSurface : this.themeColors.surfaceRaised,
+      surfaceColor: this.themeColors.surfaceRaised,
       tapAction: () => {
         if (this.onOpenGoalDetail) {
           this.onOpenGoalDetail(goal.id);
@@ -613,11 +567,6 @@ export struct GoalsTab {
         Column({ space: SPACE_MD }) {
           if (this.statusIndex === 0 && this.goalReschedulePrompt !== null) {
             this.GoalReschedulePromptCard()
-          }
-
-          // Hero（仅在"进行中"且有焦点目标时显示）
-          if (this.statusIndex === 0 && this.getFocusGoal() !== null) {
-            this.FocusHero(this.getFocusGoal()!)
           }
 
           // 状态切换

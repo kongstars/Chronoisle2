@@ -1,7 +1,7 @@
 
 import { Goal, KeyResult, GoalCategory } from '../models/Goal';
 import { db } from '../storage/Database';
-import { CATEGORIES, CategoryInfo } from '../common/Constants';
+import { CATEGORIES, CategoryInfo, getGoalCategoryIconResource } from '../common/Constants';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { Task, TaskStatus } from '../models/Task';
 import { DayEvent, getEventTypeIcon, getEventTypeLabel } from '../models/DayEvent';
@@ -667,12 +667,10 @@ struct GoalDetailPage {
       // Row 1: Category Badge | Spacer | Start Date
       Row() {
           Row() {
-            AppIcon({
-              name: CATEGORIES.find((c) => c.value === this.goal!.category)?.icon || '',
-              iconSize: ICON_SIZE_LG,
-              framed: false,
-              color: this.getCategoryAccent(this.goal!.category)
-            })
+            Image(getGoalCategoryIconResource(this.goal!.category, 'selected'))
+              .width(ICON_SIZE_LG)
+              .height(ICON_SIZE_LG)
+              .objectFit(ImageFit.Contain)
               .margin({ right: SPACE_2XS })
             Text(this.goal!.category)
             .fontSize(TYPE_META)

@@ -9,6 +9,7 @@ import { DISABLED_OPACITY } from '../../foundation/tokens/VisualTokens';
 export struct AppGoalCard {
   @StorageLink('themeColors') themeColors: ThemeColors = LightTheme;
   @Prop badgeText: string = '';
+  @Prop markerText: string = '';
   @Prop title: string = '';
   @Prop progressText: string = '';
   @Prop percentText: string = '';
@@ -63,30 +64,28 @@ export struct AppGoalCard {
     return Math.min(3, Math.max(0, this.keyResults.length));
   }
 
-  private getAccentHeight(): number {
-    const keyResultCount = this.getVisibleKeyResultCount();
-    if (keyResultCount <= 0) {
-      return 76;
+  private getProgressPercent(): number {
+    const matched = this.percentText.match(/\d+/);
+    if (!matched) {
+      return 0;
     }
-    return 64 + keyResultCount * 28;
+    const value = parseInt(matched[0], 10);
+    if (isNaN(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, value));
   }
 
   build() {
-    Row({ space: SPACE_SM }) {
-      Column()
-        .width(2)
-        .height(this.getAccentHeight())
-        .backgroundColor(this.themeColors.divider)
-        .borderRadius(RADIUS_PILL)
-
-      Column({ space: SPACE_XS }) {
-        Row() {
+    Column({ space: SPACE_SM }) {
+      if (this.badgeText.length > 0 || this.markerText.length > 0) {
+        Row({ space: SPACE_XS }) {
           if (this.badgeText.length > 0) {
             Row({ space: SPACE_2XS }) {
               Row()
                 .width(6)
                 .height(6)
-                .backgroundColor(this.themeColors.primaryLight)
+                .backgroundColor(this.getAccentColor())
                 .borderRadius(RADIUS_PILL)
 
               Text(this.badgeText)
@@ -102,17 +101,22 @@ export struct AppGoalCard {
             .alignItems(VerticalAlign.Center)
           }
 
-          Blank()
-
-          if (this.percentText.length > 0) {
-            Text(this.percentText)
-              .fontSize(TYPE_SECTION_TITLE)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.themeColors.primary)
+          if (this.markerText.length > 0) {
+            Text(this.markerText)
+              .fontSize(TYPE_CAPTION)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.themeColors.warning)
+              .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+              .backgroundColor(this.themeColors.warningSubtle)
+              .borderRadius(RADIUS_SM)
           }
+
+          Blank()
         }
         .width('100%')
+      }
 
+      Row({ space: SPACE_SM }) {
         Column({ space: SPACE_2XS }) {
           Text(this.title)
             .fontSize(TYPE_SECTION_TITLE)
@@ -131,15 +135,54 @@ export struct AppGoalCard {
               .width('100%')
           }
         }
+        .layoutWeight(1)
         .alignItems(HorizontalAlign.Start)
 
+        if (this.percentText.length > 0) {
+          Column({ space: 2 }) {
+            Text(this.percentText)
+              .fontSize(TYPE_SECTION_TITLE)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getAccentColor())
+
+            Text('完成度')
+              .fontSize(TYPE_CAPTION)
+              .fontColor(this.themeColors.textMuted)
+          }
+          .alignItems(HorizontalAlign.Center)
+          .padding({ left: 10, right: 10, top: 8, bottom: 8 })
+          .backgroundColor(this.themeColors.surfaceSoft)
+          .borderRadius(RADIUS_SM)
+        }
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+
+      if (this.percentText.length > 0) {
+        Stack({ alignContent: Alignment.Start }) {
+          Row()
+            .width('100%')
+            .height(6)
+            .backgroundColor(this.themeColors.surfaceSoft)
+            .borderRadius(RADIUS_PILL)
+
+          Row()
+            .width(`${this.getProgressPercent()}%`)
+            .height(6)
+            .backgroundColor(this.getAccentColor())
+            .borderRadius(RADIUS_PILL)
+        }
+        .width('100%')
+      }
+
+      if (this.keyResults.length > 0) {
         Column({ space: SPACE_2XS }) {
           ForEach(this.keyResults.slice(0, 3), (item: string) => {
             Row({ space: SPACE_XS }) {
               Circle()
                 .width(5)
                 .height(5)
-                .fill(this.themeColors.primaryLight)
+                .fill(this.getAccentColor())
 
               Text(item)
                 .fontSize(TYPE_BODY)
@@ -149,19 +192,17 @@ export struct AppGoalCard {
                 .layoutWeight(1)
             }
             .width('100%')
-            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
             .backgroundColor(this.themeColors.surfaceSoft)
             .borderRadius(RADIUS_SM)
           })
         }
         .width('100%')
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
-    .alignItems(VerticalAlign.Top)
-    .padding({ left: 12, right: 12, top: SPACE_MD, bottom: SPACE_MD })
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: 14, right: 14, top: SPACE_MD, bottom: SPACE_MD })
     .backgroundColor(this.getCardBackgroundColor())
     .borderRadius(RADIUS_LG)
     .border({ width: BORDER_DEFAULT, color: this.getBorderColor() })

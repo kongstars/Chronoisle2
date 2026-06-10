@@ -20,7 +20,7 @@ export class WidgetHabit {
 }
 
 // 倒计时数据（用于倒计时卡片）
-export type WidgetCountdownType = 'milestone' | 'countdown' | 'anniversary';
+export type WidgetCountdownType = 'milestone' | 'countdown' | 'anniversary' | 'reminder';
 
 export class WidgetCountdown {
   id: string = '';

@@ -93,6 +93,7 @@ export interface AgentProcessResult {
 }
 
 export interface TaskAutoFillIntent {
+  normalized_title?: string;
   description: string;
   priority: string;
   suggested_goal_id?: string;
@@ -377,8 +378,15 @@ ${goalsListDesc}
 
 请严格输出 JSON，不要输出任何额外解释。
 
+规则：
+- normalized_title 必须书面化、可执行，不要保留“今天/明天/后天/下周三/本周五”等相对时间字样。
+- 如果用户原话里包含时间信息，应优先写入 due_date，而不是留在标题里。
+- due_date 必须严格基于当前系统时间换算成准确日期；例如当前是 2026-06-08（周一）时，“下周三”应换算为 2026-06-17，而不是本周三。
+- 如果只提到了日期未提具体时刻，due_date 只返回 YYYY-MM-DD；只有用户明确说了几点几分，才返回带时间的格式。
+
 输出字段格式：
 {
+  "normalized_title": "将口语化标题规整成书面化、可执行的任务标题（8-24字，不要加句号）",
   "description": "根据标题生成一段简洁实用的任务描述（30-80字），帮助用户后续执行",
   "priority": "high | normal | low",
   "suggested_goal_id": "相关联的目标ID，否则留空",
@@ -407,6 +415,7 @@ ${goalsListDesc}
     }
 
     let filled: TaskAutoFillIntent = {
+      normalized_title: '',
       description: '',
       priority: 'normal',
       suggested_goal_id: '',

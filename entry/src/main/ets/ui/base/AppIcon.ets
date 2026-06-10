@@ -254,33 +254,33 @@ export struct AppIcon {
   @Prop useSystemSymbol: boolean = true;
   @Prop selected: boolean = false;
 
-  private getIconName(): AppIconName {
-    return normalizeAppIconName(this.name);
+  private getIconName(name: string): AppIconName {
+    return normalizeAppIconName(name);
   }
 
-  private getTone(): AppTone {
-    return this.tone === 'neutral' ? getAppIconTone(this.name) : this.tone;
+  private getTone(tone: AppTone | 'neutral', name: string): AppTone {
+    return tone === 'neutral' ? getAppIconTone(name) : tone;
   }
 
-  private getMarkColor(): string {
-    if (this.color.length > 0) {
-      return this.color;
+  private getMarkColor(color: string, tone: AppTone): string {
+    if (color.length > 0) {
+      return color;
     }
-    return getToneTextColor(this.themeColors, this.getTone());
+    return getToneTextColor(this.themeColors, tone);
   }
 
-  private getSurfaceColor(): string {
-    if (!this.framed) {
+  private getSurfaceColor(framed: boolean, surfaceColor: string, tone: AppTone): string {
+    if (!framed) {
       return this.themeColors.transparent;
     }
-    if (this.surfaceColor.length > 0) {
-      return this.surfaceColor;
+    if (surfaceColor.length > 0) {
+      return surfaceColor;
     }
-    return getToneSurfaceColor(this.themeColors, this.getTone());
+    return getToneSurfaceColor(this.themeColors, tone);
   }
 
-  private getBorderColor(): string {
-    return this.framed ? getToneBorderColor(this.themeColors, this.getTone()) + '40' : this.themeColors.transparent;
+  private getBorderColor(framed: boolean, tone: AppTone): string {
+    return framed ? getToneBorderColor(this.themeColors, tone) + '40' : this.themeColors.transparent;
   }
 
   private getTintMatrix(color: string): number[] {
@@ -327,8 +327,8 @@ export struct AppIcon {
     return [26, 36, 53, 255];
   }
 
-  private usesIntrinsicSelectedAsset(iconName: AppIconName): boolean {
-    if (!this.selected) {
+  private usesIntrinsicSelectedAsset(selected: boolean, iconName: AppIconName): boolean {
+    if (!selected) {
       return false;
     }
     switch (iconName) {
@@ -506,14 +506,14 @@ export struct AppIcon {
     }
   }
 
-  private getResource(iconName: AppIconName): Resource {
-    return this.usesIntrinsicSelectedAsset(iconName) ? this.getSelectedResource(iconName) : this.getDefaultResource(iconName);
+  private getResource(selected: boolean, iconName: AppIconName): Resource {
+    return this.usesIntrinsicSelectedAsset(selected, iconName) ? this.getSelectedResource(iconName) : this.getDefaultResource(iconName);
   }
 
   @Builder
-  private IconImage(iconName: AppIconName, color: string) {
-    if (this.usesIntrinsicSelectedAsset(iconName)) {
-      Image(this.getResource(iconName))
+  private IconImage(selected: boolean, iconName: AppIconName, color: string) {
+    if (this.usesIntrinsicSelectedAsset(selected, iconName)) {
+      Image(this.getResource(selected, iconName))
         .width(this.iconSize)
         .height(this.iconSize)
         .objectFit(ImageFit.Contain)
@@ -521,14 +521,15 @@ export struct AppIcon {
         .draggable(false)
         .syncLoad(true)
     } else {
-      Image(this.getResource(iconName))
+      Image(this.getResource(selected, iconName))
         .width(this.iconSize)
         .height(this.iconSize)
         .objectFit(ImageFit.Contain)
         .interpolation(ImageInterpolation.High)
         .draggable(false)
         .syncLoad(true)
-        .colorFilter(this.getTintMatrix(color))
+        .fillColor(color)
+        .colorFilter(color)
     }
   }
 
@@ -537,10 +538,10 @@ export struct AppIcon {
       Row()
         .width(this.iconSize)
         .height(this.iconSize)
-        .backgroundColor(this.getSurfaceColor())
+        .backgroundColor(this.getSurfaceColor(this.framed, this.surfaceColor, this.getTone(this.tone, this.name)))
         .borderRadius(this.iconSize * 0.32)
-        .border({ width: this.framed ? 1 : 0, color: this.getBorderColor() })
-      this.IconImage(this.getIconName(), this.getMarkColor())
+        .border({ width: this.framed ? 1 : 0, color: this.getBorderColor(this.framed, this.getTone(this.tone, this.name)) })
+      this.IconImage(this.selected, this.getIconName(this.name), this.getMarkColor(this.color, this.getTone(this.tone, this.name)))
     }
     .width(this.iconSize)
     .height(this.iconSize)

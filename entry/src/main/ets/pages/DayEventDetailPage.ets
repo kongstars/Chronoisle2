@@ -6,6 +6,7 @@ import {
   formatDayEventDate,
   formatDayEventTime,
   getCounterTargetDate,
+  isDayEventSkipActive,
   startOfDay
 } from '../common/DayEventUtils';
 import {
@@ -87,6 +88,8 @@ struct DayEventDetailPage {
 
   private getRuleText(rule: ReminderRule): string {
     switch (rule.type) {
+      case ReminderType.SINGLE_AT:
+        return `${this.event ? formatDayEventDate(this.event.targetDate || this.event.startDate) : ''} · ${formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0)}`;
       case ReminderType.PERIODIC_DAILY:
       case ReminderType.HABIT_DAILY:
         return `每天 ${formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0)}`;
@@ -149,6 +152,9 @@ struct DayEventDetailPage {
     if (!this.event) {
       return '暂无';
     }
+    if (this.event.isCompleted) {
+      return '已结束';
+    }
     const nextOccurrence = getNextReminderOccurrenceTime(this.event, this.tasks, Date.now());
     if (nextOccurrence === undefined) {
       return '暂无下一次提醒';
@@ -198,10 +204,13 @@ struct DayEventDetailPage {
     if (!this.event) {
       return '暂无状态';
     }
+    if (this.event.isCompleted) {
+      return '已结束';
+    }
     if (!this.event.isEnabled) {
       return '当前已暂停';
     }
-    if (this.event.skipOnceUntil !== undefined && this.event.skipOnceUntil >= Date.now()) {
+    if (isDayEventSkipActive(this.event, Date.now())) {
       return '已跳过一次';
     }
     if (this.hasCompletedToday()) {
@@ -217,7 +226,10 @@ struct DayEventDetailPage {
     if (!this.event) {
       return 'neutral';
     }
-    if (!this.event.isEnabled || (this.event.skipOnceUntil !== undefined && this.event.skipOnceUntil >= Date.now())) {
+    if (this.event.isCompleted) {
+      return 'success';
+    }
+    if (!this.event.isEnabled || isDayEventSkipActive(this.event, Date.now())) {
       return 'warning';
     }
     if (this.hasCompletedToday()) {
@@ -233,10 +245,16 @@ struct DayEventDetailPage {
     if (!this.event) {
       return '';
     }
+    if (this.event.isCompleted) {
+      return '该提醒已结束，不会再继续触发。';
+    }
+    if (this.isSingleReminder()) {
+      return '单次提醒建议直接完成；如果不再需要，也可以直接结束。';
+    }
     if (!this.event.isEnabled) {
       return '恢复后会重新生成下一次打卡任务。';
     }
-    if (this.event.skipOnceUntil !== undefined && this.event.skipOnceUntil >= Date.now()) {
+    if (isDayEventSkipActive(this.event, Date.now()) && this.event.skipOnceUntil !== undefined) {
       return `已跳过一次，直到 ${formatDayEventDate(this.event.skipOnceUntil)} ${formatDayEventTime(this.event.skipOnceUntil)}`;
     }
     return '可以跳过一次，也可以直接暂停整个提醒。';
@@ -310,6 +328,10 @@ struct DayEventDetailPage {
     this.refreshCurrentData();
   }
 
+  private isSingleReminder(): boolean {
+    return this.event?.type === DayEventType.SINGLE;
+  }
+
   private async pauseOnce(): Promise<void> {
     if (!this.event) {
       return;
@@ -330,6 +352,15 @@ struct DayEventDetailPage {
     }
     await db.pauseDayEventIndefinitely(this.event.id);
     this.showToast('已无限暂停');
+    this.refreshCurrentData();
+  }
+
+  private async endReminder(): Promise<void> {
+    if (!this.event) {
+      return;
+    }
+    await db.endDayEvent(this.event.id);
+    this.showToast('已结束这条提醒');
     this.refreshCurrentData();
   }
 
@@ -385,6 +416,23 @@ struct DayEventDetailPage {
 
   private openPauseDialog(): void {
     if (!this.event) {
+      return;
+    }
+    if (this.isSingleReminder()) {
+      this.getUIContext().showAlertDialog({
+        title: '结束提醒',
+        message: `单次提醒“${this.event.title}”不支持跳过一次，你可以直接完成或结束它。`,
+        buttons: [
+          {
+            value: '结束',
+            action: () => { void this.endReminder(); }
+          },
+          {
+            value: '取消',
+            action: () => {}
+          }
+        ]
+      });
       return;
     }
     this.getUIContext().showAlertDialog({
@@ -530,7 +578,7 @@ struct DayEventDetailPage {
     Column({ space: SPACE_SM }) {
       AppPageHeader({
         title: '提醒详情',
-        subtitle: '在这里快速完成、跳过、暂停或恢复提醒',
+        subtitle: '在这里快速完成、结束、暂停或恢复提醒',
         onBack: () => {
           this.getUIContext().getRouter().back();
         }
@@ -613,10 +661,10 @@ struct DayEventDetailPage {
               Column({ space: SPACE_MD }) {
                 Row({ space: SPACE_SM }) {
                   if (this.hasCompletedToday()) {
-                    this.CompletedButtonCell('今天已打卡')
+                    this.CompletedButtonCell(this.isSingleReminder() ? '已完成' : '今天已打卡')
                   } else {
                     this.ButtonCell(
-                      '标记本次完成',
+                      this.isSingleReminder() ? '完成' : '标记本次完成',
                       'primary',
                       !this.canCompleteNow(),
                       'success',
@@ -626,15 +674,21 @@ struct DayEventDetailPage {
                     )
                   }
 
-                  this.ButtonCell('跳过一次', 'secondary', false, 'warning', () => {
-                    void this.pauseOnce();
-                  })
+                  if (!this.isSingleReminder()) {
+                    this.ButtonCell('跳过一次', 'secondary', false, 'warning', () => {
+                      void this.pauseOnce();
+                    })
+                  }
 
                   this.ButtonCell(
-                    this.event.isEnabled ? '暂停提醒' : '恢复提醒',
+                    this.event.isEnabled
+                      ? (this.isSingleReminder() ? '结束提醒' : '暂停提醒')
+                      : '恢复提醒',
                     'secondary',
                     false,
-                    this.event.isEnabled ? 'warning' : 'success',
+                    this.event.isEnabled
+                      ? (this.isSingleReminder() ? 'archive' : 'warning')
+                      : 'success',
                     () => {
                       if (!this.event) {
                         return;

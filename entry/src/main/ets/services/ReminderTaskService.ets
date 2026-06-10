@@ -1,6 +1,6 @@
 import { CounterUnit, DayEvent, DayEventType, ReminderRule, ReminderType } from '../models/DayEvent';
 import { Task, TaskStatus } from '../models/Task';
-import { addDays, endOfDay, formatDayEventDate, formatDayEventTime, getCounterTargetDate, getDayEventOccurrenceTimeOnDate, getReminderSummary, startOfDay } from '../common/DayEventUtils';
+import { addDays, endOfDay, formatDayEventDate, formatDayEventTime, getCounterTargetDate, getDayEventOccurrenceTimeOnDate, getReminderSummary, isDayEventSkippedOnDate, startOfDay } from '../common/DayEventUtils';
 
 export interface ReminderPeriodProgress {
   label: string;
@@ -41,7 +41,7 @@ function getCurrentPeriodRange(rule: ReminderRule, referenceTime: number): Perio
     return {
       start,
       end,
-      label: '本周'
+      label: '鏈懆'
     };
   }
 
@@ -52,7 +52,7 @@ function getCurrentPeriodRange(rule: ReminderRule, referenceTime: number): Perio
     return {
       start,
       end,
-      label: '本月'
+      label: '鏈湀'
     };
   }
 
@@ -105,8 +105,9 @@ function buildPlanFromPendingTask(task: Task): ReminderTaskPlan | null {
     return null;
   }
 
-  const summary = (task.description || '').startsWith('来自提醒：')
-    ? (task.description || '').substring('来自提醒：'.length)
+  const reminderPrefix = '来自提醒：';
+  const summary = (task.description || '').startsWith(reminderPrefix)
+    ? (task.description || '').substring(reminderPrefix.length)
     : (task.reminderTitle || formatDayEventDate(task.reminderOccurrenceTime));
 
   return {
@@ -226,6 +227,12 @@ function getNextLeadOccurrence(event: DayEvent, rule: ReminderRule, referenceTim
   return timestamp >= referenceTime ? timestamp : undefined;
 }
 
+function getNextSingleOccurrence(event: DayEvent, rule: ReminderRule, referenceTime: number): number | undefined {
+  const baseTime = event.targetDate || event.startDate;
+  const timestamp = applyRuleTime(baseTime, rule);
+  return timestamp >= referenceTime ? timestamp : undefined;
+}
+
 function getNextDailyOccurrence(rule: ReminderRule, referenceTime: number, startTime: number): number {
   const baseDay = Math.max(startOfDay(referenceTime), startOfDay(startTime));
   const candidate = applyRuleTime(baseDay, rule);
@@ -239,6 +246,8 @@ function getNextRuleOccurrence(event: DayEvent, rule: ReminderRule, referenceTim
   const effectiveStartTime = applyRuleTime(event.startDate, rule);
 
   switch (rule.type) {
+    case ReminderType.SINGLE_AT:
+      return getNextSingleOccurrence(event, rule, referenceTime);
     case ReminderType.PERIODIC_DAILY:
     case ReminderType.HABIT_DAILY:
       return getNextDailyOccurrence(rule, referenceTime, effectiveStartTime);
@@ -302,12 +311,15 @@ function getCountTargetPlan(event: DayEvent, rule: ReminderRule, tasks: Task[], 
   return {
     occurrenceTime: dueTime,
     dueDate: dueTime,
-    summary: `${range.label}目标 ${completed + 1}/${target}`
+    summary: `${range.label}鐩爣 ${completed + 1}/${target}`
   };
 }
 
 export function planNextReminderTask(event: DayEvent, tasks: Task[], referenceTime: number = Date.now()): ReminderTaskPlan | null {
   if (!event.isEnabled || event.isCompleted) {
+    return null;
+  }
+  if (isDayEventSkippedOnDate(event, referenceTime)) {
     return null;
   }
 
@@ -353,7 +365,7 @@ export function planNextReminderTask(event: DayEvent, tasks: Task[], referenceTi
         return {
           occurrenceTime,
           dueDate: occurrenceTime,
-          summary: `目标：${formatDayEventDate(event.targetDate)}`
+          summary: `鐩爣锛?{formatDayEventDate(event.targetDate)}`
         };
       }
     }
@@ -365,7 +377,19 @@ export function planNextReminderTask(event: DayEvent, tasks: Task[], referenceTi
         return {
           occurrenceTime,
           dueDate: occurrenceTime,
-          summary: `重要日子 ${formatDayEventDate(event.targetDate)}`
+          summary: `閲嶈鏃ュ瓙 ${formatDayEventDate(event.targetDate)}`
+        };
+      }
+    }
+    if (event.type === DayEventType.SINGLE && event.targetDate) {
+      const rule = event.reminderRules[0];
+      const occurrenceTime = rule ? applyRuleTime(event.targetDate, rule) : event.targetDate;
+      if (!hasCompletedAutoOccurrence(tasks, event.id, occurrenceTime) &&
+        occurrenceTime >= referenceTime) {
+        return {
+          occurrenceTime,
+          dueDate: occurrenceTime,
+          summary: `鍗曟鎻愰啋 ${formatDayEventDate(occurrenceTime)}`
         };
       }
     }
@@ -381,7 +405,7 @@ export function planNextReminderTask(event: DayEvent, tasks: Task[], referenceTi
 
 export function createReminderAutoTask(event: DayEvent, plan: ReminderTaskPlan): Task {
   const task = new Task(event.title, event.goalId || '', event.goalTitle || '');
-  task.description = `来自提醒：${plan.summary}`;
+  task.description = `鏉ヨ嚜鎻愰啋锛?{plan.summary}`;
   task.reminderId = event.id;
   task.reminderTitle = event.title;
   task.krId = event.krId;
@@ -409,7 +433,7 @@ export function buildReminderTaskSubtitle(task: Task): string {
   if (task.isReminderAutoGenerated && task.reminderOccurrenceTime) {
     const date = formatDayEventDate(task.reminderOccurrenceTime);
     const time = new Date(task.reminderOccurrenceTime);
-      return `${task.reminderTitle} · ${date} ${formatDayEventTime(time.getHours(), time.getMinutes())}`;
+      return `${task.reminderTitle} 路 ${date} ${formatDayEventTime(time.getHours(), time.getMinutes())}`;
   }
 
     return task.reminderTitle;
@@ -432,6 +456,9 @@ function getDirectCompletionCandidate(event: DayEvent, tasks: Task[], referenceT
 }
 
 export function getReminderCompletionCandidate(event: DayEvent, tasks: Task[], referenceTime: number = Date.now()): ReminderCompletionCandidate | null {
+  if (!event.isEnabled || event.isCompleted || isDayEventSkippedOnDate(event, referenceTime)) {
+    return null;
+  }
   const pendingTasks = getPendingReminderTasks(tasks, event.id);
   if (pendingTasks.length > 0) {
     const endToday = endOfDay(referenceTime);
@@ -460,6 +487,22 @@ export function autoCompleteExpirations(events: DayEvent[], tasks: Task[]): bool
   let updated = false;
   const now = Date.now();
   events.forEach(event => {
+    if (event.type === DayEventType.SINGLE && event.isEnabled && !event.isCompleted) {
+      const singleRule = event.reminderRules[0];
+      const singleOccurrence = singleRule
+        ? applyRuleTime(event.targetDate || event.startDate, singleRule)
+        : (event.targetDate || event.startDate);
+      const isSkippedPast = event.skipOnceUntil !== undefined && now >= event.skipOnceUntil;
+      const isCompletedOnce = hasCompletedAutoOccurrence(tasks, event.id, singleOccurrence) ||
+        hasCompletedReminderOnDate(tasks, event.id, singleOccurrence);
+      if (isCompletedOnce || isSkippedPast) {
+        event.isCompleted = true;
+        event.isEnabled = false;
+        event.skipOnceUntil = undefined;
+        updated = true;
+        return;
+      }
+    }
     if (event.isEnabled && !event.isCompleted && event.endDate !== undefined) {
       if (now > event.endDate) {
         const autoTasks = tasks.filter(t => t.reminderId === event.id && t.isReminderAutoGenerated);

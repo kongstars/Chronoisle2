@@ -107,6 +107,20 @@ export class AIFillState {
   }
 
   /**
+   * 用户主动触发 AI 补全时，允许某字段以 AI 结果覆盖当前值。
+   * 适用于标题这类“先手输，再请求 AI 书面化”的场景。
+   */
+  markFilledByAIOverride(fieldName: string, originalValue?: string): void {
+    this.bannerStatus = 'filled';
+    this.fields.set(fieldName, {
+      fieldName,
+      filledByAI: true,
+      userEdited: false,
+      originalValue
+    });
+  }
+
+  /**
    * AI 解析失败。
    */
   markFailed(errorMessage: string): void {

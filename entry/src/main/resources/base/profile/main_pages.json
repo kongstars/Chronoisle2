@@ -5,6 +5,7 @@
     "pages/MainPage",
     "pages/LoginPage",
     "pages/SearchPage",
+    "pages/SearchTaskResultsPage",
     "pages/RegisterPage",
     "pages/GoalDetailPage",
     "pages/ActiveGoalsPage",

@@ -288,6 +288,13 @@ export struct VoiceCreateOverlay {
     this.requireLogin = false;
   }
 
+  private prepareForNewVoiceAttempt(): boolean {
+    if (this.phase === 'checking' || this.phase === 'recording' || this.phase === 'analyzing') {
+      return false;
+    }
+    return true;
+  }
+
   private async ensureMicrophonePermissionBeforeRecording(): Promise<boolean> {
     if (!this.hostContext) {
       this.setError('当前无法启动语音输入，请稍后再试。');
@@ -313,7 +320,7 @@ export struct VoiceCreateOverlay {
   }
 
   private onVoiceButtonPressStart(): void {
-    if (this.phase !== 'ready' && this.phase !== 'error') {
+    if (!this.prepareForNewVoiceAttempt()) {
       return;
     }
 
@@ -368,11 +375,14 @@ export struct VoiceCreateOverlay {
       return;
     }
 
-    this.updatePhase('checking');
+    this.clearTimers();
+    this.realtimeText = '';
     this.errorMessage = '';
     this.analyzeResult = null;
     this.requireMembership = false;
     this.requireLogin = false;
+
+    this.updatePhase('checking');
     this.startDotAnimation();
 
     const currentUser = await authService.getCurrentUser();
@@ -661,7 +671,10 @@ export struct VoiceCreateOverlay {
   }
 
   private shouldUseFixedStageCard(): boolean {
-    return this.phase === 'checking' || this.phase === 'recording' || this.phase === 'analyzing';
+    return this.phase === 'checking'
+      || this.phase === 'recording'
+      || this.phase === 'analyzing'
+      || (this.phase === 'error' && !this.requireLogin && !this.requireMembership);
   }
 
   private getVoiceEntryHint(): string {

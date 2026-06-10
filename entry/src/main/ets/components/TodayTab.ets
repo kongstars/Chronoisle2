@@ -183,6 +183,8 @@ export struct TodayTab {
 
   private getReminderTone(event: DayEvent): AppTone {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return 'primary';
       case DayEventType.HABIT:
         return 'success';
       case DayEventType.MILESTONE:
@@ -196,6 +198,8 @@ export struct TodayTab {
 
   private getReminderBadge(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE:
+        return '单次提醒';
       case DayEventType.HABIT:
         return '习惯';
       case DayEventType.MILESTONE:
@@ -473,9 +477,6 @@ export struct TodayTab {
     this.featuredGoalsCache = this.goals
       .filter((goal: Goal) => !goal.isArchived)
       .sort((first: Goal, second: Goal) => {
-        if (first.isPriority !== second.isPriority) {
-          return first.isPriority ? -1 : 1;
-        }
         if (first.progress !== second.progress) {
           return second.progress - first.progress;
         }
@@ -967,6 +968,7 @@ export struct TodayTab {
   private GoalCard(goal: Goal) {
     AppGoalCard({
       badgeText: this.getGoalBadgeText(goal),
+      markerText: goal.isPriority ? '优先' : '',
       title: goal.title,
       progressText: `今天还有 ${this.getGoalTaskCount(goal)} 件行动`,
       percentText: `${Math.min(100, Math.max(0, goal.progress))}%`,

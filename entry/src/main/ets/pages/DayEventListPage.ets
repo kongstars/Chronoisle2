@@ -88,9 +88,13 @@ struct DayEventListPage {
     this.getUIContext().getRouter().pushUrl({ url: 'pages/DayEventCreatePage' });
   }
 
+  private openEventDetail(event: DayEvent): void {
+    this.getUIContext().getRouter().pushUrl({ url: 'pages/DayEventDetailPage', params: { eventId: event.id } });
+  }
+
   @Builder
   private EventRow(event: DayEvent) {
-    AppCard({ spacing: 10, paddingLevel: 'md' }) {
+    AppCard({ spacing: 10, paddingLevel: 'md', interactive: true, tapAction: () => { this.openEventDetail(event); } }) {
       Row({ space: 10 }) {
         Column({ space: 2 }) {
           Text(event.title)

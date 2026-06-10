@@ -65,6 +65,8 @@ export function getCounterTargetDate(event: DayEvent, rule: ReminderRule): numbe
 
 export function getReminderSummary(rule: ReminderRule): string {
   switch (rule.type) {
+    case ReminderType.SINGLE_AT:
+      return `单次提醒 ${formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0)}`;
     case ReminderType.HABIT_WEEKLY_TARGET:
       return `每周目标 ${rule.targetCount || 1} 次`;
     case ReminderType.HABIT_MONTHLY_TARGET:
@@ -74,6 +76,17 @@ export function getReminderSummary(rule: ReminderRule): string {
     default:
       return '提醒';
   }
+}
+
+export function isDayEventSkippedOnDate(event: DayEvent, timestamp: number): boolean {
+  if (event.skipOnceUntil === undefined) {
+    return false;
+  }
+  return startOfDay(timestamp) < startOfDay(event.skipOnceUntil);
+}
+
+export function isDayEventSkipActive(event: DayEvent, referenceTime: number = Date.now()): boolean {
+  return isDayEventSkippedOnDate(event, referenceTime);
 }
 
 function getReminderRuleTime(timestamp: number, rule: ReminderRule): number {
@@ -97,7 +110,12 @@ export function matchesReminderRuleOnDate(event: DayEvent, rule: ReminderRule, t
   if (current < startOfDay(event.startDate)) {
     return false;
   }
+  if (isDayEventSkippedOnDate(event, current)) {
+    return false;
+  }
   switch (rule.type) {
+    case ReminderType.SINGLE_AT:
+      return startOfDay(event.targetDate || event.startDate) === current;
     case ReminderType.PERIODIC_DAILY:
     case ReminderType.HABIT_DAILY:
       return true;
@@ -130,6 +148,10 @@ export function getReminderRuleOccurrenceTimeOnDate(event: DayEvent, rule: Remin
   }
 
   switch (rule.type) {
+    case ReminderType.SINGLE_AT:
+      return event.targetDate !== undefined
+        ? getReminderRuleTime(event.targetDate, rule)
+        : getReminderRuleTime(event.startDate, rule);
     case ReminderType.MILESTONE_LEAD:
       return event.targetDate !== undefined
         ? getReminderRuleTime(addDays(event.targetDate, -(rule.leadDays || 0)), rule)
@@ -147,6 +169,9 @@ export function getReminderRuleOccurrenceTimeOnDate(event: DayEvent, rule: Remin
 
 export function getDayEventOccurrenceTimeOnDate(event: DayEvent, timestamp: number): number | undefined {
   const day = startOfDay(timestamp);
+  if (isDayEventSkippedOnDate(event, day)) {
+    return undefined;
+  }
   const occurrences: number[] = [];
 
   if (event.targetDate !== undefined && startOfDay(event.targetDate) === day) {
@@ -170,6 +195,9 @@ export function getDayEventOccurrenceTimeOnDate(event: DayEvent, timestamp: numb
 
 export function getEventsForDate(events: DayEvent[], timestamp: number): DayEvent[] {
   return events.filter((event: DayEvent) => {
+    if (isDayEventSkippedOnDate(event, timestamp)) {
+      return false;
+    }
     if (event.targetDate !== undefined && startOfDay(event.targetDate) === startOfDay(timestamp)) {
       return true;
     }
@@ -188,6 +216,10 @@ export function getDayEventListSummary(events: DayEvent[] | DayEvent): string {
 }
 
 export function getDayEventMetricText(event: DayEvent): string {
+  if (event.type === DayEventType.SINGLE && event.targetDate) {
+    const rule = event.reminderRules[0];
+    return `${formatDayEventDate(event.targetDate)} ${formatDayEventTime(rule?.hour ?? 9, rule?.minute ?? 0)}`;
+  }
   if (event.type === DayEventType.COUNTDOWN && event.targetDate) {
     return `目标日 ${formatDayEventDate(event.targetDate)}`;
   }

@@ -21,11 +21,19 @@ import { AppEmptyState } from '../ui/base/AppEmptyState';
 import { AppLoadingState } from '../ui/base/AppLoadingState';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
-import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
+import { PAGE_PADDING, SECTION_GAP, SPACE_2XS, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_HERO_TITLE, TYPE_META, TYPE_NUMERIC_MD, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
 import { Logger } from '../Utils/Logger';
 
 const logger = Logger.create('ReschedulePage');
+
+type SuggestionGroup = 'tomorrow' | 'thisWeek' | 'downgrade' | 'split' | 'shelve' | 'delete';
+type AdjustmentTarget = 'tomorrow' | 'thisWeek' | 'downgrade' | 'shelve' | 'delete';
+
+interface AdjustmentOption {
+  label: string;
+  target: AdjustmentTarget;
+}
 
 @Entry
 @Component
@@ -88,6 +96,308 @@ struct ReschedulePage {
   private getTaskTitle(taskId: string): string {
     const matchedTask = this.tasks.find((task: Task) => task.id === taskId);
     return matchedTask ? matchedTask.title : taskId;
+  }
+
+  private formatDateText(timestamp: number): string {
+    const date = new Date(timestamp);
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+  }
+
+  private getLaterSuggestionDate(): string {
+    const date = new Date();
+    date.setDate(date.getDate() + 2);
+    date.setHours(0, 0, 0, 0);
+    return this.formatDateText(date.getTime());
+  }
+
+  private getGroupLabel(group: SuggestionGroup): string {
+    if (group === 'tomorrow') {
+      return '明天继续';
+    }
+    if (group === 'thisWeek') {
+      return '本周稍后';
+    }
+    if (group === 'downgrade') {
+      return '降低优先级';
+    }
+    if (group === 'split') {
+      return '拆分任务';
+    }
+    if (group === 'shelve') {
+      return '暂缓处理';
+    }
+    return '删除';
+  }
+
+  private getAdjustmentTargetLabel(target: AdjustmentTarget): string {
+    if (target === 'tomorrow') {
+      return '明天继续';
+    }
+    if (target === 'thisWeek') {
+      return '后续处理';
+    }
+    if (target === 'downgrade') {
+      return '降低优先级';
+    }
+    if (target === 'shelve') {
+      return '暂缓处理';
+    }
+    return '删除';
+  }
+
+  private getSectionTitle(group: SuggestionGroup): string {
+    if (group === 'tomorrow') {
+      return '明天继续';
+    }
+    if (group === 'thisWeek') {
+      return '本周稍后';
+    }
+    if (group === 'downgrade') {
+      return '降低优先级';
+    }
+    if (group === 'split') {
+      return '建议拆分';
+    }
+    if (group === 'shelve') {
+      return '暂缓处理';
+    }
+    return '删除建议';
+  }
+
+  private getSectionHint(group: SuggestionGroup): string {
+    if (group === 'tomorrow') {
+      return '只保留少量真正要明天接住的任务';
+    }
+    if (group === 'thisWeek') {
+      return '延后处理，不再强塞进明天';
+    }
+    if (group === 'downgrade') {
+      return '继续保留，但主动下调优先级';
+    }
+    if (group === 'split') {
+      return '先降低启动门槛，再逐步推进';
+    }
+    if (group === 'shelve') {
+      return '明确先不做，先减压';
+    }
+    return '高风险操作，默认不会自动执行';
+  }
+
+  private getSectionDescription(group: SuggestionGroup): string {
+    if (group === 'tomorrow') {
+      return '这一组代表最值得继续承接的少量任务，应该是短、重要、且明天确实做得动的事项。';
+    }
+    if (group === 'thisWeek') {
+      return '这一组不是放弃，而是有意识地延后到本周更合适的日期，避免明天继续过载。';
+    }
+    if (group === 'downgrade') {
+      return '这一组仍会保留在待办里，但不再和核心事项抢同等注意力。';
+    }
+    if (group === 'split') {
+      return '这一组不要求你一次做完，重点是先拆成更容易开始的小步骤。';
+    }
+    if (group === 'shelve') {
+      return '这一组表示近期先移出主战场，避免低价值事项反复制造心理负担。';
+    }
+    return '这一组只是在提醒你这些任务可能可以删，但是否真的删除，仍由你最后决定。';
+  }
+
+  private getSectionTone(group: SuggestionGroup): 'primary' | 'warning' | 'neutral' | 'danger' {
+    if (group === 'tomorrow' || group === 'thisWeek' || group === 'split') {
+      return 'primary';
+    }
+    if (group === 'downgrade') {
+      return 'warning';
+    }
+    if (group === 'delete') {
+      return 'danger';
+    }
+    return 'neutral';
+  }
+
+  private getSectionVariant(group: SuggestionGroup): 'accent' | 'soft' | 'danger' {
+    if (group === 'tomorrow' || group === 'thisWeek' || group === 'split') {
+      return 'accent';
+    }
+    if (group === 'delete') {
+      return 'danger';
+    }
+    return 'soft';
+  }
+
+  private getSectionIcon(group: SuggestionGroup): string {
+    if (group === 'tomorrow') {
+      return 'calendar';
+    }
+    if (group === 'thisWeek') {
+      return 'time';
+    }
+    if (group === 'downgrade') {
+      return 'warning';
+    }
+    if (group === 'split') {
+      return 'task';
+    }
+    if (group === 'shelve') {
+      return 'archive';
+    }
+    return 'warning';
+  }
+
+  private cloneResult(result: RescheduleResult): RescheduleResult {
+    return {
+      tomorrowTasks: [...(result.tomorrowTasks || [])],
+      thisWeekTasks: [...(result.thisWeekTasks || [])],
+      downgradeTasks: [...(result.downgradeTasks || [])],
+      splitTasks: (result.splitTasks || []).map((item: RescheduleSplitItem) => {
+        const copy: RescheduleSplitItem = {
+          id: item.id,
+          subTasks: [...item.subTasks],
+          reason: item.reason
+        };
+        return copy;
+      }),
+      shelveTasks: [...(result.shelveTasks || [])],
+      deleteTasks: [...(result.deleteTasks || [])],
+      summary: result.summary,
+      errorMsg: result.errorMsg
+    };
+  }
+
+  private removeTaskFromResult(result: RescheduleResult, taskId: string): void {
+    result.tomorrowTasks = (result.tomorrowTasks || []).filter((item: RescheduleItemWithReason) => item.id !== taskId);
+    result.thisWeekTasks = (result.thisWeekTasks || []).filter((item: RescheduleWeekItem) => item.id !== taskId);
+    result.downgradeTasks = (result.downgradeTasks || []).filter((item: RescheduleItemWithReason) => item.id !== taskId);
+    result.splitTasks = (result.splitTasks || []).filter((item: RescheduleSplitItem) => item.id !== taskId);
+    result.shelveTasks = (result.shelveTasks || []).filter((item: RescheduleItemWithReason) => item.id !== taskId);
+    result.deleteTasks = (result.deleteTasks || []).filter((item: RescheduleItemWithReason) => item.id !== taskId);
+  }
+
+  private getAdjustmentOptions(group: SuggestionGroup): AdjustmentOption[] {
+    if (group === 'tomorrow') {
+      return [
+        { label: '移到后续', target: 'thisWeek' },
+        { label: '降低优先级', target: 'downgrade' },
+        { label: '删除', target: 'delete' }
+      ];
+    }
+    if (group === 'thisWeek') {
+      return [
+        { label: '改成明天继续', target: 'tomorrow' },
+        { label: '暂时搁置', target: 'shelve' },
+        { label: '删除', target: 'delete' }
+      ];
+    }
+    if (group === 'downgrade') {
+      return [
+        { label: '改成明天继续', target: 'tomorrow' },
+        { label: '移到后续', target: 'thisWeek' },
+        { label: '删除', target: 'delete' }
+      ];
+    }
+    if (group === 'split') {
+      return [
+        { label: '改成明天继续', target: 'tomorrow' },
+        { label: '移到后续', target: 'thisWeek' },
+        { label: '删除', target: 'delete' }
+      ];
+    }
+    if (group === 'shelve') {
+      return [
+        { label: '改成明天继续', target: 'tomorrow' },
+        { label: '移到后续', target: 'thisWeek' },
+        { label: '删除', target: 'delete' }
+      ];
+    }
+    return [
+      { label: '改成明天继续', target: 'tomorrow' },
+      { label: '移到后续', target: 'thisWeek' },
+      { label: '降低优先级', target: 'downgrade' }
+    ];
+  }
+
+  private applyManualAdjustment(taskId: string, target: AdjustmentTarget): void {
+    if (!this.result) {
+      return;
+    }
+
+    const nextResult = this.cloneResult(this.result);
+    this.removeTaskFromResult(nextResult, taskId);
+
+    if (target === 'tomorrow') {
+      nextResult.tomorrowTasks = nextResult.tomorrowTasks || [];
+      nextResult.tomorrowTasks.push({
+        id: taskId,
+        reason: '已改为明天继续，后续将按你的手动选择执行。'
+      });
+    } else if (target === 'thisWeek') {
+      nextResult.thisWeekTasks = nextResult.thisWeekTasks || [];
+      nextResult.thisWeekTasks.push({
+        id: taskId,
+        newDate: this.getLaterSuggestionDate(),
+        reason: '已改为后续处理，系统会尽量错开到更合适的日期。'
+      });
+    } else if (target === 'downgrade') {
+      nextResult.downgradeTasks = nextResult.downgradeTasks || [];
+      nextResult.downgradeTasks.push({
+        id: taskId,
+        reason: '已改为降低优先级，避免继续挤占当前注意力。'
+      });
+    } else if (target === 'shelve') {
+      nextResult.shelveTasks = nextResult.shelveTasks || [];
+      nextResult.shelveTasks.push({
+        id: taskId,
+        reason: '已改为暂缓处理，先移出当前恢复范围。'
+      });
+    } else {
+      nextResult.deleteTasks = nextResult.deleteTasks || [];
+      nextResult.deleteTasks.push({
+        id: taskId,
+        reason: '已手动改为删除，应用建议时会一并处理。'
+      });
+      this.includeDeleteSuggestions = true;
+    }
+
+    this.result = RescheduleService.normalizeResult(nextResult, this.tasks);
+    if ((this.result.deleteTasks || []).length === 0) {
+      this.includeDeleteSuggestions = false;
+    }
+
+    const taskTitle = this.getTaskTitle(taskId);
+    const targetLabel = this.getAdjustmentTargetLabel(target);
+    if (target === 'delete') {
+      this.showToast(`已将“${taskTitle}”改为${targetLabel}，并自动纳入应用`);
+      return;
+    }
+    this.showToast(`已将“${taskTitle}”改为${targetLabel}`);
+  }
+
+  private showTaskAdjustmentMenu(taskId: string, group: SuggestionGroup): void {
+    if (this.isApplying || this.isGenerating) {
+      return;
+    }
+
+    const taskTitle = this.getTaskTitle(taskId);
+    const options = this.getAdjustmentOptions(group);
+    const optionButtons = options.map((option: AdjustmentOption) => {
+      const btn: AlertDialogButtonOptions = {
+        value: option.label,
+        action: () => {
+          this.applyManualAdjustment(taskId, option.target);
+        }
+      };
+      return btn;
+    });
+    const cancelBtn: AlertDialogButtonOptions = {
+      value: '取消',
+      action: () => {}
+    };
+    const allButtons: AlertDialogButtonOptions[] = [...optionButtons, cancelBtn];
+    this.getUIContext().showAlertDialog({
+      title: '调整单条建议',
+      message: `当前建议：${this.getGroupLabel(group)}\n任务：${taskTitle}\n请选择新的处理方式`,
+      buttons: allButtons
+    });
   }
 
   private getQuotaHint(quota: QuotaResult): string {
@@ -452,32 +762,45 @@ struct ReschedulePage {
   }
 
   @Builder
-  private SectionHeader(title: string, description: string, count: number) {
-    Row({ space: SPACE_SM }) {
-      Column({ space: SPACE_XS }) {
-        Text(title)
-          .fontSize(TYPE_SECTION_TITLE)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.themeColors.textPrimary)
-          .width('100%')
+  private SectionHeader(group: SuggestionGroup, count: number) {
+    AppCard({ variant: this.getSectionVariant(group), spacing: SPACE_XS, paddingLevel: 'md' }) {
+      Row({ space: SPACE_SM }) {
+        Column({ space: SPACE_XS }) {
+          Text(this.getSectionTitle(group))
+            .fontSize(TYPE_SECTION_TITLE)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.themeColors.textPrimary)
+            .width('100%')
 
-        Text(description)
-          .fontSize(TYPE_META)
-          .lineHeight(18)
-          .fontColor(this.themeColors.textSecondary)
-          .width('100%')
+          AppStatusBadge({
+            text: this.getSectionHint(group),
+            tone: this.getSectionTone(group),
+            iconName: this.getSectionIcon(group)
+          })
+
+          Text(this.getSectionDescription(group))
+            .fontSize(TYPE_META)
+            .lineHeight(18)
+            .fontColor(this.themeColors.textSecondary)
+            .width('100%')
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
+
+        AppStatusBadge({ text: `${count} 项`, tone: this.getSectionTone(group), iconName: 'task' })
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      AppStatusBadge({ text: `${count}`, tone: 'neutral', iconName: 'task' })
+      .width('100%')
+      .alignItems(VerticalAlign.Top)
     }
-    .width('100%')
   }
 
   @Builder
-  private ReasonItemCard(taskId: string, reason: string, tagText: string, tone: 'primary' | 'warning' | 'neutral' | 'danger') {
-    AppCard({ variant: tone === 'danger' ? 'danger' : 'base', spacing: SPACE_XS }) {
+  private ReasonItemCard(
+    taskId: string,
+    reason: string,
+    group: SuggestionGroup
+  ) {
+    AppCard({ variant: group === 'delete' ? 'danger' : 'base', spacing: SPACE_XS }) {
       Row({ space: SPACE_XS }) {
         Text(this.getTaskTitle(taskId))
           .layoutWeight(1)
@@ -487,10 +810,16 @@ struct ReschedulePage {
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        AppStatusBadge({
-          text: tagText,
-          tone: tone,
-          iconName: tone === 'warning' || tone === 'danger' ? 'warning' : tone === 'primary' ? 'calendar' : 'info'
+        AppButton({
+          text: '调整',
+          variant: 'ghost',
+          buttonSize: 'sm',
+          iconName: 'edit',
+          contentGap: SPACE_2XS,
+          disabled: this.isApplying || this.isGenerating,
+          tapAction: () => {
+            this.showTaskAdjustmentMenu(taskId, group);
+          }
         })
       }
       .width('100%')
@@ -515,7 +844,17 @@ struct ReschedulePage {
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        AppStatusBadge({ text: `拆成 ${item.subTasks.length} 项`, tone: 'primary', iconName: 'task' })
+        AppButton({
+          text: '调整',
+          variant: 'ghost',
+          buttonSize: 'sm',
+          iconName: 'edit',
+          contentGap: SPACE_2XS,
+          disabled: this.isApplying || this.isGenerating,
+          tapAction: () => {
+            this.showTaskAdjustmentMenu(item.id, 'split');
+          }
+        })
       }
       .width('100%')
 
@@ -523,6 +862,11 @@ struct ReschedulePage {
         .fontSize(TYPE_BODY)
         .lineHeight(20)
         .fontColor(this.themeColors.textSecondary)
+        .width('100%')
+
+      Text(`建议拆成 ${item.subTasks.length} 项`)
+        .fontSize(TYPE_META)
+        .fontColor(this.themeColors.primary)
         .width('100%')
 
       Text(item.subTasks.join(' · '))
@@ -545,7 +889,17 @@ struct ReschedulePage {
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        AppStatusBadge({ text: item.newDate, tone: 'primary', iconName: 'calendar' })
+        AppButton({
+          text: '调整',
+          variant: 'ghost',
+          buttonSize: 'sm',
+          iconName: 'edit',
+          contentGap: SPACE_2XS,
+          disabled: this.isApplying || this.isGenerating,
+          tapAction: () => {
+            this.showTaskAdjustmentMenu(item.id, 'thisWeek');
+          }
+        })
       }
       .width('100%')
 
@@ -553,6 +907,11 @@ struct ReschedulePage {
         .fontSize(TYPE_BODY)
         .lineHeight(20)
         .fontColor(this.themeColors.textSecondary)
+        .width('100%')
+
+      Text(`建议日期：${item.newDate}`)
+        .fontSize(TYPE_META)
+        .fontColor(this.themeColors.primary)
         .width('100%')
     }
   }
@@ -749,9 +1108,9 @@ struct ReschedulePage {
 
         if (this.getTomorrowTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            this.SectionHeader('明天继续', '适合尽快接住，但不必继续堆在今天。', this.getTomorrowTasks().length)
+            this.SectionHeader('tomorrow', this.getTomorrowTasks().length)
             ForEach(this.getTomorrowTasks(), (item: RescheduleItemWithReason) => {
-              this.ReasonItemCard(item.id, item.reason, '明天', 'primary');
+              this.ReasonItemCard(item.id, item.reason, 'tomorrow');
             }, (item: RescheduleItemWithReason) => item.id)
           }
           .width('100%')
@@ -759,7 +1118,7 @@ struct ReschedulePage {
 
         if (this.getThisWeekTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            this.SectionHeader('本周稍后', '重要但不必立刻处理，AI 已建议新的日期。', this.getThisWeekTasks().length)
+            this.SectionHeader('thisWeek', this.getThisWeekTasks().length)
             ForEach(this.getThisWeekTasks(), (item: RescheduleWeekItem) => {
               this.WeekItemCard(item);
             }, (item: RescheduleWeekItem) => item.id)
@@ -769,9 +1128,9 @@ struct ReschedulePage {
 
         if (this.getDowngradeTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            this.SectionHeader('降低优先级', '避免低价值事项继续挤占注意力。', this.getDowngradeTasks().length)
+            this.SectionHeader('downgrade', this.getDowngradeTasks().length)
             ForEach(this.getDowngradeTasks(), (item: RescheduleItemWithReason) => {
-              this.ReasonItemCard(item.id, item.reason, '降级', 'warning');
+              this.ReasonItemCard(item.id, item.reason, 'downgrade');
             }, (item: RescheduleItemWithReason) => item.id)
           }
           .width('100%')
@@ -779,7 +1138,7 @@ struct ReschedulePage {
 
         if (this.getSplitTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            this.SectionHeader('建议拆分', '把大任务拆成更容易启动的小步骤。', this.getSplitTasks().length)
+            this.SectionHeader('split', this.getSplitTasks().length)
             ForEach(this.getSplitTasks(), (item: RescheduleSplitItem) => {
               this.SplitItemCard(item);
             }, (item: RescheduleSplitItem) => item.id)
@@ -789,9 +1148,9 @@ struct ReschedulePage {
 
         if (this.getShelveTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            this.SectionHeader('暂缓处理', '先移除截止日期，避免继续制造心理负担。', this.getShelveTasks().length)
+            this.SectionHeader('shelve', this.getShelveTasks().length)
             ForEach(this.getShelveTasks(), (item: RescheduleItemWithReason) => {
-              this.ReasonItemCard(item.id, item.reason, '暂缓', 'neutral');
+              this.ReasonItemCard(item.id, item.reason, 'shelve');
             }, (item: RescheduleItemWithReason) => item.id)
           }
           .width('100%')
@@ -799,9 +1158,9 @@ struct ReschedulePage {
 
         if (this.getDeleteTasks().length > 0) {
           Column({ space: SPACE_SM }) {
-            this.SectionHeader('删除建议', '默认不会执行删除，只有你打开开关后才会一起应用。', this.getDeleteTasks().length)
+            this.SectionHeader('delete', this.getDeleteTasks().length)
             ForEach(this.getDeleteTasks(), (item: RescheduleItemWithReason) => {
-              this.ReasonItemCard(item.id, item.reason, '删除', 'danger');
+              this.ReasonItemCard(item.id, item.reason, 'delete');
             }, (item: RescheduleItemWithReason) => item.id)
 
             AppCard({ variant: 'soft', spacing: SPACE_XS }) {

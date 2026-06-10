@@ -135,6 +135,7 @@ export class WhiteNoiseService {
 
       this.pendingKey = key;
       const player = await media.createAVPlayer();
+      player.loop = true;
       this.avPlayer = player;
       this.bindAVPlayerEvents(player);
 
@@ -169,6 +170,7 @@ export class WhiteNoiseService {
         case 'initialized':
           try {
             player.loop = true;
+            player.setVolume(this._volume);
             player.prepare();
           } catch (err) {
             logger.warn('AVPlayer prepare failed', err as Object);
@@ -176,6 +178,8 @@ export class WhiteNoiseService {
           break;
         case 'prepared':
           try {
+            player.loop = true;
+            player.setVolume(this._volume);
             player.play();
           } catch (err) {
             logger.warn('AVPlayer play failed', err as Object);
@@ -186,8 +190,16 @@ export class WhiteNoiseService {
           this.currentKey = this.pendingKey;
           break;
         case 'completed':
-          // loop=true 理论上不会进入 completed，保险处理
+          // 原生 loop 正常生效时不应出现 completed；若出现，手动重启播放
           this._isPlaying = false;
+          logger.warn('AVPlayer entered completed state while white-noise loop is enabled, restarting');
+          try {
+            player.seek(0);
+            player.play();
+          } catch (err) {
+            logger.warn('Manual loop restart failed', err as Object);
+            this._isPlaying = false;
+          }
           break;
         case 'stopped':
         case 'idle':

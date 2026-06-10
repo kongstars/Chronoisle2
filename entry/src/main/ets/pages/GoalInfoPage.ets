@@ -4,6 +4,7 @@ import { db } from '../storage/Database';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
 import { authService } from '../services/AuthService';
 import { GOAL_TYPES, type GoalTypeInfo } from '../common/GoalTypeOptions';
+import { getGoalCategoryIconResource } from '../common/Constants';
 import { type GoalBreakdownResult, type ReminderItem } from '../services/AgentService';
 import { CounterUnit, DayEvent, DayEventData, DayEventType, getEventTypeIcon, getEventTypeLabel, ReminderRule, ReminderType } from '../models/DayEvent';
 import { formatDayEventDate, formatDayEventTime } from '../common/DayEventUtils';
@@ -12,7 +13,6 @@ import { AppCard } from '../ui/base/AppCard';
 import { AppFormCard } from '../ui/base/AppFormCard';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
-import { AppStatusBadge } from '../ui/base/AppStatusBadge';
 import { ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { PAGE_PADDING, SECTION_GAP, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
 import { TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_SECTION_TITLE } from '../foundation/tokens/TypographyTokens';
@@ -95,6 +95,10 @@ struct GoalInfoPage {
     return this.category === type.category;
   }
 
+  private withAlpha(color: string, alphaHex: string): string {
+    return `#${alphaHex}${color.substring(1)}`;
+  }
+
   private navigateBack(): void {
     try {
       this.getUIContext().getRouter().back();
@@ -118,11 +122,6 @@ struct GoalInfoPage {
 
   private removeReminderDraft(index: number): void {
     this.newReminders = this.newReminders.filter((_: DayEventData, itemIndex: number) => itemIndex !== index);
-  }
-
-  private getGoalFormHint(): string {
-    const selectedType = this.getSelectedGoalType();
-    return `${selectedType.title}类目标更适合先写清方向，再补一到三个衡量标准。`;
   }
 
   private addKeyResult(): void {
@@ -157,6 +156,8 @@ struct GoalInfoPage {
   private getReminderRuleText(event: DayEvent, rule: ReminderRule): string {
     const timeText = formatDayEventTime(rule.hour ?? 9, rule.minute ?? 0);
     switch (rule.type) {
+      case ReminderType.SINGLE_AT:
+        return `${formatDayEventDate(event.targetDate || event.startDate)} ${timeText} 提醒一次`;
       case ReminderType.PERIODIC_WEEKLY:
         return `每周周${['日', '一', '二', '三', '四', '五', '六'][rule.weekday ?? 1]} ${timeText}`;
       case ReminderType.PERIODIC_MONTHLY:
@@ -493,12 +494,15 @@ struct GoalInfoPage {
   @Builder
   private GoalTypeCard(type: GoalTypeInfo) {
     Column({ space: SPACE_XS }) {
-      AppIcon({ name: type.icon, iconSize: 30 })
+      Image(getGoalCategoryIconResource(type.category, this.category === type.category ? 'selected' : 'muted'))
+        .width(36)
+        .height(36)
+        .objectFit(ImageFit.Contain)
 
       Text(type.title)
         .fontSize(TYPE_BODY)
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.isSelectedGoalType(type) ? this.themeColors.primary : this.themeColors.textPrimary)
+        .fontColor(this.isSelectedGoalType(type) ? type.color : this.themeColors.textPrimary)
         .width('100%')
         .textAlign(TextAlign.Center)
         .maxLines(1)
@@ -508,17 +512,17 @@ struct GoalInfoPage {
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .padding({ left: 6, right: 6, top: 8, bottom: 8 })
-    .backgroundColor(this.isSelectedGoalType(type) ? this.themeColors.primarySubtle : this.themeColors.surface)
+    .backgroundColor(this.isSelectedGoalType(type) ? this.withAlpha(type.color, '33') : this.themeColors.surface)
     .borderRadius(RADIUS_MD)
     .border({
       width: this.isSelectedGoalType(type) ? 1.5 : 1,
-      color: this.isSelectedGoalType(type) ? this.themeColors.primary : this.themeColors.borderColor
+      color: this.isSelectedGoalType(type) ? this.withAlpha(type.color, '80') : this.themeColors.borderColor
     })
     .shadow({
-      radius: this.isSelectedGoalType(type) ? 7 : 4,
+      radius: this.isSelectedGoalType(type) ? 6 : 4,
       color: this.themeColors.cardShadow,
       offsetX: 0,
-      offsetY: this.isSelectedGoalType(type) ? 3 : 2
+      offsetY: 2
     })
     .onClick(() => {
       this.category = type.category;
@@ -529,7 +533,10 @@ struct GoalInfoPage {
   private SelectedGoalTypeDetail() {
     Column({ space: SPACE_SM }) {
       Row({ space: SPACE_XS }) {
-        AppIcon({ name: this.getSelectedGoalType().icon, iconSize: 30 })
+        Image(getGoalCategoryIconResource(this.category, 'selected'))
+          .width(36)
+          .height(36)
+          .objectFit(ImageFit.Contain)
 
         Text(`已选择 ${this.getSelectedGoalType().title}`)
           .fontSize(TYPE_BODY)
@@ -544,7 +551,7 @@ struct GoalInfoPage {
           Text('适合类型')
             .fontSize(TYPE_META)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.themeColors.primary)
+            .fontColor(this.getSelectedGoalType().color)
             .width(64)
 
           Text(this.getSelectedGoalType().subtitle)
@@ -559,7 +566,7 @@ struct GoalInfoPage {
           Text('提示语')
             .fontSize(TYPE_META)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.themeColors.primary)
+            .fontColor(this.getSelectedGoalType().color)
             .width(64)
 
           Text(this.getSelectedGoalType().description)
@@ -575,9 +582,9 @@ struct GoalInfoPage {
     }
     .width('100%')
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(this.themeColors.primarySubtle)
+    .backgroundColor(this.withAlpha(this.getSelectedGoalType().color, '33'))
     .borderRadius(RADIUS_MD)
-    .border({ width: 1, color: this.themeColors.primaryLight })
+    .border({ width: 1, color: this.withAlpha(this.getSelectedGoalType().color, '80') })
   }
 
   @Builder
@@ -644,32 +651,6 @@ struct GoalInfoPage {
       .fontColor(this.themeColors.textMuted)
       .width('100%')
       .padding({ left: 2, right: 2, top: 2, bottom: 2 })
-  }
-
-  @Builder
-  private HeroCard() {
-    AppCard({ variant: 'soft', spacing: SPACE_SM }) {
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        AppStatusBadge({ text: '创建目标', tone: 'primary', iconName: 'goal' })
-        AppStatusBadge({ text: this.getSelectedGoalType().title, tone: 'neutral', iconName: this.getSelectedGoalType().icon })
-        if (this.aiBreakdownData) {
-          AppStatusBadge({ text: '已应用 AI 草案', tone: 'info', iconName: 'ai' })
-        }
-      }
-      .width('100%')
-
-      Text('先把方向说清，再补第一步')
-        .fontSize(TYPE_SECTION_TITLE)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.themeColors.textPrimary)
-        .width('100%')
-
-      Text(this.getGoalFormHint())
-        .fontSize(TYPE_BODY)
-        .lineHeight(19)
-        .fontColor(this.themeColors.textSecondary)
-        .width('100%')
-    }
   }
 
   @Builder
@@ -790,22 +771,23 @@ struct GoalInfoPage {
       AppButton({
         text: this.isCreating ? '创建中...' : '创建目标',
         variant: 'primary',
-        buttonSize: 'lg',
+        emphasis: 'strong',
+        fullWidth: true,
         disabled: !this.canCreateGoal(),
         loading: this.isCreating,
         tapAction: () => {
           void this.createGoal();
         }
       })
-        .width('100%')
 
       Text(this.goalTitle.trim().length > 0 ? '创建后会直接进入目标详情页。' : '先输入目标名称，再继续创建。')
         .fontSize(TYPE_META)
         .fontColor(this.themeColors.textSecondary)
         .width('100%')
+        .textAlign(TextAlign.Center)
     }
     .width('100%')
-    .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 12, bottom: 24 })
+    .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 8, bottom: 16 })
     .backgroundColor(this.themeColors.navBackground)
     .border({ width: { top: 1 }, color: this.themeColors.borderColor })
   }
@@ -814,7 +796,6 @@ struct GoalInfoPage {
     Column() {
       AppPageHeader({
         title: '创建目标',
-        subtitle: '先确定方向，再补充关键结果、起步任务和长期提醒。',
         insetHorizontal: COMFORTABLE_PAGE_PADDING,
         onBack: () => {
           this.navigateBack();
@@ -823,10 +804,8 @@ struct GoalInfoPage {
 
       Scroll() {
         Column({ space: COMFORTABLE_SECTION_GAP }) {
-          this.HeroCard()
-
           AppCard({ variant: 'base', spacing: SPACE_SM }) {
-            this.SectionHeading('目标类型', '选择一个最接近当前阶段的方向，后续首页和目标详情会按这个维度展示。')
+            this.SectionHeading('目标类型')
 
             Row({ space: SPACE_XS }) {
               this.GoalTypeCard(GOAL_TYPES[0])
@@ -841,14 +820,6 @@ struct GoalInfoPage {
 
           AppFormCard({ variant: 'base', spacing: SPACE_MD }) {
             this.SectionHeading('目标信息', '先写清你想达到的状态，后续再决定要不要让 AI 帮你拆成路线。')
-
-            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-              AppStatusBadge({ text: this.getSelectedGoalType().title, tone: 'primary', iconName: this.getSelectedGoalType().icon })
-              if (this.aiBreakdownData) {
-                AppStatusBadge({ text: '已应用 AI 草案', tone: 'info', iconName: 'ai' })
-              }
-            }
-            .width('100%')
 
             Text('目标名称')
               .fontSize(TYPE_SECTION_TITLE)
@@ -901,7 +872,7 @@ struct GoalInfoPage {
               }
             })
 
-            Text('先填标题即可手动创建；如果你已经想好了方向，可以直接交给 AI 生成衡量标准和起步行动。')
+            Text('如果你已经想好了方向，AI可以帮你快速完成目标拆解与创建。')
               .fontSize(TYPE_META)
               .lineHeight(16)
               .fontColor(this.themeColors.textSecondary)
@@ -911,7 +882,7 @@ struct GoalInfoPage {
           AppFormCard({ variant: 'base', spacing: SPACE_MD }) {
             this.SectionHeading(
               '衡量标准（可选）',
-              '写 1 到 3 个能判断进展的结果，比如次数、体重、存款或完成度。'
+              '写 1 到 3 个能量化的结果，比如次数、体重、存款或完成度。'
             )
 
             Row({ space: SPACE_SM }) {
@@ -1028,29 +999,6 @@ struct GoalInfoPage {
       .backgroundColor(this.themeColors.background)
 
       this.SaveBar()
-
-      Column({ space: SPACE_XS }) {
-        AppButton({
-          text: '创建目标',
-          variant: 'primary',
-          iconName: 'goal',
-          loading: this.isCreating,
-          disabled: this.goalTitle.trim().length === 0,
-          tapAction: () => {
-            void this.createGoal();
-          }
-        })
-        .width('100%')
-
-        Text(this.goalTitle.trim().length > 0 ? '创建后会直接进入目标详情页。' : '先输入目标名称，再继续创建。')
-          .fontSize(TYPE_META)
-          .fontColor(this.themeColors.textSecondary)
-      }
-      .width('100%')
-      .padding({ left: COMFORTABLE_PAGE_PADDING, right: COMFORTABLE_PAGE_PADDING, top: 12, bottom: 24 })
-      .backgroundColor(this.themeColors.navBackground)
-      .border({ width: { top: 1 }, color: this.themeColors.borderColor })
-      .visibility(Visibility.None)
     }
     .width('100%')
     .height('100%')

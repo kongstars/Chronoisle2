@@ -8,7 +8,7 @@
  * 2. 快速操作栏（4 个圆形图标按钮）
  * 3. 今日计划卡片（核心区域，最大视觉权重）
  * 4. 今日提醒（横向滚动小卡片）
- * 5. 目标进度（2 列网格，进度环 + 标题）
+ * 5. 目标统计（一行摘要，可跳转目标页）
  * 6. 逾期提示（仅在有逾期任务时显示）
  */
 
@@ -25,12 +25,11 @@ import { dataSyncService } from '../services/DataSyncService';
 import { AppIcon } from '../ui/base/AppIcon';
 import { PAGE_PADDING, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS, SPACE_2XS } from '../foundation/tokens/SpacingTokens';
 import { RADIUS_LG, RADIUS_MD, RADIUS_SM } from '../foundation/tokens/RadiusTokens';
-import { TYPE_HERO_TITLE, TYPE_SECTION_TITLE, TYPE_BODY, TYPE_CAPTION, TYPE_META, TYPE_NUMERIC_MD } from '../foundation/tokens/TypographyTokens';
+import { TYPE_HERO_TITLE, TYPE_SECTION_TITLE, TYPE_BODY, TYPE_CAPTION, TYPE_META } from '../foundation/tokens/TypographyTokens';
 import { BORDER_DEFAULT } from '../foundation/tokens/BorderTokens';
 
 // ========== 设计 Token（V2 规范） ==========
 const V2_QUICK_ACTION_SIZE: number = 44;
-const V2_PROGRESS_RING_SIZE: number = 38;
 
 // ========== 接口 ==========
 
@@ -66,6 +65,7 @@ export struct TodayTabV2 {
   onOpenSearch?: () => void;
   onOpenTodayPlan?: () => void;
   onOpenGoalDetail?: (goalId: string) => void;
+  onOpenGoalsTab?: () => void;
   onOpenReschedule?: () => void;
   onOpenReminderCenter?: () => void;
   onToggleTaskComplete?: (task: Task) => void;
@@ -138,15 +138,16 @@ export struct TodayTabV2 {
     return this.getPlanFocusTasks().slice(0, 7);
   }
 
-  private getFeaturedGoals(): Goal[] {
-    return this.goals
-      .filter((g: Goal) => !g.isArchived)
-      .sort((a: Goal, b: Goal) => {
-        if (a.isPriority && !b.isPriority) return -1;
-        if (!a.isPriority && b.isPriority) return 1;
-        return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
-      })
-      .slice(0, 5);
+  private getActiveGoals(): Goal[] {
+    return this.goals.filter((g: Goal) => !g.isArchived && (g.progress || 0) < 100);
+  }
+
+  private getPriorityGoalsThisWeek(): Goal[] {
+    return this.getActiveGoals().filter((g: Goal) => g.isPriority);
+  }
+
+  private getNearlyCompletedGoals(): Goal[] {
+    return this.getActiveGoals().filter((g: Goal) => (g.progress || 0) >= 80);
   }
 
   private getTodayReminders(): ReminderSnapshot[] {
@@ -223,6 +224,7 @@ export struct TodayTabV2 {
 
   private getDayEventTypeLabel(event: DayEvent): string {
     switch (event.type) {
+      case DayEventType.SINGLE: return '单次';
       case DayEventType.HABIT: return '习惯';
       case DayEventType.PERIODIC: return '周期';
       case DayEventType.COUNTDOWN: return '倒计时';
@@ -230,10 +232,6 @@ export struct TodayTabV2 {
       case DayEventType.COUNTER: return '计数';
       default: return '提醒';
     }
-  }
-
-  private getGoalProgress(goal: Goal): number {
-    return Math.min(100, Math.max(0, goal.progress || 0));
   }
 
   private getReminderStatusText(item: ReminderSnapshot): string {
@@ -263,6 +261,10 @@ export struct TodayTabV2 {
       { icon: 'reminder', label: '新建提醒', action: () => { if (this.onCreateReminder) this.onCreateReminder(); } },
       { icon: 'focus', label: '开始专注', action: () => { if (this.onStartFocus) this.onStartFocus(); } }
     ];
+  }
+
+  private getQuickActionIconSize(item: QuickAction): number {
+    return item.label === '开始专注' ? 22 : 26;
   }
 
   // ========== UI Builders ==========
@@ -322,7 +324,12 @@ export struct TodayTabV2 {
               .borderRadius(V2_QUICK_ACTION_SIZE / 2)
               .border({ width: 1, color: this.themeColors.primaryLight })
 
-            AppIcon({ name: item.icon, iconSize: 22, framed: false, color: this.themeColors.primary })
+            AppIcon({
+              name: item.icon,
+              iconSize: this.getQuickActionIconSize(item),
+              framed: false,
+              color: this.themeColors.primary
+            })
           }
           .width(V2_QUICK_ACTION_SIZE)
           .height(V2_QUICK_ACTION_SIZE)
@@ -641,87 +648,47 @@ export struct TodayTabV2 {
 
   @Builder
   private GoalsSection() {
-    Column({ space: 6 }) {
-      Text('目标进度')
+    Row({ space: SPACE_SM }) {
+      Text('目标')
         .fontSize(TYPE_SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.themeColors.textPrimary)
-        .width('100%')
 
-      if (this.getFeaturedGoals().length === 0) {
-        Text('还没有进行中的目标')
-          .fontSize(TYPE_BODY)
-          .fontColor(this.themeColors.textMuted)
-          .padding({ top: 4, bottom: 4 })
-      } else {
-        Column({ space: 6 }) {
-          ForEach(this.getFeaturedGoals(), (goal: Goal) => {
-            this.GoalCard(goal)
-          }, (goal: Goal) => goal.id)
-        }
-        .width('100%')
-      }
-    }
-    .width('100%')
-  }
+      Text(`进行中 ${this.getActiveGoals().length}`)
+        .fontSize(TYPE_META)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.themeColors.primary)
 
-  @Builder
-  private GoalCard(goal: Goal) {
-    Row({ space: 12 }) {
-      // 进度环
-      Stack({ alignContent: Alignment.Center }) {
-        Circle()
-          .width(V2_PROGRESS_RING_SIZE)
-          .height(V2_PROGRESS_RING_SIZE)
-          .fill('transparent')
-          .stroke(this.themeColors.surfaceSoft)
-          .strokeWidth(3.5)
+      Text('|')
+        .fontSize(TYPE_META)
+        .fontColor(this.themeColors.textMuted)
 
-        Text(`${this.getGoalProgress(goal)}%`)
-          .fontSize(TYPE_CAPTION)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.getGoalProgress(goal) >= 80 ? this.themeColors.success : this.themeColors.primary)
-      }
-      .width(V2_PROGRESS_RING_SIZE)
-      .height(V2_PROGRESS_RING_SIZE)
+      Text(`本周优先 ${this.getPriorityGoalsThisWeek().length}`)
+        .fontSize(TYPE_META)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.themeColors.textSecondary)
 
-      Column({ space: 3 }) {
-        Text(goal.title)
-          .fontSize(TYPE_BODY)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.themeColors.textPrimary)
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .width('100%')
+      Text('|')
+        .fontSize(TYPE_META)
+        .fontColor(this.themeColors.textMuted)
 
-        Row({ space: 6 }) {
-          Text(`${goal.keyResults?.length || 0} 个关键结果`)
-            .fontSize(TYPE_CAPTION)
-            .fontColor(this.themeColors.textMuted)
+      Text(`即将完成 ${this.getNearlyCompletedGoals().length}`)
+        .fontSize(TYPE_META)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.themeColors.success)
 
-          if (goal.isPriority) {
-            Text('优先')
-              .fontSize(TYPE_CAPTION)
-              .fontColor(this.themeColors.warning)
-              .padding({ left: 5, right: 5, top: 1, bottom: 1 })
-              .backgroundColor(this.themeColors.warningSubtle)
-              .borderRadius(4)
-          }
-        }
-        .width('100%')
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
+      Blank()
 
       AppIcon({ name: 'chevron-right', iconSize: 14, framed: false, color: this.themeColors.textMuted })
     }
     .width('100%')
+    .alignItems(VerticalAlign.Center)
     .padding({ left: 14, right: 14, top: 12, bottom: 12 })
     .backgroundColor(this.themeColors.surface)
     .borderRadius(RADIUS_LG)
     .shadow({ radius: 6, color: this.themeColors.cardShadow, offsetX: 0, offsetY: 2 })
     .onClick(() => {
-      if (this.onOpenGoalDetail) this.onOpenGoalDetail(goal.id);
+      if (this.onOpenGoalsTab) this.onOpenGoalsTab();
     })
   }
 

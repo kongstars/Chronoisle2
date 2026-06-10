@@ -7,7 +7,7 @@ import { PrivacyConsentService } from '../services/PrivacyConsentService';
 import { Logger } from '../Utils/Logger';
 import { PlanningApiResponse, GoalDraft } from '../models/PlanningSession';
 import { ThemeColors, LightTheme } from '../theme/AppTheme';
-import { CATEGORY_COLORS } from '../common/Constants';
+import { CATEGORY_COLORS, getGoalCategoryIconResource } from '../common/Constants';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
 import { AppIcon } from '../ui/base/AppIcon';
@@ -752,12 +752,17 @@ struct OnboardingPage {
   @Builder
   PresetGoalCard(index: number) {
     Column({ space: 6 }) {
-      AppIcon({
-        name: PRESET_GOALS[index].icon,
-        iconSize: 36,
-        color: this.getCategoryAccent(PRESET_GOALS[index].category),
-        surfaceColor: this.getCategorySurface(PRESET_GOALS[index].category)
-      })
+      Stack({ alignContent: Alignment.Center }) {
+        Row()
+          .width(52)
+          .height(52)
+          .backgroundColor(this.getCategorySurface(PRESET_GOALS[index].category))
+          .borderRadius(16)
+        Image(getGoalCategoryIconResource(PRESET_GOALS[index].category, 'selected'))
+          .width(36)
+          .height(36)
+          .objectFit(ImageFit.Contain)
+      }
 
       Text(PRESET_GOALS[index].label)
         .fontSize(TYPE_SECTION_TITLE)

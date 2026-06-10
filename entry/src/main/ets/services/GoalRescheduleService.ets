@@ -613,6 +613,10 @@ export class GoalRescheduleService {
       return event.startDate;
     }
 
+    if (event.type === DayEventType.SINGLE) {
+      return event.targetDate || event.startDate;
+    }
+
     if (event.type === DayEventType.MILESTONE || event.type === DayEventType.COUNTDOWN) {
       return event.targetDate;
     }
@@ -821,6 +825,15 @@ export class GoalRescheduleService {
     }
 
     const previousTargetDate = event.targetDate;
+    if (event.type === DayEventType.SINGLE) {
+      const nextTargetDate = GoalRescheduleService.shiftDate(previousTargetDate || event.startDate, offsetDays);
+      event.targetDate = nextTargetDate;
+      if (event.skipOnceUntil !== undefined) {
+        event.skipOnceUntil = GoalRescheduleService.shiftDate(event.skipOnceUntil, offsetDays);
+      }
+      return previousTargetDate !== nextTargetDate;
+    }
+
     if (event.type === DayEventType.MILESTONE || event.type === DayEventType.COUNTDOWN) {
       const nextTargetDate = GoalRescheduleService.shiftDate(previousTargetDate || event.startDate, offsetDays);
       event.targetDate = nextTargetDate;

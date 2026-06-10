@@ -1,5 +1,6 @@
 
 import { Goal, GoalData, KeyResult, KeyResultData } from '../models/Goal';
+import { DayEvent, DayEventData } from '../models/DayEvent';
 import { Task, TaskData } from '../models/Task';
 import { Logger } from '../Utils/Logger';
 
@@ -9,6 +10,7 @@ export class DataSyncService {
   private static instance: DataSyncService;
   private goals: Goal[] = [];
   private tasks: Task[] = [];
+  private dayEvents: DayEvent[] = [];
   private listeners: Array<() => void> = [];
 
   private constructor() {}
@@ -36,6 +38,14 @@ export class DataSyncService {
     return tasks.map((task: Task) => this.cloneTask(task));
   }
 
+  private cloneDayEvent(dayEvent: DayEvent): DayEvent {
+    return DayEvent.fromJSON(JSON.parse(JSON.stringify(dayEvent)) as DayEventData);
+  }
+
+  private cloneDayEvents(dayEvents: DayEvent[]): DayEvent[] {
+    return dayEvents.map((dayEvent: DayEvent) => this.cloneDayEvent(dayEvent));
+  }
+
   setGoals(goals: Goal[]): void {
     this.goals = this.cloneGoals(goals);
     this.notifyListeners();
@@ -44,11 +54,18 @@ export class DataSyncService {
     this.tasks = this.cloneTasks(tasks);
     this.notifyListeners();
   }
+  setDayEvents(dayEvents: DayEvent[]): void {
+    this.dayEvents = this.cloneDayEvents(dayEvents);
+    this.notifyListeners();
+  }
   getGoals(): Goal[] {
     return this.cloneGoals(this.goals);
   }
   getTasks(): Task[] {
     return this.cloneTasks(this.tasks);
+  }
+  getDayEvents(): DayEvent[] {
+    return this.cloneDayEvents(this.dayEvents);
   }
   updateGoal(updatedGoal: Goal): void {
     const index = this.goals.findIndex(g => g.id === updatedGoal.id);

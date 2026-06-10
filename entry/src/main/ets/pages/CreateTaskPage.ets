@@ -9,6 +9,7 @@ import { authService } from '../services/AuthService';
 import { QuotaService } from '../services/QuotaService';
 import { TelemetryService, type TelemetryProperties } from '../services/TelemetryService';
 import { AIFillState } from '../services/AIFillState';
+import { normalizeTaskDraft, type NormalizedTaskDraft } from '../services/TaskDraftNormalizationService';
 import { AppAIFillBanner } from '../ui/base/AppAIFillBanner';
 import { AppButton } from '../ui/base/AppButton';
 import { AppCard } from '../ui/base/AppCard';
@@ -103,7 +104,14 @@ struct CreateTaskPage {
     }
 
     if (params && params['autoFill'] === 'true') {
-      this.title = params['title'] || '';
+      const normalizedDraft = normalizeTaskDraft(
+        params['title'] || '',
+        params['sourceText'] || params['title'] || params['description'] || '',
+        params['dueDate'] || '',
+        params['dueTime'] || ''
+      );
+
+      this.title = normalizedDraft.title;
       this.description = params['description'] || '';
       this.selectedGoalId = params['goalId'] || '';
       this.selectedKrId = params['krId'] || '';
@@ -117,22 +125,7 @@ struct CreateTaskPage {
         this.priority = TaskPriority.NORMAL;
       }
 
-      const dueDateStr = params['dueDate'];
-      if (dueDateStr) {
-        const parsedDate = new Date(dueDateStr.replace(/-/g, '/'));
-        if (!isNaN(parsedDate.getTime())) {
-          this.datePickerDate = parsedDate;
-          this.dueDate = this.formatDateOnly(parsedDate.getTime());
-        }
-      }
-      const dueTimeStr = params['dueTime'];
-      if (dueTimeStr) {
-        this.dueTime = dueTimeStr;
-        this.hasSelectedTime = true;
-        const timeParts = dueTimeStr.split(':');
-        this.timePickerHour = parseInt(timeParts[0]) || 0;
-        this.timePickerMinute = parseInt(timeParts[1]) || 0;
-      }
+      this.applyNormalizedDueDraft(normalizedDraft);
       return;
     }
 
@@ -177,6 +170,34 @@ struct CreateTaskPage {
     }
     const date = new Date(timestamp);
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+  }
+
+  private applyNormalizedDueDraft(draft: NormalizedTaskDraft): void {
+    this.dueDate = '';
+    this.dueTime = '';
+    this.hasSelectedTime = false;
+
+    if (!draft.dueDate) {
+      return;
+    }
+
+    const parsedDate = new Date(draft.dueDate.replace(/-/g, '/'));
+    if (isNaN(parsedDate.getTime())) {
+      return;
+    }
+
+    this.datePickerDate = parsedDate;
+    this.dueDate = this.formatDateOnly(parsedDate.getTime());
+
+    if (!draft.dueTime) {
+      return;
+    }
+
+    this.dueTime = draft.dueTime;
+    this.hasSelectedTime = true;
+    const timeParts = draft.dueTime.split(':');
+    this.timePickerHour = parseInt(timeParts[0]) || 0;
+    this.timePickerMinute = parseInt(timeParts[1]) || 0;
   }
 
   private getDisplayDateTime(): string {
@@ -428,8 +449,21 @@ struct CreateTaskPage {
       }
       await QuotaService.incrementAITaskCount(context);
 
-      const result = await AgentService.autoFillTask(this.title.trim());
+      const sourceTitle = this.title.trim();
+      const result = await AgentService.autoFillTask(sourceTitle);
       const filledFields: string[] = [];
+      const normalizedDraft = normalizeTaskDraft(
+        (result.filled.normalized_title || sourceTitle).trim(),
+        sourceTitle,
+        result.filled.due_date || ''
+      );
+      const normalizedTitle = normalizedDraft.title;
+
+      if (normalizedTitle.length > 0 && normalizedTitle !== this.title.trim()) {
+        this.title = normalizedTitle;
+        this.aiFill.markFilledByAIOverride('title', normalizedTitle);
+        filledFields.push('title');
+      }
 
       if (this.aiFill.canOverwrite('description') && !this.description.trim() && result.filled.description) {
         this.description = result.filled.description;
@@ -456,22 +490,9 @@ struct CreateTaskPage {
         filledFields.push('krId');
       }
 
-      if (this.aiFill.canOverwrite('dueDate') && result.filled.due_date && !this.dueDate) {
-        const rawDate = result.filled.due_date.replace(/-/g, '/');
-        const parsedDate = new Date(rawDate);
-        if (!isNaN(parsedDate.getTime())) {
-          this.datePickerDate = parsedDate;
-          this.dueDate = this.formatDateOnly(parsedDate.getTime());
-          const hours = parsedDate.getHours();
-          const minutes = parsedDate.getMinutes();
-          if (hours !== 0 || minutes !== 0) {
-            this.dueTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            this.hasSelectedTime = true;
-            this.timePickerHour = hours;
-            this.timePickerMinute = minutes;
-          }
-          filledFields.push('dueDate');
-        }
+      if (this.aiFill.canOverwrite('dueDate') && normalizedDraft.dueDate && !this.dueDate) {
+        this.applyNormalizedDueDraft(normalizedDraft);
+        filledFields.push('dueDate');
       }
 
       this.aiFill.markFilled(filledFields);
@@ -481,34 +502,6 @@ struct CreateTaskPage {
       this.aiFill.markFailed('AI 补全失败，请稍后重试');
     } finally {
       this.isAutoFilling = false;
-    }
-  }
-
-  @Builder
-  private HeroCard() {
-    AppCard({ variant: 'accent', paddingLevel: 'md', spacing: SPACE_XS }) {
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        AppStatusBadge({ text: this.isEdit ? '编辑任务' : '创建任务', tone: 'primary', iconName: this.isEdit ? 'note' : 'task' })
-        if (this.isImportant) {
-          AppStatusBadge({ text: '重要', tone: 'warning', iconName: 'warning' })
-        }
-        if (this.subtasks.length > 0) {
-          AppStatusBadge({ text: `${this.subtasks.length} 个子任务`, tone: 'neutral', iconName: 'task' })
-        }
-      }
-      .width('100%')
-
-      Text(this.isEdit ? '更新任务内容与执行约束' : '把一个动作定义清楚，后续执行才会更轻')
-        .fontSize(TYPE_SECTION_TITLE)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.themeColors.textPrimary)
-        .width('100%')
-
-      Text('目标、提醒、衡量标准、优先级、截止时间和子任务都可以在这里一次补齐。')
-        .fontSize(TYPE_BODY)
-        .lineHeight(18)
-        .fontColor(this.themeColors.textSecondary)
-        .width('100%')
     }
   }
 
@@ -653,39 +646,39 @@ struct CreateTaskPage {
       Row({ space: SPACE_XS }) {
         AppButton({
           text: '优先',
-          variant: this.priority === TaskPriority.HIGH ? 'danger' : 'secondary',
+          variant: 'danger',
           buttonSize: 'sm',
           iconName: 'warning',
+          isOutlined: this.priority !== TaskPriority.HIGH,
+          halfOpacityBg: this.priority === TaskPriority.HIGH,
           tapAction: () => {
             this.priority = TaskPriority.HIGH;
           }
         })
         AppButton({
           text: '正常',
-          variant: this.priority === TaskPriority.NORMAL ? 'primary' : 'secondary',
+          variant: 'primary',
           buttonSize: 'sm',
           iconName: 'task',
+          isOutlined: this.priority !== TaskPriority.NORMAL,
+          halfOpacityBg: this.priority === TaskPriority.NORMAL,
           tapAction: () => {
             this.priority = TaskPriority.NORMAL;
           }
         })
         AppButton({
           text: '暂缓',
-          variant: this.priority === TaskPriority.LOW ? 'ghost' : 'secondary',
+          variant: 'neutral',
           buttonSize: 'sm',
           iconName: 'plan',
+          isOutlined: this.priority !== TaskPriority.LOW,
+          halfOpacityBg: this.priority === TaskPriority.LOW,
           tapAction: () => {
             this.priority = TaskPriority.LOW;
           }
         })
       }
       .width('100%')
-
-      AppStatusBadge({
-        text: this.priority === TaskPriority.HIGH ? '当前为高优先级' : (this.priority === TaskPriority.LOW ? '当前为暂缓' : '当前为正常优先级'),
-        tone: this.getPriorityTone(this.priority),
-        iconName: this.priority === TaskPriority.HIGH ? 'warning' : (this.priority === TaskPriority.LOW ? 'plan' : 'task')
-      })
     }
   }
 
@@ -711,7 +704,7 @@ struct CreateTaskPage {
       })
 
       Column({ space: SPACE_XS }) {
-        Text('预估耗时（可选）')
+        Text('预估耗时（单位小时，可选）')
           .fontSize(TYPE_BODY)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.themeColors.textPrimary)
@@ -868,6 +861,7 @@ struct CreateTaskPage {
           .fontSize(TYPE_META)
           .fontColor(this.themeColors.textMuted)
           .width('100%')
+          .textAlign(TextAlign.Center)
       }
     }
     .width('100%')
@@ -1228,7 +1222,6 @@ struct CreateTaskPage {
       Column() {
         AppPageHeader({
           title: this.getPageTitle(),
-          subtitle: '补充上下文、时间和执行边界，让任务更容易被真正做完。',
           onBack: () => {
             this.getUIContext().getRouter().back();
           }
@@ -1236,8 +1229,6 @@ struct CreateTaskPage {
 
         Scroll() {
           Column({ space: COMFORTABLE_SECTION_GAP }) {
-            this.HeroCard()
-
             if (this.aiFill.shouldShowBanner()) {
               AppAIFillBanner({
                 status: this.aiFill.getBannerComponentStatus(),

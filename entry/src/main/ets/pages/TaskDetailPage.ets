@@ -818,6 +818,7 @@ struct TaskDetailPage {
               text: '开始专注',
               variant: 'primary',
               buttonSize: 'md',
+              fullWidth: true,
               iconName: 'focus',
               tapAction: () => {
                 this.startPomodoro();
@@ -829,6 +830,7 @@ struct TaskDetailPage {
               text: this.getCompletionButtonLabel(),
               variant: 'secondary',
               buttonSize: 'md',
+              fullWidth: true,
               disabled: this.isUpdatingTask,
               iconName: 'success',
               tapAction: () => {
@@ -838,12 +840,12 @@ struct TaskDetailPage {
               .layoutWeight(1)
           }
           .width('100%')
-          .alignItems(VerticalAlign.Center)
         } else {
           AppButton({
             text: '重启任务',
             variant: 'secondary',
             buttonSize: 'md',
+            fullWidth: true,
             disabled: this.isUpdatingTask,
             iconName: 'task',
             tapAction: () => {

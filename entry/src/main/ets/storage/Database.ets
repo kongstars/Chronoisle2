@@ -513,6 +513,12 @@ export class Database {
           task.reminderOccurrenceTime = candidate.occurrenceTime;
         }
       }
+      if (event.type === 'single') {
+        event.isCompleted = true;
+        event.isEnabled = false;
+        event.skipOnceUntil = undefined;
+        event.updatedAt = Date.now();
+      }
       await this.save();
       await this.syncReminderAutoTasks(referenceTime, eventId);
       return true;
@@ -527,6 +533,12 @@ export class Database {
     });
     completionTask.complete();
     this.tasks.unshift(completionTask);
+    if (event.type === 'single') {
+      event.isCompleted = true;
+      event.isEnabled = false;
+      event.skipOnceUntil = undefined;
+      event.updatedAt = Date.now();
+    }
 
     await this.save();
     await this.syncReminderAutoTasks(referenceTime, eventId);

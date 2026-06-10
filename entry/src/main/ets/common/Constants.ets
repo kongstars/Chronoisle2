@@ -36,6 +36,36 @@ export const CATEGORY_IMAGES: Record<GoalCategory, Resource> = {
   [GoalCategory.FUN]: $r('app.media.entertainment')
 };
 
+export type GoalCategoryIconVariant = 'selected' | 'muted';
+
+export function getGoalCategoryIconResource(
+  category: GoalCategory,
+  variant: GoalCategoryIconVariant = 'selected'
+): Resource {
+  switch (category) {
+    case GoalCategory.HEALTH:
+      return variant === 'selected'
+        ? $r('app.media.app_icon_health_selected')
+        : $r('app.media.app_icon_health_muted');
+    case GoalCategory.LEARNING:
+      return variant === 'selected'
+        ? $r('app.media.app_icon_growth_selected')
+        : $r('app.media.app_icon_growth_muted');
+    case GoalCategory.FINANCE:
+      return variant === 'selected'
+        ? $r('app.media.app_icon_finance_selected')
+        : $r('app.media.app_icon_finance_muted');
+    case GoalCategory.FUN:
+      return variant === 'selected'
+        ? $r('app.media.app_icon_joy_selected')
+        : $r('app.media.app_icon_joy_muted');
+    default:
+      return variant === 'selected'
+        ? $r('app.media.app_icon_goal_selected')
+        : $r('app.media.app_icon_goal');
+  }
+}
+
 // 应用配置
 export const APP_NAME: string = '四时清单';
 export const VERSION: string = '1.0.0';

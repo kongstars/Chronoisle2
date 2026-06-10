@@ -12,7 +12,7 @@ import { AppHeroPanel } from '../ui/base/AppHeroPanel';
 import { AppIcon } from '../ui/base/AppIcon';
 import { AppPageHeader } from '../ui/base/AppPageHeader';
 import { AppStatusBadge } from '../ui/base/AppStatusBadge';
-import { ACTION_CHIP_HEIGHT, BUTTON_HEIGHT_LG, BUTTON_HEIGHT_MD, BUTTON_HEIGHT_SM, ICON_BUTTON_SIZE_SM } from '../foundation/tokens/ComponentSizeTokens';
+import { ACTION_CHIP_HEIGHT, BUTTON_HEIGHT_LG, BUTTON_HEIGHT_MD, BUTTON_HEIGHT_SM, ICON_BUTTON_SIZE_MD, ICON_BUTTON_SIZE_SM } from '../foundation/tokens/ComponentSizeTokens';
 import { ICON_SIZE_LG, ICON_SIZE_SM, ICON_SIZE_XL, ICON_SIZE_XS } from '../foundation/tokens/IconTokens';
 import { HERO_PANEL_HEIGHT_COMPACT } from '../foundation/tokens/PageDensityTokens';
 import { PANEL_GAP, SECTION_GAP, SPACE_2XS, SPACE_CARD, SPACE_MD, SPACE_SM, SPACE_XS } from '../foundation/tokens/SpacingTokens';
@@ -252,9 +252,39 @@ struct CreatePomodoroPage {
     return option ? option.label : '不使用白噪音';
   }
 
-  getSelectedNoiseIcon(): string {
-    const option = this.getSelectedNoiseOption();
-    return option ? option.icon : 'noise';
+  getNoisePreviewResourceByKey(key: string): Resource {
+    if (key.length === 0) {
+      return $r('app.media.noise_preview_default');
+    }
+
+    switch (key) {
+      case 'light-rain':
+        return $r('app.media.noise_preview_light_rain');
+      case 'thunderstorm':
+        return $r('app.media.noise_preview_thunderstorm');
+      case 'strong-wind':
+        return $r('app.media.noise_preview_strong_wind');
+      case 'stream':
+        return $r('app.media.noise_preview_stream');
+      case 'birds':
+        return $r('app.media.noise_preview_birds');
+      case 'riverside-birds':
+        return $r('app.media.noise_preview_riverside_birds');
+      case 'battery-current':
+        return $r('app.media.noise_preview_battery_current');
+      case 'radio-static':
+        return $r('app.media.noise_preview_radio_static');
+      case 'dial-error':
+        return $r('app.media.noise_preview_dial_error');
+      case 'industrial-loop':
+        return $r('app.media.noise_preview_industrial_loop');
+      case 'spaceship-hum':
+        return $r('app.media.noise_preview_spaceship_hum');
+      case 'rocket-turbine':
+        return $r('app.media.noise_preview_rocket_turbine');
+      default:
+        return $r('app.media.app_icon_unknown');
+    }
   }
 
   getNoiseHintText(): string {
@@ -509,12 +539,20 @@ struct CreatePomodoroPage {
 
               Row() {
                 Row() {
-                  AppIcon({
-                    name: this.isPremium ? this.getSelectedNoiseIcon() : 'noise',
-                    iconSize: ICON_SIZE_XL,
-                    framed: true,
-                    muted: !this.isPremium
-                  })
+                  Row() {
+                    Image(this.isPremium ? this.getNoisePreviewResourceByKey(this.selectedNoiseKey) : $r('app.media.noise_preview_default'))
+                      .width(ICON_SIZE_XL)
+                      .height(ICON_SIZE_XL)
+                      .objectFit(ImageFit.Contain)
+                      .opacity(this.isPremium ? 1 : 0.56)
+                  }
+                  .width(ICON_BUTTON_SIZE_MD)
+                  .height(ICON_BUTTON_SIZE_MD)
+                  .justifyContent(FlexAlign.Center)
+                  .alignItems(VerticalAlign.Center)
+                  .backgroundColor(this.themeColors.surfaceLight)
+                  .borderRadius(RADIUS_LG)
+                  .border({ width: 1, color: this.themeColors.borderLight })
 
                   Column() {
                     Text(this.isPremium ? this.getSelectedNoiseLabel() : '白噪音')
